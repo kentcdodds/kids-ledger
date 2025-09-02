@@ -46,11 +46,13 @@ const migrations = [
 							ledger_id TEXT NOT NULL,
 							name TEXT NOT NULL,
 							emoji TEXT NOT NULL,
+							order_index INTEGER DEFAULT 0 NOT NULL,
 							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (ledger_id) REFERENCES ledgers(id) ON DELETE CASCADE
 						);
 						CREATE INDEX IF NOT EXISTS idx_kids_ledger_id ON kids(ledger_id);
+						CREATE INDEX IF NOT EXISTS idx_kids_order ON kids(ledger_id, order_index);
 					`),
 					db.prepare(sql`
 						CREATE TABLE IF NOT EXISTS accounts (
@@ -58,11 +60,13 @@ const migrations = [
 							kid_id INTEGER NOT NULL,
 							name TEXT NOT NULL,
 							balance INTEGER DEFAULT 0 NOT NULL,
+							order_index INTEGER DEFAULT 0 NOT NULL,
 							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
 						);
 						CREATE INDEX IF NOT EXISTS idx_accounts_kid_id ON accounts(kid_id);
+						CREATE INDEX IF NOT EXISTS idx_accounts_order ON accounts(kid_id, order_index);
 					`),
 				])
 				console.log('Successfully created kids expenses tables')
