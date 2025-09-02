@@ -29,7 +29,7 @@ export const kidSchema = z.object({
 	ledgerId: z.string(),
 	name: z.string(),
 	emoji: z.string(),
-	orderIndex: z.coerce.number(),
+	sortOrder: z.coerce.number(),
 	createdAt: timestampSchema,
 	updatedAt: timestampSchema,
 })
@@ -38,7 +38,7 @@ export const newKidSchema = z.object({
 	ledgerId: z.string(),
 	name: z.string(),
 	emoji: z.string(),
-	orderIndex: z.number().optional(),
+	sortOrder: z.number().optional(),
 })
 
 // Account schemas
@@ -47,7 +47,7 @@ export const accountSchema = z.object({
 	kidId: z.coerce.number(),
 	name: z.string(),
 	balance: z.coerce.number(),
-	orderIndex: z.coerce.number(),
+	sortOrder: z.coerce.number(),
 	createdAt: timestampSchema,
 	updatedAt: timestampSchema,
 })
@@ -56,7 +56,7 @@ export const newAccountSchema = z.object({
 	kidId: z.number(),
 	name: z.string(),
 	balance: z.number().optional().default(0),
-	orderIndex: z.number().optional(),
+	sortOrder: z.number().optional(),
 })
 
 export const updateAccountBalanceSchema = z.object({
@@ -66,7 +66,7 @@ export const updateAccountBalanceSchema = z.object({
 
 export const updateOrderSchema = z.object({
 	id: z.number(),
-	orderIndex: z.number(),
+	sortOrder: z.number(),
 })
 
 // Input schemas for API
@@ -97,7 +97,7 @@ export const updateAccountBalanceInputSchema = {
 
 export const updateOrderInputSchema = {
 	id: z.number().describe('The ID of the item to reorder'),
-	orderIndex: z.number().describe('The new order index'),
+	sortOrder: z.number().describe('The new sort order'),
 }
 
 // Export types

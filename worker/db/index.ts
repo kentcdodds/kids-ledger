@@ -95,28 +95,28 @@ export class DB {
 
 	// Kid operations
 	async createKid(data: NewKid): Promise<Kid> {
-		// Get the next order index if not provided
-		let orderIndex = data.orderIndex
-		if (orderIndex === undefined) {
+		// Get the next sort order if not provided
+		let sortOrder = data.sortOrder
+		if (sortOrder === undefined) {
 			const maxOrder = await this.#db
 				.prepare(
-					sql`SELECT MAX(order_index) as max_order FROM kids WHERE ledger_id = ?`,
+					sql`SELECT MAX(sort_order) as max_order FROM kids WHERE ledger_id = ?`,
 				)
 				.bind(data.ledgerId)
 				.first<{ maxOrder: number | null }>()
 
-			orderIndex = (maxOrder?.maxOrder ?? -1) + 1
+			sortOrder = (maxOrder?.maxOrder ?? -1) + 1
 		}
 
 		const result = await this.#db
 			.prepare(
 				sql`
-					INSERT INTO kids (ledger_id, name, emoji, order_index)
+					INSERT INTO kids (ledger_id, name, emoji, sort_order)
 					VALUES (?, ?, ?, ?)
 					RETURNING *
 				`,
 			)
-			.bind(data.ledgerId, data.name, data.emoji, orderIndex)
+			.bind(data.ledgerId, data.name, data.emoji, sortOrder)
 			.first<Kid>()
 
 		if (!result) throw new Error('Failed to create kid')
@@ -126,7 +126,7 @@ export class DB {
 	async getKidsByLedger(ledgerId: string): Promise<Kid[]> {
 		const result = await this.#db
 			.prepare(
-				sql`SELECT * FROM kids WHERE ledger_id = ? ORDER BY order_index ASC`,
+				sql`SELECT * FROM kids WHERE ledger_id = ? ORDER BY sort_order ASC`,
 			)
 			.bind(ledgerId)
 			.all<Kid>()
@@ -183,22 +183,22 @@ export class DB {
 		return result.changes > 0
 	}
 
-	async reorderKid(id: number, newOrderIndex: number): Promise<Kid | null> {
+	async reorderKid(id: number, newSortOrder: number): Promise<Kid | null> {
 		// Get the kid to reorder
 		const kid = await this.getKid(id)
 		if (!kid) return null
 
-		// Update the order index
+		// Update the sort order
 		const result = await this.#db
 			.prepare(
 				sql`
 					UPDATE kids 
-					SET order_index = ?, updated_at = CURRENT_TIMESTAMP
+					SET sort_order = ?, updated_at = CURRENT_TIMESTAMP
 					WHERE id = ?
 					RETURNING *
 				`,
 			)
-			.bind(newOrderIndex, id)
+			.bind(newSortOrder, id)
 			.first<Kid>()
 
 		return result ? (snakeToCamel(result) as Kid) : null
@@ -206,28 +206,28 @@ export class DB {
 
 	// Account operations
 	async createAccount(data: NewAccount): Promise<Account> {
-		// Get the next order index if not provided
-		let orderIndex = data.orderIndex
-		if (orderIndex === undefined) {
+		// Get the next sort order if not provided
+		let sortOrder = data.sortOrder
+		if (sortOrder === undefined) {
 			const maxOrder = await this.#db
 				.prepare(
-					sql`SELECT MAX(order_index) as max_order FROM accounts WHERE kid_id = ?`,
+					sql`SELECT MAX(sort_order) as max_order FROM accounts WHERE kid_id = ?`,
 				)
 				.bind(data.kidId)
 				.first<{ maxOrder: number | null }>()
 
-			orderIndex = (maxOrder?.maxOrder ?? -1) + 1
+			sortOrder = (maxOrder?.maxOrder ?? -1) + 1
 		}
 
 		const result = await this.#db
 			.prepare(
 				sql`
-					INSERT INTO accounts (kid_id, name, balance, order_index)
+					INSERT INTO accounts (kid_id, name, balance, sort_order)
 					VALUES (?, ?, ?, ?)
 					RETURNING *
 				`,
 			)
-			.bind(data.kidId, data.name, data.balance, orderIndex)
+			.bind(data.kidId, data.name, data.balance, sortOrder)
 			.first<Account>()
 
 		if (!result) throw new Error('Failed to create account')
@@ -237,7 +237,7 @@ export class DB {
 	async getAccountsByKid(kidId: number): Promise<Account[]> {
 		const result = await this.#db
 			.prepare(
-				sql`SELECT * FROM accounts WHERE kid_id = ? ORDER BY order_index ASC`,
+				sql`SELECT * FROM accounts WHERE kid_id = ? ORDER BY sort_order ASC`,
 			)
 			.bind(kidId)
 			.all<Account>()
@@ -294,22 +294,22 @@ export class DB {
 		return result.changes > 0
 	}
 
-	async reorderAccount(id: number, newOrderIndex: number): Promise<Account | null> {
+	async reorderAccount(id: number, newSortOrder: number): Promise<Account | null> {
 		// Get the account to reorder
 		const account = await this.getAccount(id)
 		if (!account) return null
 
-		// Update the order index
+		// Update the sort order
 		const result = await this.#db
 			.prepare(
 				sql`
 					UPDATE accounts 
-					SET order_index = ?, updated_at = CURRENT_TIMESTAMP
+					SET sort_order = ?, updated_at = CURRENT_TIMESTAMP
 					WHERE id = ?
 					RETURNING *
 				`,
 			)
-			.bind(newOrderIndex, id)
+			.bind(newSortOrder, id)
 			.first<Account>()
 
 		return result ? (snakeToCamel(result) as Account) : null
