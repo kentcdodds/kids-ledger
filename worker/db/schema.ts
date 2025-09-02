@@ -11,194 +11,81 @@ const timestampSchema = z.preprocess((val) => {
 	return val
 }, z.number())
 
-// example schemas from another app:
-// export const userSchema = z.object({
-// 	id: z.coerce.number(),
-// 	email: z.string(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+// Ledger schemas
+export const ledgerSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	createdAt: timestampSchema,
+	updatedAt: timestampSchema,
+})
 
-// export const grantSchema = z.object({
-// 	id: z.coerce.number(),
-// 	grantUserId: z.string(),
-// 	userId: z.coerce.number().optional(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+export const newLedgerSchema = z.object({
+	name: z.string(),
+})
 
-// export const validationTokenSchema = z.object({
-// 	id: z.coerce.number(),
-// 	tokenValue: z.string(),
-// 	email: z.string().email(),
-// 	grantId: z.coerce.number(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+// Kid schemas
+export const kidSchema = z.object({
+	id: z.coerce.number(),
+	ledgerId: z.string(),
+	name: z.string(),
+	emoji: z.string(),
+	createdAt: timestampSchema,
+	updatedAt: timestampSchema,
+})
 
-// // Schema Validation
-// export const entrySchema = z.object({
-// 	id: z.coerce.number(),
-// 	userId: z.coerce.number(),
-// 	title: z.string(),
-// 	content: z.string(),
-// 	mood: z.string().nullable(),
-// 	location: z.string().nullable(),
-// 	weather: z.string().nullable(),
-// 	isPrivate: z.coerce.number(),
-// 	isFavorite: z.coerce.number(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+export const newKidSchema = z.object({
+	ledgerId: z.string(),
+	name: z.string(),
+	emoji: z.string(),
+})
 
-// export const entryWithTagsSchema = entrySchema.extend({
-// 	tags: z.array(z.object({ id: z.number(), name: z.string() })),
-// })
+// Account schemas
+export const accountSchema = z.object({
+	id: z.coerce.number(),
+	kidId: z.coerce.number(),
+	name: z.string(),
+	balance: z.coerce.number(),
+	createdAt: timestampSchema,
+	updatedAt: timestampSchema,
+})
 
-// export const newEntrySchema = z.object({
-// 	title: z.string(),
-// 	content: z.string(),
-// 	mood: z.string().optional().nullable().default(null),
-// 	location: z.string().optional().nullable().default(null),
-// 	weather: z.string().optional().nullable().default(null),
-// 	isPrivate: z.number().optional().default(1),
-// 	isFavorite: z.number().optional().default(0),
-// })
+export const newAccountSchema = z.object({
+	kidId: z.number(),
+	name: z.string(),
+	balance: z.number().optional().default(0),
+})
 
-// export const tagSchema = z.object({
-// 	id: z.coerce.number(),
-// 	userId: z.coerce.number(),
-// 	name: z.string(),
-// 	description: z.string().nullable(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+export const updateAccountBalanceSchema = z.object({
+	id: z.number(),
+	balance: z.number(),
+})
 
-// export const newTagSchema = z.object({
-// 	name: z.string(),
-// 	description: z
-// 		.string()
-// 		.nullable()
-// 		.optional()
-// 		.transform((val) => val ?? null),
-// })
+// Input schemas for API
+export const createLedgerInputSchema = {
+	name: z.string().describe('The name of the ledger'),
+}
 
-// export const entryTagSchema = z.object({
-// 	id: z.coerce.number(),
-// 	userId: z.coerce.number(),
-// 	entryId: z.coerce.number(),
-// 	tagId: z.coerce.number(),
-// 	createdAt: timestampSchema,
-// 	updatedAt: timestampSchema,
-// })
+export const createKidInputSchema = {
+	ledgerId: z.string().describe('The ID of the ledger'),
+	name: z.string().describe('The name of the kid'),
+	emoji: z.string().describe('The emoji avatar for the kid'),
+}
 
-// export const newEntryTagSchema = z.object({
-// 	entryId: z.number(),
-// 	tagId: z.number(),
-// })
+export const createAccountInputSchema = {
+	kidId: z.number().describe('The ID of the kid'),
+	name: z.string().describe('The name of the account'),
+	balance: z.number().optional().default(0).describe('The initial balance of the account'),
+}
 
-// export const entryIdSchema = { id: z.number().describe('The ID of the entry') }
-// export const tagIdSchema = { id: z.number().describe('The ID of the tag') }
-// export const entryTagIdSchema = {
-// 	entryId: z.number().describe('The ID of the entry'),
-// 	tagId: z.number().describe('The ID of the tag'),
-// }
+export const updateAccountBalanceInputSchema = {
+	id: z.number().describe('The ID of the account'),
+	balance: z.number().describe('The new balance of the account'),
+}
 
-// export const createEntryInputSchema = {
-// 	title: z.string().describe('The title of the entry'),
-// 	content: z.string().describe('The content of the entry'),
-// 	mood: z
-// 		.string()
-// 		.optional()
-// 		.describe(
-// 			'The mood of the entry (for example: "happy", "sad", "anxious", "excited")',
-// 		),
-// 	location: z
-// 		.string()
-// 		.optional()
-// 		.describe(
-// 			'The location of the entry (for example: "home", "work", "school", "park")',
-// 		),
-// 	weather: z
-// 		.string()
-// 		.optional()
-// 		.describe(
-// 			'The weather of the entry (for example: "sunny", "cloudy", "rainy", "snowy")',
-// 		),
-// 	isPrivate: z
-// 		.number()
-// 		.optional()
-// 		.default(1)
-// 		.describe('Whether the entry is private (1 for private, 0 for public)'),
-// 	isFavorite: z
-// 		.number()
-// 		.optional()
-// 		.default(0)
-// 		.describe(
-// 			'Whether the entry is a favorite (1 for favorite, 0 for not favorite)',
-// 		),
-// 	tags: z
-// 		.array(z.number())
-// 		.optional()
-// 		.describe('The IDs of the tags to add to the entry'),
-// }
-
-// export const updateEntryInputSchema = {
-// 	id: z.number(),
-// 	title: z.string().optional().describe('The title of the entry'),
-// 	content: z.string().optional().describe('The content of the entry'),
-// 	mood: z
-// 		.string()
-// 		.nullable()
-// 		.optional()
-// 		.describe(
-// 			'The mood of the entry (for example: "happy", "sad", "anxious", "excited")',
-// 		),
-// 	location: z
-// 		.string()
-// 		.nullable()
-// 		.optional()
-// 		.describe(
-// 			'The location of the entry (for example: "home", "work", "school", "park")',
-// 		),
-// 	weather: z
-// 		.string()
-// 		.nullable()
-// 		.optional()
-// 		.describe(
-// 			'The weather of the entry (for example: "sunny", "cloudy", "rainy", "snowy")',
-// 		),
-// 	isPrivate: z
-// 		.number()
-// 		.optional()
-// 		.describe('Whether the entry is private (1 for private, 0 for public)'),
-// 	isFavorite: z
-// 		.number()
-// 		.optional()
-// 		.describe(
-// 			'Whether the entry is a favorite (1 for favorite, 0 for not favorite)',
-// 		),
-// }
-
-// export const createTagInputSchema = {
-// 	name: z.string().describe('The name of the tag'),
-// 	description: z.string().optional().describe('The description of the tag'),
-// }
-
-// export const updateTagInputSchema = {
-// 	id: z.number(),
-// 	...Object.fromEntries(
-// 		Object.entries(createTagInputSchema).map(([key, value]) => [
-// 			key,
-// 			value.nullable().optional(),
-// 		]),
-// 	),
-// }
-
-// export type Entry = z.infer<typeof entrySchema>
-// export type NewEntry = z.infer<typeof newEntrySchema>
-// export type Tag = z.infer<typeof tagSchema>
-// export type NewTag = z.infer<typeof newTagSchema>
-// export type EntryTag = z.infer<typeof entryTagSchema>
-// export type NewEntryTag = z.infer<typeof newEntryTagSchema>
-// export type EntryWithTags = z.infer<typeof entryWithTagsSchema>
+// Export types
+export type Ledger = z.infer<typeof ledgerSchema>
+export type NewLedger = z.infer<typeof newLedgerSchema>
+export type Kid = z.infer<typeof kidSchema>
+export type NewKid = z.infer<typeof newKidSchema>
+export type Account = z.infer<typeof accountSchema>
+export type NewAccount = z.infer<typeof newAccountSchema>

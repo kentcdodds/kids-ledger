@@ -17,60 +17,57 @@ const migrations = [
 							applied_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL
 						);
 					`),
-					// example sql statements from another app:
-					// db.prepare(sql`
-					// 	CREATE TABLE IF NOT EXISTS entries (
-					// 		id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-					// 		user_id integer NOT NULL,
-					// 		title text NOT NULL,
-					// 		content text NOT NULL,
-					// 		mood text,
-					// 		location text,
-					// 		weather text,
-					// 		is_private integer DEFAULT 1 NOT NULL CHECK (is_private IN (0, 1)),
-					// 		is_favorite integer DEFAULT 0 NOT NULL CHECK (is_favorite IN (0, 1)),
-					// 		created_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		updated_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-					// 	);
-					// 	CREATE INDEX IF NOT EXISTS idx_entries_user_id ON entries(user_id);
-					// 	CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at);
-					// 	CREATE INDEX IF NOT EXISTS idx_entries_is_private ON entries(is_private);
-					// `),
-					// db.prepare(sql`
-					// 	CREATE TABLE IF NOT EXISTS tags (
-					// 		id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-					// 		user_id integer NOT NULL,
-					// 		name text NOT NULL,
-					// 		description text,
-					// 		created_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		updated_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-					// 		UNIQUE(user_id, name)
-					// 	);
-					// 	CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
-					// `),
-					// db.prepare(sql`
-					// 	CREATE TABLE IF NOT EXISTS entry_tags (
-					// 		id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-					// 		user_id integer NOT NULL,
-					// 		entry_id integer NOT NULL,
-					// 		tag_id integer NOT NULL,
-					// 		created_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		updated_at integer DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-					// 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-					// 		FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE,
-					// 		FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
-					// 		UNIQUE(entry_id, tag_id)
-					// 	);
-					// 	CREATE INDEX IF NOT EXISTS idx_entry_tags_user ON entry_tags(user_id);
-					// 	CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags(entry_id);
-					// 	CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags(tag_id);
-					// `),
 				])
-				console.log('Successfully created all tables')
+				console.log('Successfully created schema_versions table')
 			} catch (error) {
 				console.error('Error in initial schema migration:', error)
+				throw error
+			}
+		},
+	},
+	{
+		version: 2,
+		name: 'kids_expenses_schema',
+		up: async (db: D1Database) => {
+			console.log('Starting kids expenses schema migration...')
+			try {
+				await db.batch([
+					db.prepare(sql`
+						CREATE TABLE IF NOT EXISTS ledgers (
+							id TEXT PRIMARY KEY NOT NULL,
+							name TEXT NOT NULL,
+							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL
+						);
+					`),
+					db.prepare(sql`
+						CREATE TABLE IF NOT EXISTS kids (
+							id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+							ledger_id TEXT NOT NULL,
+							name TEXT NOT NULL,
+							emoji TEXT NOT NULL,
+							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							FOREIGN KEY (ledger_id) REFERENCES ledgers(id) ON DELETE CASCADE
+						);
+						CREATE INDEX IF NOT EXISTS idx_kids_ledger_id ON kids(ledger_id);
+					`),
+					db.prepare(sql`
+						CREATE TABLE IF NOT EXISTS accounts (
+							id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+							kid_id INTEGER NOT NULL,
+							name TEXT NOT NULL,
+							balance INTEGER DEFAULT 0 NOT NULL,
+							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
+						);
+						CREATE INDEX IF NOT EXISTS idx_accounts_kid_id ON accounts(kid_id);
+					`),
+				])
+				console.log('Successfully created kids expenses tables')
+			} catch (error) {
+				console.error('Error in kids expenses schema migration:', error)
 				throw error
 			}
 		},
