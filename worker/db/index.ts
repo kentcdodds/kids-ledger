@@ -105,7 +105,7 @@ export class DB {
 				.bind(data.ledgerId)
 				.first<{ maxOrder: number | null }>()
 
-			sortOrder = (maxOrder?.maxOrder ?? -1) + 1
+			sortOrder = (maxOrder?.maxOrder ?? 0) + 1
 		}
 
 		const result = await this.#db
@@ -216,7 +216,7 @@ export class DB {
 				.bind(data.kidId)
 				.first<{ maxOrder: number | null }>()
 
-			sortOrder = (maxOrder?.maxOrder ?? -1) + 1
+			sortOrder = (maxOrder?.maxOrder ?? 0) + 1
 		}
 
 		const result = await this.#db
@@ -320,60 +320,60 @@ export class DB {
 		const kid = await this.getKid(id)
 		if (!kid) return null
 
-		let newOrderIndex: number
+		let newSortOrder: number
 
 		if (beforeId === null && afterId === null) {
 			// Move to the beginning
-			newOrderIndex = 0
+			newSortOrder = 0
 		} else if (beforeId === null) {
 			// Move to the beginning (before the first item)
 			const afterKid = await this.getKid(afterId!)
 			if (!afterKid) return null
-			newOrderIndex = afterKid.orderIndex / 2
+			newSortOrder = afterKid.sortOrder / 2
 		} else if (afterId === null) {
 			// Move to the end
 			const beforeKid = await this.getKid(beforeId!)
 			if (!beforeKid) return null
-			newOrderIndex = beforeKid.orderIndex + 1
+			newSortOrder = beforeKid.sortOrder + 1
 		} else {
 			// Move between two items
 			const beforeKid = await this.getKid(beforeId!)
 			const afterKid = await this.getKid(afterId!)
 			if (!beforeKid || !afterKid) return null
-			newOrderIndex = (beforeKid.orderIndex + afterKid.orderIndex) / 2
+			newSortOrder = (beforeKid.sortOrder + afterKid.sortOrder) / 2
 		}
 
-		return this.reorderKid(id, newOrderIndex)
+		return this.reorderKid(id, newSortOrder)
 	}
 
 	async reorderAccountBetween(id: number, beforeId: number | null, afterId: number | null): Promise<Account | null> {
 		const account = await this.getAccount(id)
 		if (!account) return null
 
-		let newOrderIndex: number
+		let newSortOrder: number
 
 		if (beforeId === null && afterId === null) {
 			// Move to the beginning
-			newOrderIndex = 0
+			newSortOrder = 0
 		} else if (beforeId === null) {
 			// Move to the beginning (before the first item)
 			const afterAccount = await this.getAccount(afterId!)
 			if (!afterAccount) return null
-			newOrderIndex = afterAccount.orderIndex / 2
+			newSortOrder = afterAccount.sortOrder / 2
 		} else if (afterId === null) {
 			// Move to the end
 			const beforeAccount = await this.getAccount(beforeId!)
 			if (!beforeAccount) return null
-			newOrderIndex = beforeAccount.orderIndex + 1
+			newSortOrder = beforeAccount.sortOrder + 1
 		} else {
 			// Move between two items
 			const beforeAccount = await this.getAccount(beforeId!)
 			const afterAccount = await this.getAccount(afterId!)
 			if (!beforeAccount || !afterAccount) return null
-			newOrderIndex = (beforeAccount.orderIndex + afterAccount.orderIndex) / 2
+			newSortOrder = (beforeAccount.sortOrder + afterAccount.sortOrder) / 2
 		}
 
-		return this.reorderAccount(id, newOrderIndex)
+		return this.reorderAccount(id, newSortOrder)
 	}
 
 	// Bulk operations

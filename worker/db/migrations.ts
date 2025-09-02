@@ -46,7 +46,7 @@ const migrations = [
 							ledger_id TEXT NOT NULL,
 							name TEXT NOT NULL,
 							emoji TEXT NOT NULL,
-							sort_order REAL DEFAULT 0 NOT NULL,
+							sort_order REAL NOT NULL,
 							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (ledger_id) REFERENCES ledgers(id) ON DELETE CASCADE
@@ -60,7 +60,7 @@ const migrations = [
 							kid_id INTEGER NOT NULL,
 							name TEXT NOT NULL,
 							balance INTEGER DEFAULT 0 NOT NULL,
-							sort_order REAL DEFAULT 0 NOT NULL,
+							sort_order REAL NOT NULL,
 							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
