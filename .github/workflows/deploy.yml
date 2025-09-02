@@ -41,7 +41,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           npm run build
-          wrangler deploy --name kids-ledger-pr-${{ github.event.number }}
+          npx wrangler deploy --name kids-ledger-pr-${{ github.event.number }}
 
       - name: Cleanup PR Preview
         if:
@@ -49,4 +49,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          wrangler delete kids-ledger-pr-${{ github.event.number }} --yes || true
+          npx wrangler delete kids-ledger-pr-${{ github.event.number }} --yes || true
