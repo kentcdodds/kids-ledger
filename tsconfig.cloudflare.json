@@ -5,8 +5,8 @@
     "app/**/*",
     "app/**/.server/**/*",
     "app/**/.client/**/*",
-    "workers/**/*",
-    "worker-configuration.d.ts"
+    "worker/**/*",
+    "types/**/*"
   ],
   "compilerOptions": {
     "composite": true,
@@ -20,8 +20,11 @@
     "baseUrl": ".",
     "rootDirs": [".", "./.react-router/types"],
     "paths": {
-      "~/*": ["./app/*"]
-    },
+			"#app/*": ["./app/*"],
+			"#tests/*": ["./tests/*"],
+			"#types/*": ["./types/*"],
+			"#worker/*": ["./worker/*"]
+		},
     "esModuleInterop": true,
     "resolveJsonModule": true
   }

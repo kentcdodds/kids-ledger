@@ -6,13 +6,19 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "kids-ledger",
 	"compatibility_date": "2025-04-04",
-	"main": "./workers/app.ts",
-	"vars": {
-		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
-	},
+	"main": "./worker/index.ts",
 	"observability": {
 		"enabled": true
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "KIDS_LEDGER_DB",
+			"database_name": "kids-ledger",
+			"database_id": "6d2e535d-3030-47e5-a571-cbd1fa82f059",
+			"migrations_dir": "worker/db/migrations",
+		},
+	],
+	
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
