@@ -14,4 +14,7 @@ export class DB {
 		await migrate(env.KIDS_LEDGER_DB)
 		return db
 	}
+
+	// fill this with utilities for querying the d1 sqlite database.
+	// ensure that everything is parsed with zod schemas so it's type safe coming out of the db.
 }

@@ -11,7 +11,6 @@ const timestampSchema = z.preprocess((val) => {
 	return val
 }, z.number())
 
-
 // example schemas from another app:
 // export const userSchema = z.object({
 // 	id: z.coerce.number(),

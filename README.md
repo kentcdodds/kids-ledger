@@ -1,6 +1,7 @@
 # Welcome to React Router!
 
-A modern, production-ready template for building full-stack React applications using React Router.
+A modern, production-ready template for building full-stack React applications
+using React Router.
 
 ## Features
 
@@ -64,7 +65,8 @@ To deploy a preview URL:
 npm run deploy:preview
 ```
 
-You can then promote a version to production after verification or roll it out progressively.
+You can then promote a version to production after verification or roll it out
+progressively.
 
 ```sh
 npx wrangler versions deploy
@@ -72,20 +74,27 @@ npx wrangler versions deploy
 
 ### Pull Request Deployments
 
-This project includes automatic PR preview deployments. When you create a pull request:
+This project includes automatic PR preview deployments. When you create a pull
+request:
 
-1. **Automatic Deployment**: Each PR is automatically deployed to a temporary worker with the name `kids-ledger-pr-{PR_NUMBER}`
-2. **Preview URL**: You'll get a unique URL for each PR to test changes before merging
-3. **Automatic Cleanup**: When the PR is closed or merged, the temporary deployment is automatically cleaned up
+1. **Automatic Deployment**: Each PR is automatically deployed to a temporary
+   worker with the name `kids-ledger-pr-{PR_NUMBER}`
+2. **Preview URL**: You'll get a unique URL for each PR to test changes before
+   merging
+3. **Automatic Cleanup**: When the PR is closed or merged, the temporary
+   deployment is automatically cleaned up
 
 The deployment workflow runs on:
+
 - Push to main branch (production deployment)
 - Pull request events (preview deployment)
 - Pull request closure (cleanup)
 
 ## Styling
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+This template comes with [Tailwind CSS](https://tailwindcss.com/) already
+configured for a simple default starting experience. You can use whatever CSS
+framework you prefer.
 
 ---
 

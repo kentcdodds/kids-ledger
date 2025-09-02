@@ -35,7 +35,8 @@ jobs:
         run: npm run deploy
 
       - name: Deploy PR Preview
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        if:
+          github.event_name == 'pull_request' && github.event.action != 'closed'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -43,7 +44,8 @@ jobs:
           wrangler deploy --name kids-ledger-pr-${{ github.event.number }}
 
       - name: Cleanup PR Preview
-        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        if:
+          github.event_name == 'pull_request' && github.event.action == 'closed'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |

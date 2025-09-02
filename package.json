@@ -1,42 +1,45 @@
 {
-	"name": "kids-ledger",
-	"private": true,
-	"type": "module",
-	"imports": {
-		"#app/*": "./app/*",
-		"#tests/*": "./tests/*",
-		"#types/*": "./types/*",
-		"#worker/*": "./workers/*"
-	},
-	"scripts": {
-		"build": "react-router build",
-		"deploy": "npm run build && wrangler deploy",
-		"deploy:preview": "npm run build && wrangler deploy --name kids-ledger-preview",
-		"dev": "react-router dev",
-		"postinstall": "npm run pretypecheck",
-		"preview": "npm run build && vite preview",
-		"pretypecheck": "wrangler types ./types/worker-configuration.d.ts && react-router typegen",
-		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b"
-	},
-	"dependencies": {
-		"@epic-web/config": "^1.21.3",
-		"@epic-web/invariant": "^1.0.0",
-		"isbot": "^5.1.27",
-		"react": "^19.1.0",
-		"react-dom": "^19.1.0",
-		"react-router": "^7.7.1"
-	},
-	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.0.12",
-		"@react-router/dev": "^7.7.1",
-		"@tailwindcss/vite": "^4.1.4",
-		"@types/node": "^20",
-		"@types/react": "^19.1.2",
-		"@types/react-dom": "^19.1.2",
-		"tailwindcss": "^4.1.4",
-		"typescript": "^5.8.3",
-		"vite": "^6.3.3",
-		"vite-tsconfig-paths": "^5.1.4",
-		"wrangler": "^4.33.1"
-	}
+  "name": "kids-ledger",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#app/*": "./app/*",
+    "#tests/*": "./tests/*",
+    "#types/*": "./types/*",
+    "#worker/*": "./workers/*"
+  },
+  "scripts": {
+    "build": "react-router build",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:preview": "npm run build && wrangler deploy --name kids-ledger-preview",
+    "format": "prettier --write .",
+    "dev": "react-router dev",
+    "postinstall": "npm run pretypecheck",
+    "preview": "npm run build && vite preview",
+    "pretypecheck": "wrangler types ./types/worker-configuration.d.ts && react-router typegen",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@epic-web/config": "^1.21.3",
+    "@epic-web/invariant": "^1.0.0",
+    "isbot": "^5.1.27",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router": "^7.7.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.0.12",
+    "@react-router/dev": "^7.7.1",
+    "@tailwindcss/vite": "^4.1.4",
+    "@types/node": "^20",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.33.1"
+  },
+  "prettier": "@epic-web/config/prettier"
 }
