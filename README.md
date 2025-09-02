@@ -61,7 +61,7 @@ npm run deploy
 To deploy a preview URL:
 
 ```sh
-npx wrangler versions upload
+npm run deploy:preview
 ```
 
 You can then promote a version to production after verification or roll it out progressively.
@@ -69,6 +69,19 @@ You can then promote a version to production after verification or roll it out p
 ```sh
 npx wrangler versions deploy
 ```
+
+### Pull Request Deployments
+
+This project includes automatic PR preview deployments. When you create a pull request:
+
+1. **Automatic Deployment**: Each PR is automatically deployed to a temporary worker with the name `kids-ledger-pr-{PR_NUMBER}`
+2. **Preview URL**: You'll get a unique URL for each PR to test changes before merging
+3. **Automatic Cleanup**: When the PR is closed or merged, the temporary deployment is automatically cleaned up
+
+The deployment workflow runs on:
+- Push to main branch (production deployment)
+- Pull request events (preview deployment)
+- Pull request closure (cleanup)
 
 ## Styling
 
