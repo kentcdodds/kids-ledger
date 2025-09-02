@@ -74,7 +74,11 @@ export const createKidInputSchema = {
 export const createAccountInputSchema = {
 	kidId: z.number().describe('The ID of the kid'),
 	name: z.string().describe('The name of the account'),
-	balance: z.number().optional().default(0).describe('The initial balance of the account'),
+	balance: z
+		.number()
+		.optional()
+		.default(0)
+		.describe('The initial balance of the account'),
 }
 
 export const updateAccountBalanceInputSchema = {
