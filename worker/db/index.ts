@@ -31,7 +31,7 @@ export class DB {
 	}
 
 	// Ledger operations
-	async createLedger(data: NewLedger): Promise<Ledger> {
+	async createLedger(data: NewLedger) {
 		const id = crypto.randomUUID()
 		const result = await this.#db
 			.prepare(
@@ -48,7 +48,7 @@ export class DB {
 		return ledgerSchema.parse(snakeToCamel(result))
 	}
 
-	async getLedger(id: string): Promise<Ledger | null> {
+	async getLedger(id: string) {
 		const result = await this.#db
 			.prepare(sql`SELECT * FROM ledgers WHERE id = ?`)
 			.bind(id)
@@ -57,7 +57,7 @@ export class DB {
 		return result ? ledgerSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async updateLedger(id: string, data: Partial<NewLedger>): Promise<Ledger | null> {
+	async updateLedger(id: string, data: Partial<NewLedger>) {
 		const updates: string[] = []
 		const values: any[] = []
 
@@ -69,32 +69,26 @@ export class DB {
 		if (updates.length === 0) return this.getLedger(id)
 
 		values.push(id)
+		const updateQuery = `UPDATE ledgers SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
 		const result = await this.#db
-			.prepare(
-				sql`
-					UPDATE ledgers 
-					SET ${sql.raw(updates.join(', '))}, updated_at = CURRENT_TIMESTAMP
-					WHERE id = ?
-					RETURNING *
-				`,
-			)
+			.prepare(updateQuery)
 			.bind(...values)
 			.first<Ledger>()
 
 		return result ? ledgerSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async deleteLedger(id: string): Promise<boolean> {
+	async deleteLedger(id: string) {
 		const result = await this.#db
 			.prepare(sql`DELETE FROM ledgers WHERE id = ?`)
 			.bind(id)
 			.run()
 
-		return result.changes > 0
+		return result.success && result.meta.changes > 0
 	}
 
 	// Kid operations
-	async createKid(data: NewKid): Promise<Kid> {
+	async createKid(data: NewKid) {
 		// Get the next sort order if not provided
 		let sortOrder = data.sortOrder
 		if (sortOrder === undefined) {
@@ -123,7 +117,7 @@ export class DB {
 		return kidSchema.parse(snakeToCamel(result))
 	}
 
-	async getKidsByLedger(ledgerId: string): Promise<Kid[]> {
+	async getKidsByLedger(ledgerId: string) {
 		const result = await this.#db
 			.prepare(
 				sql`SELECT * FROM kids WHERE ledger_id = ? ORDER BY sort_order ASC`,
@@ -131,19 +125,19 @@ export class DB {
 			.bind(ledgerId)
 			.all<Kid>()
 
-		return result.results.map((row) => snakeToCamel(row) as Kid)
+		return result.results.map((row) => kidSchema.parse(snakeToCamel(row)))
 	}
 
-	async getKid(id: number): Promise<Kid | null> {
+	async getKid(id: number) {
 		const result = await this.#db
 			.prepare(sql`SELECT * FROM kids WHERE id = ?`)
 			.bind(id)
 			.first<Kid>()
 
-		return result ? (snakeToCamel(result) as Kid) : null
+		return result ? kidSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async updateKid(id: number, data: Partial<NewKid>): Promise<Kid | null> {
+	async updateKid(id: number, data: Partial<NewKid>) {
 		const updates: string[] = []
 		const values: any[] = []
 
@@ -159,31 +153,25 @@ export class DB {
 		if (updates.length === 0) return this.getKid(id)
 
 		values.push(id)
+		const updateQuery = `UPDATE kids SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
 		const result = await this.#db
-			.prepare(
-				sql`
-					UPDATE kids 
-					SET ${sql.raw(updates.join(', '))}, updated_at = CURRENT_TIMESTAMP
-					WHERE id = ?
-					RETURNING *
-				`,
-			)
+			.prepare(updateQuery)
 			.bind(...values)
 			.first<Kid>()
 
-		return result ? (snakeToCamel(result) as Kid) : null
+		return result ? kidSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async deleteKid(id: number): Promise<boolean> {
+	async deleteKid(id: number) {
 		const result = await this.#db
 			.prepare(sql`DELETE FROM kids WHERE id = ?`)
 			.bind(id)
 			.run()
 
-		return result.changes > 0
+		return result.success && result.meta.changes > 0
 	}
 
-	async reorderKid(id: number, newSortOrder: number): Promise<Kid | null> {
+	async reorderKid(id: number, newSortOrder: number) {
 		// Get the kid to reorder
 		const kid = await this.getKid(id)
 		if (!kid) return null
@@ -201,11 +189,11 @@ export class DB {
 			.bind(newSortOrder, id)
 			.first<Kid>()
 
-		return result ? (snakeToCamel(result) as Kid) : null
+		return result ? kidSchema.parse(snakeToCamel(result)) : null
 	}
 
 	// Account operations
-	async createAccount(data: NewAccount): Promise<Account> {
+	async createAccount(data: NewAccount) {
 		// Get the next sort order if not provided
 		let sortOrder = data.sortOrder
 		if (sortOrder === undefined) {
@@ -231,10 +219,10 @@ export class DB {
 			.first<Account>()
 
 		if (!result) throw new Error('Failed to create account')
-		return snakeToCamel(result) as Account
+		return accountSchema.parse(snakeToCamel(result))
 	}
 
-	async getAccountsByKid(kidId: number): Promise<Account[]> {
+	async getAccountsByKid(kidId: number) {
 		const result = await this.#db
 			.prepare(
 				sql`SELECT * FROM accounts WHERE kid_id = ? ORDER BY sort_order ASC`,
@@ -242,19 +230,19 @@ export class DB {
 			.bind(kidId)
 			.all<Account>()
 
-		return result.results.map((row) => snakeToCamel(row) as Account)
+		return result.results.map((row) => accountSchema.parse(snakeToCamel(row)))
 	}
 
-	async getAccount(id: number): Promise<Account | null> {
+	async getAccount(id: number) {
 		const result = await this.#db
 			.prepare(sql`SELECT * FROM accounts WHERE id = ?`)
 			.bind(id)
 			.first<Account>()
 
-		return result ? (snakeToCamel(result) as Account) : null
+		return result ? accountSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async updateAccount(id: number, data: Partial<NewAccount>): Promise<Account | null> {
+	async updateAccount(id: number, data: Partial<NewAccount>) {
 		const updates: string[] = []
 		const values: any[] = []
 
@@ -270,31 +258,25 @@ export class DB {
 		if (updates.length === 0) return this.getAccount(id)
 
 		values.push(id)
+		const updateQuery = `UPDATE accounts SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
 		const result = await this.#db
-			.prepare(
-				sql`
-					UPDATE accounts 
-					SET ${sql.raw(updates.join(', '))}, updated_at = CURRENT_TIMESTAMP
-					WHERE id = ?
-					RETURNING *
-				`,
-			)
+			.prepare(updateQuery)
 			.bind(...values)
 			.first<Account>()
 
-		return result ? (snakeToCamel(result) as Account) : null
+		return result ? accountSchema.parse(snakeToCamel(result)) : null
 	}
 
-	async deleteAccount(id: number): Promise<boolean> {
+	async deleteAccount(id: number) {
 		const result = await this.#db
 			.prepare(sql`DELETE FROM accounts WHERE id = ?`)
 			.bind(id)
 			.run()
 
-		return result.changes > 0
+		return result.success && result.meta.changes > 0
 	}
 
-	async reorderAccount(id: number, newSortOrder: number): Promise<Account | null> {
+	async reorderAccount(id: number, newSortOrder: number) {
 		// Get the account to reorder
 		const account = await this.getAccount(id)
 		if (!account) return null
@@ -312,11 +294,15 @@ export class DB {
 			.bind(newSortOrder, id)
 			.first<Account>()
 
-		return result ? (snakeToCamel(result) as Account) : null
+		return result ? accountSchema.parse(snakeToCamel(result)) : null
 	}
 
 	// Utility methods for atomic reordering
-	async reorderKidBetween(id: number, beforeId: number | null, afterId: number | null): Promise<Kid | null> {
+	async reorderKidBetween(
+		id: number,
+		beforeId: number | null,
+		afterId: number | null,
+	) {
 		const kid = await this.getKid(id)
 		if (!kid) return null
 
@@ -346,7 +332,11 @@ export class DB {
 		return this.reorderKid(id, newSortOrder)
 	}
 
-	async reorderAccountBetween(id: number, beforeId: number | null, afterId: number | null): Promise<Account | null> {
+	async reorderAccountBetween(
+		id: number,
+		beforeId: number | null,
+		afterId: number | null,
+	) {
 		const account = await this.getAccount(id)
 		if (!account) return null
 
@@ -377,7 +367,7 @@ export class DB {
 	}
 
 	// Bulk operations
-	async getLedgerWithKids(ledgerId: string): Promise<{ ledger: Ledger; kids: Kid[] } | null> {
+	async getLedgerWithKids(ledgerId: string) {
 		const ledger = await this.getLedger(ledgerId)
 		if (!ledger) return null
 
@@ -385,7 +375,7 @@ export class DB {
 		return { ledger, kids }
 	}
 
-	async getKidWithAccounts(kidId: number): Promise<{ kid: Kid; accounts: Account[] } | null> {
+	async getKidWithAccounts(kidId: number) {
 		const kid = await this.getKid(kidId)
 		if (!kid) return null
 
@@ -393,7 +383,7 @@ export class DB {
 		return { kid, accounts }
 	}
 
-	async getFullLedger(ledgerId: string): Promise<{ ledger: Ledger; kids: (Kid & { accounts: Account[] })[] } | null> {
+	async getFullLedger(ledgerId: string) {
 		const ledger = await this.getLedger(ledgerId)
 		if (!ledger) return null
 
