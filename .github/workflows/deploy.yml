@@ -64,14 +64,23 @@ jobs:
           DB_NAME="kids-ledger-pr-${{ github.event.number }}"
 
           # Delete existing database if it exists (to ensure clean slate)
-          npx wrangler d1 delete "$DB_NAME" --force 2>/dev/null || true
-          echo "Deleted existing database $DB_NAME (if it existed)"
+          echo "Attempting to delete existing database $DB_NAME..."
+          npx wrangler d1 delete "$DB_NAME" --force --skip-confirmation 2>/dev/null || echo "Database $DB_NAME did not exist or could not be deleted"
+
+          # Wait a moment for deletion to complete
+          sleep 2
 
           # Create a fresh database
+          echo "Creating fresh database $DB_NAME..."
           npx wrangler d1 create "$DB_NAME"
 
           # Get the database ID from the list
           DB_ID=$(npx wrangler d1 list | grep "$DB_NAME" | awk '{print $1}')
+          if [ -z "$DB_ID" ]; then
+            echo "Failed to get database ID. Trying again..."
+            sleep 3
+            DB_ID=$(npx wrangler d1 list | grep "$DB_NAME" | awk '{print $1}')
+          fi
           echo "Created fresh database $DB_NAME with ID $DB_ID"
 
           echo "DB_ID=$DB_ID" >> $GITHUB_ENV
