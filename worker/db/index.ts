@@ -69,7 +69,7 @@ export class DB {
 		if (updates.length === 0) return this.getLedger(id)
 
 		values.push(id)
-		const updateQuery = `UPDATE ledgers SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
+		const updateQuery = `UPDATE ledgers SET ${updates.join(', ')}, updated_at = strftime('%s','now') WHERE id = ? RETURNING *`
 		const result = await this.#db
 			.prepare(updateQuery)
 			.bind(...values)
@@ -94,7 +94,7 @@ export class DB {
 		if (sortOrder === undefined) {
 			const maxOrder = await this.#db
 				.prepare(
-					sql`SELECT MAX(sort_order) as max_order FROM kids WHERE ledger_id = ?`,
+					sql`SELECT MAX(sort_order) as maxOrder FROM kids WHERE ledger_id = ?`,
 				)
 				.bind(data.ledgerId)
 				.first<{ maxOrder: number | null }>()
@@ -153,7 +153,7 @@ export class DB {
 		if (updates.length === 0) return this.getKid(id)
 
 		values.push(id)
-		const updateQuery = `UPDATE kids SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
+		const updateQuery = `UPDATE kids SET ${updates.join(', ')}, updated_at = strftime('%s','now') WHERE id = ? RETURNING *`
 		const result = await this.#db
 			.prepare(updateQuery)
 			.bind(...values)
@@ -181,7 +181,7 @@ export class DB {
 			.prepare(
 				sql`
 					UPDATE kids 
-					SET sort_order = ?, updated_at = CURRENT_TIMESTAMP
+					SET sort_order = ?, updated_at = strftime('%s','now')
 					WHERE id = ?
 					RETURNING *
 				`,
@@ -199,7 +199,7 @@ export class DB {
 		if (sortOrder === undefined) {
 			const maxOrder = await this.#db
 				.prepare(
-					sql`SELECT MAX(sort_order) as max_order FROM accounts WHERE kid_id = ?`,
+					sql`SELECT MAX(sort_order) as maxOrder FROM accounts WHERE kid_id = ?`,
 				)
 				.bind(data.kidId)
 				.first<{ maxOrder: number | null }>()
@@ -207,6 +207,7 @@ export class DB {
 			sortOrder = (maxOrder?.maxOrder ?? 0) + 1
 		}
 
+		const safeBalance = data.balance ?? 0
 		const result = await this.#db
 			.prepare(
 				sql`
@@ -215,7 +216,7 @@ export class DB {
 					RETURNING *
 				`,
 			)
-			.bind(data.kidId, data.name, data.balance, sortOrder)
+			.bind(data.kidId, data.name, safeBalance, sortOrder)
 			.first<Account>()
 
 		if (!result) throw new Error('Failed to create account')
@@ -258,7 +259,7 @@ export class DB {
 		if (updates.length === 0) return this.getAccount(id)
 
 		values.push(id)
-		const updateQuery = `UPDATE accounts SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *`
+		const updateQuery = `UPDATE accounts SET ${updates.join(', ')}, updated_at = strftime('%s','now') WHERE id = ? RETURNING *`
 		const result = await this.#db
 			.prepare(updateQuery)
 			.bind(...values)
@@ -286,7 +287,7 @@ export class DB {
 			.prepare(
 				sql`
 					UPDATE accounts 
-					SET sort_order = ?, updated_at = CURRENT_TIMESTAMP
+					SET sort_order = ?, updated_at = strftime('%s','now')
 					WHERE id = ?
 					RETURNING *
 				`,
