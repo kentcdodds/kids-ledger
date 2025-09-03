@@ -13,6 +13,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     steps:
       - uses: actions/checkout@v4
 
@@ -43,10 +44,13 @@ jobs:
           npm run build
           npx wrangler deploy --name kids-ledger-pr-${{ github.event.number }}
 
+  cleanup:
+    runs-on: ubuntu-latest
+    name: Cleanup PR Preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
       - name: Cleanup PR Preview
-        if:
-          github.event_name == 'pull_request' && github.event.action == 'closed'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npx wrangler delete kids-ledger-pr-${{ github.event.number }} --yes || true
+          npx wrangler delete kids-ledger-pr-${{ github.event.number }} --force || true
