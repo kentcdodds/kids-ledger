@@ -51,7 +51,11 @@ const migrations = [
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (ledger_id) REFERENCES ledgers(id) ON DELETE CASCADE
 						);
+					`),
+					db.prepare(sql`
 						CREATE INDEX IF NOT EXISTS idx_kids_ledger_id ON kids(ledger_id);
+					`),
+					db.prepare(sql`
 						CREATE INDEX IF NOT EXISTS idx_kids_sort_order ON kids(ledger_id, sort_order);
 					`),
 					db.prepare(sql`
@@ -65,7 +69,11 @@ const migrations = [
 							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 							FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
 						);
+					`),
+					db.prepare(sql`
 						CREATE INDEX IF NOT EXISTS idx_accounts_kid_id ON accounts(kid_id);
+					`),
+					db.prepare(sql`
 						CREATE INDEX IF NOT EXISTS idx_accounts_sort_order ON accounts(kid_id, sort_order);
 					`),
 				])

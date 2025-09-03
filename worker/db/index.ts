@@ -45,7 +45,7 @@ export class DB {
 			.first<Ledger>()
 
 		if (!result) throw new Error('Failed to create ledger')
-		return snakeToCamel(result) as Ledger
+		return ledgerSchema.parse(snakeToCamel(result))
 	}
 
 	async getLedger(id: string): Promise<Ledger | null> {
@@ -54,7 +54,7 @@ export class DB {
 			.bind(id)
 			.first<Ledger>()
 
-		return result ? (snakeToCamel(result) as Ledger) : null
+		return result ? ledgerSchema.parse(snakeToCamel(result)) : null
 	}
 
 	async updateLedger(id: string, data: Partial<NewLedger>): Promise<Ledger | null> {
@@ -81,7 +81,7 @@ export class DB {
 			.bind(...values)
 			.first<Ledger>()
 
-		return result ? (snakeToCamel(result) as Ledger) : null
+		return result ? ledgerSchema.parse(snakeToCamel(result)) : null
 	}
 
 	async deleteLedger(id: string): Promise<boolean> {
@@ -120,7 +120,7 @@ export class DB {
 			.first<Kid>()
 
 		if (!result) throw new Error('Failed to create kid')
-		return snakeToCamel(result) as Kid
+		return kidSchema.parse(snakeToCamel(result))
 	}
 
 	async getKidsByLedger(ledgerId: string): Promise<Kid[]> {
