@@ -1,3 +1,4 @@
+import { invariantResponse } from '@epic-web/invariant'
 import type { Route } from './+types/ledger'
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -10,11 +11,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	]
 }
 
-export function loader({ context }: Route.LoaderArgs) {
-	// context.db // <-- this is the instance of the DB class
-	// const ledger = context.db.getLedger(params.ledgerId)
-	// TODO: get this from the database instead
-	const ledger = { name: 'Default Ledger' }
+export async function loader({ context, params }: Route.LoaderArgs) {
+	const ledger = await context.db.getLedger(params.ledgerId)
+	invariantResponse(ledger, 'Ledger not found', { status: 404 })
 	return { ledger }
 }
 
