@@ -1,9 +1,22 @@
-import { Form, useNavigate, redirect } from 'react-router'
+import { Form, useNavigate, redirect, useActionData } from 'react-router'
 import { z } from 'zod'
+import { useState } from 'react'
+import { ErrorDisplay } from '../components/error-display'
+import {
+	createError,
+	handleZodError,
+	handleDatabaseError,
+	handleUnknownError,
+	logError,
+} from '../utils/error-handling'
 import type { Route } from './+types/create-ledger'
 
 const createLedgerSchema = z.object({
-	name: z.string().min(1, 'Ledger name is required').trim(),
+	name: z
+		.string()
+		.min(1, 'Ledger name is required')
+		.trim()
+		.min(1, 'Ledger name cannot be empty'),
 })
 
 export function meta({}: Route.MetaArgs) {
@@ -17,26 +30,51 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function action({ context, request }: Route.ActionArgs) {
-	const formData = await request.formData()
-	const rawData = {
-		name: formData.get('name'),
-	}
-
-	const result = createLedgerSchema.safeParse(rawData)
-	if (!result.success) {
-		return { error: 'Ledger name is required' }
-	}
-
 	try {
+		const formData = await request.formData()
+		const rawData = {
+			name: formData.get('name'),
+		}
+
+		// Validate input
+		const result = createLedgerSchema.safeParse(rawData)
+		if (!result.success) {
+			const error = handleZodError(result.error, 'CreateLedger')
+			return { error }
+		}
+
+		// Create ledger
 		const ledger = await context.db.createLedger(result.data)
+		logError(
+			createError(
+				'unknown',
+				'Ledger created successfully',
+				`Ledger ID: ${ledger.id}`,
+				'SUCCESS',
+			),
+			'CreateLedger',
+		)
 		return redirect(`/ledger/${ledger.id}`)
 	} catch (error) {
-		return { error: 'Failed to create ledger' }
+		// Handle database errors
+		if (
+			error instanceof Error &&
+			error.message.includes('Failed to create ledger')
+		) {
+			const appError = handleDatabaseError(error, 'CreateLedger')
+			return { error: appError }
+		}
+
+		// Handle unknown errors
+		const appError = handleUnknownError(error, 'CreateLedger')
+		return { error: appError }
 	}
 }
 
 export default function CreateLedger() {
 	const navigate = useNavigate()
+	const actionData = useActionData<{ error?: any }>()
+	const [error, setError] = useState(actionData?.error || null)
 
 	return (
 		<div className="bg-background min-h-screen">
@@ -70,6 +108,9 @@ export default function CreateLedger() {
 					</p>
 				</div>
 
+				{/* Error Display */}
+				<ErrorDisplay error={error} onDismiss={() => setError(null)} />
+
 				{/* Form */}
 				<div className="mx-auto max-w-md">
 					<Form method="post" className="space-y-6">
@@ -88,6 +129,9 @@ export default function CreateLedger() {
 								placeholder="e.g., Family Accounts 2024"
 								className="border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-lg border px-4 py-3 focus:border-transparent focus:ring-2 focus:outline-none"
 							/>
+							<p className="text-muted-foreground mt-1 text-xs">
+								Choose a name that helps you identify this ledger
+							</p>
 						</div>
 
 						<button

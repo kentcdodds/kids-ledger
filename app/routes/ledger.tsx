@@ -1,55 +1,81 @@
 import { invariantResponse } from '@epic-web/invariant'
-import { Form, useFetcher, useNavigate } from 'react-router'
+import { Form, useFetcher, useNavigate, useActionData } from 'react-router'
 import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
+import { ErrorDisplay } from '../components/error-display'
+import {
+	createError,
+	handleZodError,
+	handleDatabaseError,
+	handleUnknownError,
+	logError,
+} from '../utils/error-handling'
 import type { Route } from './+types/ledger'
 
 // Zod schemas for validation
 const createKidSchema = z.object({
-	ledgerId: z.string().min(1),
-	name: z.string().min(1, 'Name is required').trim(),
-	emoji: z.string().min(1, 'Emoji is required'),
+	ledgerId: z.string().min(1, 'Ledger ID is required'),
+	name: z
+		.string()
+		.min(1, 'Name is required')
+		.trim()
+		.min(1, 'Name cannot be empty'),
+	emoji: z.string().min(1, 'Emoji is required').min(1, 'Emoji cannot be empty'),
 })
 
 const updateKidSchema = z.object({
-	id: z.coerce.number(),
-	name: z.string().min(1, 'Name is required').trim(),
-	emoji: z.string().min(1, 'Emoji is required'),
+	id: z.coerce.number().positive('Invalid kid ID'),
+	name: z
+		.string()
+		.min(1, 'Name is required')
+		.trim()
+		.min(1, 'Name cannot be empty'),
+	emoji: z.string().min(1, 'Emoji is required').min(1, 'Emoji cannot be empty'),
 })
 
 const deleteKidSchema = z.object({
-	id: z.coerce.number(),
+	id: z.coerce.number().positive('Invalid kid ID'),
 })
 
 const reorderKidSchema = z.object({
-	id: z.coerce.number(),
+	id: z.coerce.number().positive('Invalid kid ID'),
 	beforeId: z.string().optional(),
 	afterId: z.string().optional(),
 })
 
 const createAccountSchema = z.object({
-	kidId: z.coerce.number(),
-	name: z.string().min(1, 'Account name is required').trim(),
+	kidId: z.coerce.number().positive('Invalid kid ID'),
+	name: z
+		.string()
+		.min(1, 'Account name is required')
+		.trim()
+		.min(1, 'Account name cannot be empty'),
 	balance: z.coerce.number().default(0),
 })
 
 const updateAccountSchema = z.object({
-	id: z.coerce.number(),
-	name: z.string().min(1, 'Account name is required').trim(),
+	id: z.coerce.number().positive('Invalid account ID'),
+	name: z
+		.string()
+		.min(1, 'Account name is required')
+		.trim()
+		.min(1, 'Account name cannot be empty'),
 })
 
 const deleteAccountSchema = z.object({
-	id: z.coerce.number(),
+	id: z.coerce.number().positive('Invalid account ID'),
 })
 
 const updateBalanceSchema = z.object({
-	id: z.coerce.number(),
+	id: z.coerce.number().positive('Invalid account ID'),
 	amount: z.coerce.number().positive('Amount must be positive'),
-	operation: z.enum(['add', 'remove']),
+	operation: z.enum(['add', 'remove'], {
+		errorMap: () => ({ message: 'Operation must be either "add" or "remove"' }),
+	}),
 })
 
 const reorderAccountSchema = z.object({
-	id: z.coerce.number(),
+	id: z.coerce.number().positive('Invalid account ID'),
 	beforeId: z.string().optional(),
 	afterId: z.string().optional(),
 })
@@ -65,17 +91,33 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-	const ledger = await context.db.getFullLedger(params.ledgerId)
-	invariantResponse(ledger, 'Ledger not found', { status: 404 })
-	return { ledger }
+	try {
+		const ledger = await context.db.getFullLedger(params.ledgerId)
+		invariantResponse(ledger, 'Ledger not found', { status: 404 })
+		return { ledger }
+	} catch (error) {
+		logError(handleUnknownError(error, 'LedgerLoader'), 'LedgerLoader')
+		throw error
+	}
 }
 
 // Action handlers for all CRUD operations
 export async function action({ context, request }: Route.ActionArgs) {
-	const formData = await request.formData()
-	const intent = formData.get('intent')
-
 	try {
+		const formData = await request.formData()
+		const intent = formData.get('intent')
+
+		if (!intent) {
+			const error = createError(
+				'validation',
+				'Missing intent',
+				'No action specified',
+				'MISSING_INTENT',
+			)
+			logError(error, 'LedgerAction')
+			return { error }
+		}
+
 		switch (intent) {
 			case 'create-kid': {
 				const rawData = {
@@ -86,11 +128,26 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = createKidSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Name and emoji are required' }
+					const error = handleZodError(result.error, 'CreateKid')
+					return { error }
 				}
 
-				await context.db.createKid(result.data)
-				break
+				try {
+					await context.db.createKid(result.data)
+					logError(
+						createError(
+							'unknown',
+							'Kid created successfully',
+							`Kid: ${result.data.name}`,
+							'SUCCESS',
+						),
+						'CreateKid',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'CreateKid')
+					return { error }
+				}
 			}
 
 			case 'update-kid': {
@@ -102,25 +159,55 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = updateKidSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Name and emoji are required' }
+					const error = handleZodError(result.error, 'UpdateKid')
+					return { error }
 				}
 
-				await context.db.updateKid(result.data.id, {
-					name: result.data.name,
-					emoji: result.data.emoji,
-				})
-				break
+				try {
+					await context.db.updateKid(result.data.id, {
+						name: result.data.name,
+						emoji: result.data.emoji,
+					})
+					logError(
+						createError(
+							'unknown',
+							'Kid updated successfully',
+							`Kid ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'UpdateKid',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'UpdateKid')
+					return { error }
+				}
 			}
 
 			case 'delete-kid': {
 				const rawData = { id: formData.get('id') }
 				const result = deleteKidSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Invalid kid ID' }
+					const error = handleZodError(result.error, 'DeleteKid')
+					return { error }
 				}
 
-				await context.db.deleteKid(result.data.id)
-				break
+				try {
+					await context.db.deleteKid(result.data.id)
+					logError(
+						createError(
+							'unknown',
+							'Kid deleted successfully',
+							`Kid ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'DeleteKid',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'DeleteKid')
+					return { error }
+				}
 			}
 
 			case 'reorder-kid': {
@@ -132,15 +219,30 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = reorderKidSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Invalid reorder data' }
+					const error = handleZodError(result.error, 'ReorderKid')
+					return { error }
 				}
 
-				await context.db.reorderKidBetween(
-					result.data.id,
-					result.data.beforeId ? parseInt(result.data.beforeId) : null,
-					result.data.afterId ? parseInt(result.data.afterId) : null,
-				)
-				break
+				try {
+					await context.db.reorderKidBetween(
+						result.data.id,
+						result.data.beforeId ? parseInt(result.data.beforeId) : null,
+						result.data.afterId ? parseInt(result.data.afterId) : null,
+					)
+					logError(
+						createError(
+							'unknown',
+							'Kid reordered successfully',
+							`Kid ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'ReorderKid',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'ReorderKid')
+					return { error }
+				}
 			}
 
 			case 'create-account': {
@@ -152,11 +254,26 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = createAccountSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Account name is required' }
+					const error = handleZodError(result.error, 'CreateAccount')
+					return { error }
 				}
 
-				await context.db.createAccount(result.data)
-				break
+				try {
+					await context.db.createAccount(result.data)
+					logError(
+						createError(
+							'unknown',
+							'Account created successfully',
+							`Account: ${result.data.name}`,
+							'SUCCESS',
+						),
+						'CreateAccount',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'CreateAccount')
+					return { error }
+				}
 			}
 
 			case 'update-account': {
@@ -167,24 +284,54 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = updateAccountSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Account name is required' }
+					const error = handleZodError(result.error, 'UpdateAccount')
+					return { error }
 				}
 
-				await context.db.updateAccount(result.data.id, {
-					name: result.data.name,
-				})
-				break
+				try {
+					await context.db.updateAccount(result.data.id, {
+						name: result.data.name,
+					})
+					logError(
+						createError(
+							'unknown',
+							'Account updated successfully',
+							`Account ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'UpdateAccount',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'UpdateAccount')
+					return { error }
+				}
 			}
 
 			case 'delete-account': {
 				const rawData = { id: formData.get('id') }
 				const result = deleteAccountSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Invalid account ID' }
+					const error = handleZodError(result.error, 'DeleteAccount')
+					return { error }
 				}
 
-				await context.db.deleteAccount(result.data.id)
-				break
+				try {
+					await context.db.deleteAccount(result.data.id)
+					logError(
+						createError(
+							'unknown',
+							'Account deleted successfully',
+							`Account ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'DeleteAccount',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'DeleteAccount')
+					return { error }
+				}
 			}
 
 			case 'update-balance': {
@@ -196,20 +343,45 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = updateBalanceSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Invalid balance update data' }
+					const error = handleZodError(result.error, 'UpdateBalance')
+					return { error }
 				}
 
-				const account = await context.db.getAccount(result.data.id)
-				if (!account) {
-					return { error: 'Account not found' }
-				}
+				try {
+					const account = await context.db.getAccount(result.data.id)
+					if (!account) {
+						const error = createError(
+							'database',
+							'Account not found',
+							`Account ID: ${result.data.id} does not exist`,
+							'ACCOUNT_NOT_FOUND',
+						)
+						logError(error, 'UpdateBalance')
+						return { error }
+					}
 
-				const newBalance =
-					result.data.operation === 'add'
-						? account.balance + result.data.amount
-						: account.balance - result.data.amount
-				await context.db.updateAccount(result.data.id, { balance: newBalance })
-				break
+					const newBalance =
+						result.data.operation === 'add'
+							? account.balance + result.data.amount
+							: account.balance - result.data.amount
+
+					await context.db.updateAccount(result.data.id, {
+						balance: newBalance,
+					})
+					logError(
+						createError(
+							'unknown',
+							'Balance updated successfully',
+							`Account: ${account.name}, New balance: $${newBalance.toFixed(2)}`,
+							'SUCCESS',
+						),
+						'UpdateBalance',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'UpdateBalance')
+					return { error }
+				}
 			}
 
 			case 'reorder-account': {
@@ -221,24 +393,46 @@ export async function action({ context, request }: Route.ActionArgs) {
 
 				const result = reorderAccountSchema.safeParse(rawData)
 				if (!result.success) {
-					return { error: 'Invalid reorder data' }
+					const error = handleZodError(result.error, 'ReorderAccount')
+					return { error }
 				}
 
-				await context.db.reorderAccountBetween(
-					result.data.id,
-					result.data.beforeId ? parseInt(result.data.beforeId) : null,
-					result.data.afterId ? parseInt(result.data.afterId) : null,
-				)
-				break
+				try {
+					await context.db.reorderAccountBetween(
+						result.data.id,
+						result.data.beforeId ? parseInt(result.data.beforeId) : null,
+						result.data.afterId ? parseInt(result.data.afterId) : null,
+					)
+					logError(
+						createError(
+							'unknown',
+							'Account reordered successfully',
+							`Account ID: ${result.data.id}`,
+							'SUCCESS',
+						),
+						'ReorderAccount',
+					)
+					return { success: true }
+				} catch (dbError) {
+					const error = handleDatabaseError(dbError, 'ReorderAccount')
+					return { error }
+				}
 			}
 
-			default:
-				return { error: 'Invalid intent' }
+			default: {
+				const error = createError(
+					'validation',
+					'Invalid action',
+					`Unknown intent: ${intent}`,
+					'INVALID_INTENT',
+				)
+				logError(error, 'LedgerAction')
+				return { error }
+			}
 		}
-
-		return { success: true }
 	} catch (error) {
-		return { error: 'Operation failed' }
+		const appError = handleUnknownError(error, 'LedgerAction')
+		return { error: appError }
 	}
 }
 
@@ -253,8 +447,16 @@ function DraggableKid({
 	const [isDragging, setIsDragging] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 	const [isAddingAccount, setIsAddingAccount] = useState(false)
+	const [error, setError] = useState<any>(null)
 	const fetcher = useFetcher()
 	const dragRef = useRef<HTMLDivElement>(null)
+
+	// Handle fetcher errors
+	useEffect(() => {
+		if (fetcher.data?.error) {
+			setError(fetcher.data.error)
+		}
+	}, [fetcher.data])
 
 	function handleDragStart(e: React.DragEvent) {
 		setIsDragging(true)
@@ -339,6 +541,9 @@ function DraggableKid({
 				isDragging ? 'scale-95 opacity-50' : ''
 			}`}
 		>
+			{/* Error Display */}
+			<ErrorDisplay error={error} onDismiss={() => setError(null)} />
+
 			{/* Kid Header */}
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center gap-3">
@@ -539,8 +744,16 @@ function DraggableAccount({
 	const [isEditing, setIsEditing] = useState(false)
 	const [isUpdatingBalance, setIsUpdatingBalance] = useState(false)
 	const [balanceAmount, setBalanceAmount] = useState('')
+	const [error, setError] = useState<any>(null)
 	const fetcher = useFetcher()
 	const dragRef = useRef<HTMLDivElement>(null)
+
+	// Handle fetcher errors
+	useEffect(() => {
+		if (fetcher.data?.error) {
+			setError(fetcher.data.error)
+		}
+	}, [fetcher.data])
 
 	function handleDragStart(e: React.DragEvent) {
 		e.dataTransfer.setData('text/plain', account.id.toString())
@@ -611,7 +824,17 @@ function DraggableAccount({
 
 	function updateBalance(operation: 'add' | 'remove') {
 		const amount = parseInt(balanceAmount)
-		if (isNaN(amount) || amount <= 0) return
+		if (isNaN(amount) || amount <= 0) {
+			setError(
+				createError(
+					'validation',
+					'Invalid amount',
+					'Please enter a positive number',
+					'INVALID_AMOUNT',
+				),
+			)
+			return
+		}
 
 		fetcher.submit(
 			{
@@ -637,6 +860,13 @@ function DraggableAccount({
 			onDragOver={handleDragOver}
 			className="bg-muted/30 border-border flex items-center justify-between rounded-lg border p-3"
 		>
+			{/* Error Display */}
+			<ErrorDisplay
+				error={error}
+				onDismiss={() => setError(null)}
+				className="absolute top-0 right-0 left-0 z-10"
+			/>
+
 			<div className="flex-1">
 				{isEditing ? (
 					<input
@@ -767,7 +997,23 @@ function DraggableAccount({
 export default function Ledger({ loaderData }: Route.ComponentProps) {
 	const navigate = useNavigate()
 	const [isAddingKid, setIsAddingKid] = useState(false)
+	const [error, setError] = useState<any>(null)
 	const fetcher = useFetcher()
+	const actionData = useActionData<{ error?: any }>()
+
+	// Handle action errors
+	useEffect(() => {
+		if (actionData?.error) {
+			setError(actionData.error)
+		}
+	}, [actionData])
+
+	// Handle fetcher errors
+	useEffect(() => {
+		if (fetcher.data?.error) {
+			setError(fetcher.data.error)
+		}
+	}, [fetcher.data])
 
 	function handleKidReorder(
 		kidId: number,
@@ -826,6 +1072,9 @@ export default function Ledger({ loaderData }: Route.ComponentProps) {
 						</button>
 					</div>
 				</div>
+
+				{/* Error Display */}
+				<ErrorDisplay error={error} onDismiss={() => setError(null)} />
 
 				{/* Add Kid Form */}
 				{isAddingKid ? (
