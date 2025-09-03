@@ -33,7 +33,7 @@ const migrations = [
 			try {
 				// Enable foreign key enforcement for this session
 				await db.exec(sql`PRAGMA foreign_keys = ON`)
-				
+
 				await db.batch([
 					db.prepare(sql`
 						CREATE TABLE IF NOT EXISTS ledgers (
@@ -95,7 +95,7 @@ export async function migrate(db: D1Database) {
 	try {
 		// Enable foreign key enforcement for this session
 		await db.exec(sql`PRAGMA foreign_keys = ON`)
-		
+
 		// Create schema_versions table if it doesn't exist (this is our first run)
 		await db.exec(sql`
 			CREATE TABLE IF NOT EXISTS schema_versions (
