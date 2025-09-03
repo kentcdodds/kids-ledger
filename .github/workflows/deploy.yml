@@ -29,6 +29,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build Production
+        run: npm run build
+
       - name: Deploy to Production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -73,6 +76,9 @@ jobs:
 
           echo "DB_ID=$DB_ID" >> $GITHUB_ENV
           echo "DB_NAME=$DB_NAME" >> $GITHUB_ENV
+
+      - name: Build PR Preview
+        run: npm run build
 
       - name: Deploy PR Preview
         env:
