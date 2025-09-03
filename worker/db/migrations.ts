@@ -14,7 +14,7 @@ const migrations = [
 						CREATE TABLE IF NOT EXISTS schema_versions (
 							version INTEGER PRIMARY KEY,
 							name TEXT NOT NULL,
-							applied_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL
+							applied_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL
 						);
 					`),
 				])
@@ -36,8 +36,8 @@ const migrations = [
 						CREATE TABLE IF NOT EXISTS ledgers (
 							id TEXT PRIMARY KEY NOT NULL,
 							name TEXT NOT NULL,
-							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL
+							created_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL,
+							updated_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL
 						);
 					`),
 					db.prepare(sql`
@@ -47,8 +47,8 @@ const migrations = [
 							name TEXT NOT NULL,
 							emoji TEXT NOT NULL,
 							sort_order REAL NOT NULL,
-							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							created_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL,
+							updated_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL,
 							FOREIGN KEY (ledger_id) REFERENCES ledgers(id) ON DELETE CASCADE
 						);
 					`),
@@ -65,8 +65,8 @@ const migrations = [
 							name TEXT NOT NULL,
 							balance INTEGER DEFAULT 0 NOT NULL,
 							sort_order REAL NOT NULL,
-							created_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
-							updated_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+							created_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL,
+							updated_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL,
 							FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
 						);
 					`),
@@ -95,7 +95,7 @@ export async function migrate(db: D1Database) {
 			CREATE TABLE IF NOT EXISTS schema_versions (
 				version INTEGER PRIMARY KEY,
 				name TEXT NOT NULL,
-				applied_at INTEGER DEFAULT (CURRENT_TIMESTAMP) NOT NULL
+				applied_at INTEGER DEFAULT (strftime('%s','now')) NOT NULL
 			);
 		`)
 
