@@ -14,6 +14,17 @@ We're using:
 - Cloudflare D1 SQLite database with schema/migrations configured in
   `worker/db/migrations.ts`
 
+## Coding Preferences
+
+- **No "as type" assertions**: Use Zod validation instead of TypeScript "as"
+  assertions
+- **Ternary over &&**: Use `condition ? value : null` instead of
+  `condition && value`
+- **Function declarations**: Use `function name()` over arrow functions for
+  named functions, except for true one-liners
+- **No manual type editing**: Don't manually edit generated types in
+  `types/worker-configuration.d.ts`
+
 ## Misc
 
 - Before committing, format the code using `npm run format`.
@@ -23,16 +34,19 @@ We're using:
 
 ## App description and use cases
 
-This is an app that keeps track of a user's kids' expenses. There's no login,
-instead the ledger ID is generated when the user creates a new ledger and this
-is passed in the URL as a path parameter.
+This is an app that keeps track of a user's kids' account balances. There's no
+login, instead the ledger ID is generated when the user creates a new ledger and
+this is passed in the URL as a path parameter.
 
 Each ledger has a list of kids which each have an emoji avatar, a name, and a
 list of accounts. Each account has a balance.
 
-This is a very simple app. We do not need to keep track of transactions. We
-simply keep a running balance for each account. Anyone should be able to
-add/remove/edit data.
+This is a very simple balance tracking app. We do not keep track of
+transactions. We simply keep a running balance for each account. Anyone should
+be able to add/remove/edit data.
+
+**Important**: There is no privacy policy or terms of service. Data could
+disappear at any time without warning.
 
 Backups and data recovery is important. Backup the database regularly and make
 it easy to restore from backups.

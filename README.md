@@ -1,78 +1,115 @@
-# Welcome to React Router!
+# Kids Ledger
 
-A modern, production-ready template for building full-stack React applications
-using React Router.
+A simple, mobile-friendly balance tracking app for managing your kids' accounts.
+No login required - just create a ledger and start tracking!
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+### 🏠 Home Screen
+
+- Beautiful landing page with unique logo and clear app description
+- Feature highlights explaining the app's benefits
+- Step-by-step guide on how to use the app
+- Direct link to create your first ledger
+- Important notice about data privacy
+
+### 📝 Create Ledger
+
+- Simple form to create a new ledger with a custom name
+- Mobile-optimized input fields and buttons
+- Automatic redirect to the ledger after creation
+
+### 📊 Ledger Management
+
+- **Full CRUD Operations**: Create, read, update, and delete kids and their
+  accounts
+- **Mobile-Friendly Drag & Drop**: Reorder kids and accounts by dragging them on
+  mobile devices
+- **Real-time Balance Updates**: Add or remove funds from accounts with simple
+  +/- buttons
+- **Inline Editing**: Click on names and emojis to edit them directly
+- **Responsive Design**: Optimized for mobile devices with touch-friendly
+  controls
+
+### 🎯 Key Features
+
+- **No Login Required**: Each ledger gets a unique URL that serves as your
+  access key
+- **Emoji Avatars**: Personalize each kid with their favorite emoji
+- **Multiple Accounts**: Create different accounts for each kid (Savings,
+  Allowance, etc.)
+- **Balance Tracking**: Keep running balances for each account
+- **Mobile-First**: Designed specifically for mobile use with touch-optimized
+  interactions
+
+## Technology Stack
+
+- **Frontend**: React Router v7 with TypeScript
+- **Styling**: Tailwind CSS v4 with custom theme
+- **Backend**: Cloudflare Workers with D1 SQLite database
+- **Database**: SQLite with automatic migrations
+- **Validation**: Zod schema validation
 
 ## Getting Started
 
-### Installation
+1. **Create a Ledger**: Visit the home page and click "Create Your First Ledger"
+2. **Add Kids**: Use the "Add Kid" button to add your children with names and
+   emoji avatars
+3. **Create Accounts**: For each kid, add accounts like "Savings", "Allowance",
+   etc.
+4. **Track Balances**: Use the +/- buttons to update account balances
+5. **Reorder**: Drag and drop kids and accounts to reorder them
 
-Install the dependencies:
+## Mobile Features
+
+- **Touch-Optimized**: All buttons and controls are sized for comfortable touch
+  interaction
+- **Drag & Drop**: Intuitive drag-and-drop reordering works seamlessly on mobile
+- **Responsive Layout**: Automatically adapts to different screen sizes
+- **Fast Loading**: Optimized for mobile network conditions
+
+## Development
 
 ```bash
+# Install dependencies
 npm install
-```
 
-### Development
-
-Start the development server with HMR:
-
-```bash
+# Start development server
 npm run dev
-```
 
-Your application will be available at `http://localhost:5173`.
-
-## Previewing the Production Build
-
-Preview the production build locally:
-
-```bash
-npm run preview
-```
-
-## Building for Production
-
-Create a production build:
-
-```bash
+# Build for production
 npm run build
-```
 
-## Deployment
-
-Deployment is done using the Wrangler CLI.
-
-To build and deploy directly to production:
-
-```sh
+# Deploy to Cloudflare
 npm run deploy
+
+# Type checking
+npm run typecheck
 ```
 
-To deploy a preview URL:
+## Database Schema
 
-```sh
-npm run deploy:preview
-```
+The app uses a simple three-table schema:
 
-You can then promote a version to production after verification or roll it out
-progressively.
+- **ledgers**: Main ledger information
+- **kids**: Children with emoji avatars and names
+- **accounts**: Individual accounts for each kid with balances
 
-```sh
-npx wrangler versions deploy
-```
+All tables include automatic timestamps and sort order fields for drag-and-drop
+functionality.
 
-### Pull Request Deployments
+## ⚠️ Important Notice
+
+**This app has no privacy policy or terms of service. Data could disappear at
+any time without warning. Please backup your data regularly.**
+
+- No user accounts or authentication required
+- Ledger access is controlled by the unique URL
+- Data is stored securely in Cloudflare D1
+- No personal data is collected beyond what you enter
+- **No guarantees about data persistence or availability**
+
+## Deploys
 
 This project includes automatic PR preview deployments with isolated databases.
 When you create a pull request:
@@ -104,3 +141,8 @@ framework you prefer.
 ---
 
 Built with ❤️ using React Router.
+
+## Contributing
+
+This is a simple, focused app designed for family use. The codebase is clean and
+well-documented, making it easy to understand and extend.

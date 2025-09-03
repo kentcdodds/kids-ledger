@@ -174,4 +174,49 @@ body {
 	::file-selector-button {
 		border-color: var(--border);
 	}
+
+	/* Mobile-friendly touch targets */
+	button,
+	input[type='button'],
+	input[type='submit'],
+	input[type='reset'] {
+		min-height: 44px;
+		min-width: 44px;
+	}
+
+	/* Improve touch scrolling */
+	html {
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Prevent zoom on input focus on iOS */
+	input[type='text'],
+	input[type='email'],
+	input[type='password'],
+	input[type='number'],
+	input[type='search'],
+	textarea,
+	select {
+		font-size: 16px;
+	}
+
+	/* Smooth transitions for drag and drop */
+	[draggable='true'] {
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+		cursor: grab;
+	}
+
+	[draggable='true']:active {
+		cursor: grabbing;
+	}
+
+	/* Mobile-friendly spacing */
+	@media (max-width: 768px) {
+		.container {
+			padding-inline: 1rem;
+		}
+	}
 }
