@@ -65,8 +65,10 @@ jobs:
           echo "Deleted existing database $DB_NAME (if it existed)"
 
           # Create a fresh database
-          DB_RESPONSE=$(npx wrangler d1 create "$DB_NAME" --json)
-          DB_ID=$(echo "$DB_RESPONSE" | grep -o '"uuid":"[^"]*"' | cut -d'"' -f4)
+          npx wrangler d1 create "$DB_NAME"
+
+          # Get the database ID from the list
+          DB_ID=$(npx wrangler d1 list | grep "$DB_NAME" | awk '{print $1}')
           echo "Created fresh database $DB_NAME with ID $DB_ID"
 
           echo "DB_ID=$DB_ID" >> $GITHUB_ENV
