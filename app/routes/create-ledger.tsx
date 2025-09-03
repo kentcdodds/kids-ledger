@@ -1,23 +1,34 @@
 import { Form, useNavigate, redirect } from 'react-router'
+import { z } from 'zod'
 import type { Route } from './+types/create-ledger'
+
+const createLedgerSchema = z.object({
+	name: z.string().min(1, 'Ledger name is required').trim(),
+})
 
 export function meta({}: Route.MetaArgs) {
 	return [
 		{ title: 'Create New Ledger - Kids Ledger' },
-		{ name: 'description', content: 'Create a new ledger to track your kids expenses' },
+		{
+			name: 'description',
+			content: 'Create a new ledger to track your kids account balances',
+		},
 	]
 }
 
 export async function action({ context, request }: Route.ActionArgs) {
 	const formData = await request.formData()
-	const name = formData.get('name') as string
+	const rawData = {
+		name: formData.get('name'),
+	}
 
-	if (!name?.trim()) {
+	const result = createLedgerSchema.safeParse(rawData)
+	if (!result.success) {
 		return { error: 'Ledger name is required' }
 	}
 
 	try {
-		const ledger = await context.db.createLedger({ name: name.trim() })
+		const ledger = await context.db.createLedger(result.data)
 		return redirect(`/ledger/${ledger.id}`)
 	} catch (error) {
 		return { error: 'Failed to create ledger' }
@@ -28,30 +39,45 @@ export default function CreateLedger() {
 	const navigate = useNavigate()
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="bg-background min-h-screen">
 			<div className="container mx-auto px-4 py-8">
 				{/* Header */}
 				<div className="mb-8">
 					<button
 						onClick={() => navigate('/')}
-						className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+						className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-2 transition-colors"
 					>
-						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+						<svg
+							className="h-5 w-5"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M15 19l-7-7 7-7"
+							/>
 						</svg>
 						Back to Home
 					</button>
-					<h1 className="text-h2 font-bold text-foreground">Create New Ledger</h1>
+					<h1 className="text-h2 text-foreground font-bold">
+						Create New Ledger
+					</h1>
 					<p className="text-muted-foreground mt-2">
-						Start tracking your kids' expenses with a new ledger
+						Start tracking your kids' account balances with a new ledger
 					</p>
 				</div>
 
 				{/* Form */}
-				<div className="max-w-md mx-auto">
+				<div className="mx-auto max-w-md">
 					<Form method="post" className="space-y-6">
 						<div>
-							<label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
+							<label
+								htmlFor="name"
+								className="text-foreground mb-2 block text-sm font-medium"
+							>
 								Ledger Name
 							</label>
 							<input
@@ -59,14 +85,14 @@ export default function CreateLedger() {
 								id="name"
 								name="name"
 								required
-								placeholder="e.g., Family Expenses 2024"
-								className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+								placeholder="e.g., Family Accounts 2024"
+								className="border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-lg border px-4 py-3 focus:border-transparent focus:ring-2 focus:outline-none"
 							/>
 						</div>
 
 						<button
 							type="submit"
-							className="w-full bg-primary text-primary-foreground font-semibold py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-ring w-full rounded-lg px-6 py-3 font-semibold transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
 						>
 							Create Ledger
 						</button>

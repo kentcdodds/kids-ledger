@@ -1,7 +1,7 @@
 # Kids Ledger
 
-A simple, mobile-friendly expense tracking app for managing your kids' accounts
-and expenses. No login required - just create a ledger and start tracking!
+A simple, mobile-friendly balance tracking app for managing your kids' accounts.
+No login required - just create a ledger and start tracking!
 
 ## Features
 
@@ -11,6 +11,7 @@ and expenses. No login required - just create a ledger and start tracking!
 - Feature highlights explaining the app's benefits
 - Step-by-step guide on how to use the app
 - Direct link to create your first ledger
+- Important notice about data privacy
 
 ### 📝 Create Ledger
 
@@ -56,7 +57,7 @@ and expenses. No login required - just create a ledger and start tracking!
    emoji avatars
 3. **Create Accounts**: For each kid, add accounts like "Savings", "Allowance",
    etc.
-4. **Track Expenses**: Use the +/- buttons to update account balances
+4. **Track Balances**: Use the +/- buttons to update account balances
 5. **Reorder**: Drag and drop kids and accounts to reorder them
 
 ## Mobile Features
@@ -97,12 +98,16 @@ The app uses a simple three-table schema:
 All tables include automatic timestamps and sort order fields for drag-and-drop
 functionality.
 
-## Security & Privacy
+## ⚠️ Important Notice
+
+**This app has no privacy policy or terms of service. Data could disappear at
+any time without warning. Please backup your data regularly.**
 
 - No user accounts or authentication required
 - Ledger access is controlled by the unique URL
 - Data is stored securely in Cloudflare D1
 - No personal data is collected beyond what you enter
+- **No guarantees about data persistence or availability**
 
 ## Deploys
 

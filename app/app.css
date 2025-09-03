@@ -176,10 +176,10 @@ body {
 	}
 
 	/* Mobile-friendly touch targets */
-	button, 
-	input[type="button"], 
-	input[type="submit"], 
-	input[type="reset"] {
+	button,
+	input[type='button'],
+	input[type='submit'],
+	input[type='reset'] {
 		min-height: 44px;
 		min-width: 44px;
 	}
@@ -190,18 +190,18 @@ body {
 	}
 
 	/* Prevent zoom on input focus on iOS */
-	input[type="text"],
-	input[type="email"],
-	input[type="password"],
-	input[type="number"],
-	input[type="search"],
+	input[type='text'],
+	input[type='email'],
+	input[type='password'],
+	input[type='number'],
+	input[type='search'],
 	textarea,
 	select {
 		font-size: 16px;
 	}
 
 	/* Smooth transitions for drag and drop */
-	[draggable="true"] {
+	[draggable='true'] {
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
@@ -209,7 +209,7 @@ body {
 		cursor: grab;
 	}
 
-	[draggable="true"]:active {
+	[draggable='true']:active {
 		cursor: grabbing;
 	}
 
