@@ -10,6 +10,8 @@
 	"observability": {
 		"enabled": true,
 	},
+
+	// Production D1 database configuration
 	"d1_databases": [
 		{
 			"binding": "KIDS_LEDGER_DB",

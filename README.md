@@ -74,21 +74,26 @@ npx wrangler versions deploy
 
 ### Pull Request Deployments
 
-This project includes automatic PR preview deployments. When you create a pull
-request:
+This project includes automatic PR preview deployments with isolated databases.
+When you create a pull request:
 
 1. **Automatic Deployment**: Each PR is automatically deployed to a temporary
    worker with the name `kids-ledger-pr-{PR_NUMBER}`
-2. **Preview URL**: You'll get a unique URL for each PR to test changes before
+2. **Isolated Database**: Each PR gets its own temporary D1 database with the
+   name `kids-ledger-pr-{PR_NUMBER}`, ensuring no interference with production
+   data
+3. **Preview URL**: You'll get a unique URL for each PR to test changes before
    merging
-3. **Automatic Cleanup**: When the PR is closed or merged, the temporary
-   deployment is automatically cleaned up
+4. **Database Migrations**: The temporary database automatically runs all
+   migrations when the worker starts up, ensuring the schema is up-to-date
+5. **Automatic Cleanup**: When the PR is closed or merged, both the temporary
+   worker and database are automatically cleaned up
 
 The deployment workflow runs on:
 
 - Push to main branch (production deployment)
-- Pull request events (preview deployment)
-- Pull request closure (cleanup)
+- Pull request events (preview deployment with isolated database)
+- Pull request closure (cleanup of worker and database)
 
 ## Styling
 

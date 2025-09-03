@@ -12,8 +12,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    name: Deploy to Production
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -30,19 +30,64 @@ jobs:
         run: npm run typecheck
 
       - name: Deploy to Production
-        if: github.ref == 'refs/heads/main'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npm run deploy
 
-      - name: Deploy PR Preview
-        if:
-          github.event_name == 'pull_request' && github.event.action != 'closed'
+  pr-preview:
+    runs-on: ubuntu-latest
+    name: Deploy PR Preview
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Create PR Preview Database
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npm run build
-          npx wrangler deploy --name kids-ledger-pr-${{ github.event.number }}
+          # Create a new D1 database for this PR
+          DB_NAME="kids-ledger-pr-${{ github.event.number }}"
+
+          # Delete existing database if it exists (to ensure clean slate)
+          npx wrangler d1 delete "$DB_NAME" --force 2>/dev/null || true
+          echo "Deleted existing database $DB_NAME (if it existed)"
+
+          # Create a fresh database
+          DB_RESPONSE=$(npx wrangler d1 create "$DB_NAME" --json)
+          DB_ID=$(echo "$DB_RESPONSE" | grep -o '"uuid":"[^"]*"' | cut -d'"' -f4)
+          echo "Created fresh database $DB_NAME with ID $DB_ID"
+
+          echo "DB_ID=$DB_ID" >> $GITHUB_ENV
+          echo "DB_NAME=$DB_NAME" >> $GITHUB_ENV
+
+      - name: Deploy PR Preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DB_ID: ${{ env.DB_ID }}
+          DB_NAME: ${{ env.DB_NAME }}
+        run: |
+          # Copy the main wrangler config and modify it for PR preview
+          cp wrangler.jsonc wrangler-pr.jsonc
+
+          # Update the worker name and database configuration
+          sed -i "s/\"name\": \"kids-ledger\"/\"name\": \"kids-ledger-pr-${{ github.event.number }}\"/" wrangler-pr.jsonc
+          sed -i "s/\"database_name\": \"kids-ledger\"/\"database_name\": \"$DB_NAME\"/" wrangler-pr.jsonc
+          sed -i "s/\"database_id\": \"[^\"]*\"/\"database_id\": \"$DB_ID\"/" wrangler-pr.jsonc
+
+          # Deploy with the PR-specific config
+          npx wrangler deploy --config wrangler-pr.jsonc
 
   cleanup:
     runs-on: ubuntu-latest
@@ -53,4 +98,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
+          # Delete the PR preview worker
           npx wrangler delete kids-ledger-pr-${{ github.event.number }} --force || true
+
+          # Delete the PR preview database
+          npx wrangler d1 delete kids-ledger-pr-${{ github.event.number }} --force || true
+
+          echo "Cleaned up PR preview resources for PR #${{ github.event.number }}"
