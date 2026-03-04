@@ -300,7 +300,9 @@ export function SettingsRoute(handle: Handle) {
 											key={account.id}
 											draggable
 											on={{
-												dragstart: () => {
+												dragstart: (event) => {
+													event.stopPropagation()
+													draggedKidId = null
 													draggedAccount = {
 														kidId: kid.id,
 														accountId: account.id,

@@ -362,9 +362,9 @@ export function HomeRoute(handle: Handle) {
 									gap: spacing.xs,
 								}}
 							>
-								{quickAmounts.map((amount) => (
+								{quickAmounts.map((amount, index) => (
 									<button
-										key={amount}
+										key={`${amount}-${index}`}
 										type="button"
 										on={{ click: () => setTransactionAmountFromQuick(amount) }}
 										css={{
