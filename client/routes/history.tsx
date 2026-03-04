@@ -6,6 +6,7 @@ import {
 } from '#client/ledger-api.ts'
 import { navigate } from '#client/client-router.tsx'
 import { formatCents } from '#client/money.ts'
+import { buttonCss, inputCss } from '#client/styles/form-controls.ts'
 import { colors, radius, spacing } from '#client/styles/tokens.ts'
 
 type HistoryState = {
@@ -221,21 +222,4 @@ export function HistoryRoute(handle: Handle) {
 			))}
 		</section>
 	)
-}
-
-const inputCss = {
-	padding: spacing.sm,
-	borderRadius: radius.md,
-	border: `1px solid ${colors.border}`,
-	backgroundColor: colors.surface,
-	color: colors.text,
-}
-
-const buttonCss = {
-	padding: `${spacing.sm} ${spacing.md}`,
-	borderRadius: radius.md,
-	border: 'none',
-	backgroundColor: colors.primary,
-	color: colors.onPrimary,
-	cursor: 'pointer',
 }

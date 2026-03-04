@@ -15,6 +15,7 @@ import {
 	type KidSummary,
 } from '#client/ledger-api.ts'
 import { formatCents } from '#client/money.ts'
+import { buttonCss, inputCss } from '#client/styles/form-controls.ts'
 import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
 
 const accountColors = [
@@ -91,15 +92,28 @@ export function SettingsRoute(handle: Handle) {
 		handle.update()
 	}
 
+	async function runMutation(
+		action: () => Promise<unknown>,
+		fallbackMessage: string,
+	) {
+		try {
+			await action()
+			await refreshSettings()
+		} catch (error) {
+			notify(error instanceof Error ? error.message : fallbackMessage)
+		}
+	}
+
 	async function handleCreateKid() {
 		if (state.status !== 'ready') return
 		if (!newKidName.trim()) {
 			notify('Kid name is required.')
 			return
 		}
-		await createKid({ name: newKidName, emoji: newKidEmoji })
-		newKidName = ''
-		await refreshSettings()
+		await runMutation(async () => {
+			await createKid({ name: newKidName, emoji: newKidEmoji })
+			newKidName = ''
+		}, 'Could not create kid.')
 	}
 
 	async function handleKidReorderDrop(targetKidId: number) {
@@ -110,9 +124,10 @@ export function SettingsRoute(handle: Handle) {
 		const to = ids.indexOf(targetKidId)
 		if (from < 0 || to < 0) return
 		ids.splice(to, 0, ids.splice(from, 1)[0]!)
-		await reorderKids(ids)
-		draggedKidId = null
-		await refreshSettings()
+		await runMutation(async () => {
+			await reorderKids(ids)
+			draggedKidId = null
+		}, 'Could not reorder kids.')
 	}
 
 	async function handleAccountReorderDrop(
@@ -128,9 +143,10 @@ export function SettingsRoute(handle: Handle) {
 		const to = accountIds.indexOf(targetAccountId)
 		if (from < 0 || to < 0) return
 		accountIds.splice(to, 0, accountIds.splice(from, 1)[0]!)
-		await reorderAccounts(kidId, accountIds)
-		draggedAccount = null
-		await refreshSettings()
+		await runMutation(async () => {
+			await reorderAccounts(kidId, accountIds)
+			draggedAccount = null
+		}, 'Could not reorder accounts.')
 	}
 
 	return () => (
@@ -266,12 +282,13 @@ export function SettingsRoute(handle: Handle) {
 												) {
 													return
 												}
-												await updateKid({
-													kidId: kid.id,
-													name: nameInput.value,
-													emoji: emojiInput.value || '🧒',
-												})
-												await refreshSettings()
+												await runMutation(async () => {
+													await updateKid({
+														kidId: kid.id,
+														name: nameInput.value,
+														emoji: emojiInput.value || '🧒',
+													})
+												}, 'Could not update kid.')
 											},
 										}}
 										css={buttonCss}
@@ -282,8 +299,10 @@ export function SettingsRoute(handle: Handle) {
 										type="button"
 										on={{
 											click: async () => {
-												await archiveKid(kid.id)
-												await refreshSettings()
+												await runMutation(
+													() => archiveKid(kid.id),
+													'Could not archive kid.',
+												)
 											},
 										}}
 										css={dangerButtonCss}
@@ -355,12 +374,13 @@ export function SettingsRoute(handle: Handle) {
 														)
 														if (!(colorSelect instanceof HTMLSelectElement))
 															return
-														await updateAccount({
-															accountId: account.id,
-															name: account.name,
-															colorToken: colorSelect.value,
-														})
-														await refreshSettings()
+														await runMutation(async () => {
+															await updateAccount({
+																accountId: account.id,
+																name: account.name,
+																colorToken: colorSelect.value,
+															})
+														}, 'Could not update account.')
 													},
 												}}
 												css={buttonCss}
@@ -371,8 +391,10 @@ export function SettingsRoute(handle: Handle) {
 												type="button"
 												on={{
 													click: async () => {
-														await archiveAccount(account.id)
-														await refreshSettings()
+														await runMutation(
+															() => archiveAccount(account.id),
+															'Could not archive account.',
+														)
 													},
 												}}
 												css={dangerButtonCss}
@@ -423,13 +445,14 @@ export function SettingsRoute(handle: Handle) {
 												}
 												const accountName = nameInput.value.trim()
 												if (!accountName) return
-												await createAccount({
-													kidId: kid.id,
-													name: accountName,
-													colorToken: colorSelect.value,
-												})
-												nameInput.value = ''
-												await refreshSettings()
+												await runMutation(async () => {
+													await createAccount({
+														kidId: kid.id,
+														name: accountName,
+														colorToken: colorSelect.value,
+													})
+													nameInput.value = ''
+												}, 'Could not create account.')
 											},
 										}}
 										css={buttonCss}
@@ -465,8 +488,10 @@ export function SettingsRoute(handle: Handle) {
 										.map((value) => Number(value.trim()))
 										.filter((value) => Number.isFinite(value) && value > 0)
 										.map((value) => Math.round(value * 100))
-									await setQuickAmounts(amounts)
-									await refreshSettings()
+									await runMutation(
+										() => setQuickAmounts(amounts),
+										'Could not save quick amounts.',
+									)
 								},
 							}}
 							css={{ display: 'grid', gap: spacing.sm }}
@@ -510,8 +535,10 @@ export function SettingsRoute(handle: Handle) {
 									type="button"
 									on={{
 										click: async () => {
-											await deleteKid(kid.id)
-											await refreshSettings()
+											await runMutation(
+												() => deleteKid(kid.id),
+												'Could not delete kid.',
+											)
 										},
 									}}
 									css={dangerButtonCss}
@@ -529,8 +556,10 @@ export function SettingsRoute(handle: Handle) {
 									type="button"
 									on={{
 										click: async () => {
-											await deleteAccount(account.id)
-											await refreshSettings()
+											await runMutation(
+												() => deleteAccount(account.id),
+												'Could not delete account.',
+											)
 										},
 									}}
 									css={dangerButtonCss}
@@ -555,23 +584,6 @@ export function SettingsRoute(handle: Handle) {
 			) : null}
 		</section>
 	)
-}
-
-const inputCss = {
-	padding: spacing.sm,
-	borderRadius: radius.md,
-	border: `1px solid ${colors.border}`,
-	backgroundColor: colors.surface,
-	color: colors.text,
-}
-
-const buttonCss = {
-	padding: `${spacing.sm} ${spacing.md}`,
-	borderRadius: radius.md,
-	border: 'none',
-	backgroundColor: colors.primary,
-	color: colors.onPrimary,
-	cursor: 'pointer',
 }
 
 const dangerButtonCss = {
