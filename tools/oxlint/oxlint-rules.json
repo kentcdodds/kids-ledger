@@ -1,0 +1,6 @@
+{
+	"jsPlugins": ["./local-plugin.js"],
+	"rules": {
+		"kids-ledger-custom/no-example-identifier": "error"
+	}
+}
