@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./public/logo.svg" alt="kids-ledger logo" width="400" />
+  <img src="./public/logo.png" alt="kids-ledger logo" width="400" />
 
   <p>
     <strong>A starter and reference for building full-stack web applications on Cloudflare Workers</strong>

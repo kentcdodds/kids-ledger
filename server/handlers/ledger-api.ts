@@ -99,7 +99,7 @@ export function createLedgerSettingsHandler(appEnv: AppEnv) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const [kids, archived, quickAmounts] = await Promise.all([
-				access.service.listKidsWithAccounts(false),
+				access.service.listKidsWithAccounts(true),
 				access.service.listArchived(),
 				access.service.listQuickAmounts(),
 			])

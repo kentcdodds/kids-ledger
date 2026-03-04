@@ -323,13 +323,8 @@ export class LedgerService {
 			params.push(input.from)
 		}
 		if (input.to) {
-			if (isDateOnly(input.to)) {
-				whereClauses.push(`t.created_at < datetime(?, '+1 day')`)
-				params.push(input.to)
-			} else {
-				whereClauses.push('t.created_at <= ?')
-				params.push(input.to)
-			}
+			whereClauses.push('t.created_at <= ?')
+			params.push(input.to)
 		}
 
 		const limit = Math.min(Math.max(input.limit ?? 50, 1), 200)
@@ -487,8 +482,7 @@ export class LedgerService {
 			[this.#userId, 'My Household'],
 		)
 		const id =
-			typeof inserted.meta?.last_row_id === 'number' &&
-			inserted.meta.last_row_id > 0
+			typeof inserted.meta?.last_row_id === 'number'
 				? inserted.meta.last_row_id
 				: null
 		if (id === null) {
@@ -704,10 +698,6 @@ export class LedgerService {
 
 export function createLedgerService(db: D1Database, userId: number) {
 	return new LedgerService(db, userId)
-}
-
-function isDateOnly(value: string) {
-	return /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
 function getNumber(value: unknown) {
