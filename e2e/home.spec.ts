@@ -4,7 +4,7 @@ test('home page renders the shell', async ({ page }) => {
 	await page.goto('/')
 	await expect(page).toHaveTitle('kids-ledger')
 	await expect(
-		page.getByRole('heading', { name: 'kids-ledger Remix 3' }),
+		page.getByRole('heading', { name: 'Kids Ledger' }),
 	).toBeVisible()
 })
 
