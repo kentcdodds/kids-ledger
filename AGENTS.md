@@ -49,3 +49,15 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 - [Request Lifecycle](./docs/architecture/request-lifecycle.md)
 - [Authentication](./docs/architecture/authentication.md)
 - [Data Storage](./docs/architecture/data-storage.md)
+
+## Cursor Cloud specific instructions
+
+- Dev server runs on port **3742** by default (`bun run dev`). The mock Resend
+  API server starts on port **8788**.
+- E2E tests (`bun run test:e2e`) also use port 8788 for the Playwright web
+  server. **Stop `bun run dev` before running E2E tests** to avoid port
+  conflicts that cause all tests to fail.
+- No Docker or external services are needed. D1, KV, and Durable Objects are
+  all emulated locally by Wrangler.
+- See `.cursor/CLOUD.md` for quick-reference command table and architecture
+  notes.
