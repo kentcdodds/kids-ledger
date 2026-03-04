@@ -1,29 +1,33 @@
 :root {
 	color-scheme: light dark;
 
-	/* Colors - Light mode (kids-ledger ember) */
-	--color-primary: #f47c00;
-	--color-primary-hover: #e26c00;
-	--color-primary-active: #c85a00;
-	--color-on-primary: #120b08;
-	--color-primary-text: #b04700;
-	--color-background: #f6f6f8;
-	--color-surface: #ececf1;
-	--color-text: #2f2f34;
-	--color-text-muted: #676770;
-	--color-border: #d7d7df;
+	/* Colors - Light mode (kids-ledger blue/green) */
+	--color-primary: #1d7de8;
+	--color-primary-hover: #166dce;
+	--color-primary-active: #1159aa;
+	--color-on-primary: #ffffff;
+	--color-primary-text: #155ab0;
+	--color-background: #f4fbf8;
+	--color-surface: #e7f6f0;
+	--color-text: #1a2a32;
+	--color-text-muted: #52646d;
+	--color-border: #bfded3;
+	--color-secondary-pink: #ff6b9f;
+	--color-secondary-gold: #f4b400;
 
-	/* Colors - Dark mode (smoldering ember) */
-	--color-primary-dark: #f6a23a;
-	--color-primary-hover-dark: #f08b1a;
-	--color-primary-active-dark: #d87305;
-	--color-on-primary-dark: #120b08;
-	--color-primary-text-dark: #f6a23a;
-	--color-background-dark: #121216;
-	--color-surface-dark: #1c1c22;
-	--color-text-dark: #f1f1f5;
-	--color-text-muted-dark: #b3b3bd;
-	--color-border-dark: #2b2b33;
+	/* Colors - Dark mode (kids-ledger blue/green) */
+	--color-primary-dark: #4ea3ff;
+	--color-primary-hover-dark: #6db2ff;
+	--color-primary-active-dark: #2f8ff5;
+	--color-on-primary-dark: #071321;
+	--color-primary-text-dark: #9dcfff;
+	--color-background-dark: #0f1718;
+	--color-surface-dark: #172428;
+	--color-text-dark: #e8f5f2;
+	--color-text-muted-dark: #a6beb8;
+	--color-border-dark: #28423d;
+	--color-secondary-pink-dark: #ff8cb4;
+	--color-secondary-gold-dark: #ffd166;
 
 	/* Typography */
 	--font-family: system-ui, sans-serif;

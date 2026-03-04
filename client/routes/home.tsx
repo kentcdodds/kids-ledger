@@ -40,11 +40,14 @@ export function HomeRoute(_handle: Handle) {
 				>
 					<img
 						src="/logo.png"
-						alt="kids-ledger logo"
+						alt="Kids Ledger logo"
+						width={1024}
+						height={1024}
 						css={{
 							width: '220px',
 							maxWidth: '100%',
 							height: 'auto',
+							aspectRatio: '1 / 1',
 						}}
 					/>
 					<div css={{ display: 'grid', gap: spacing.sm }}>
@@ -56,10 +59,10 @@ export function HomeRoute(_handle: Handle) {
 								color: colors.text,
 							}}
 						>
-							kids-ledger <span css={{ color: colors.primaryText }}>Remix 3</span>
+							Kids Ledger
 						</h1>
 						<p css={{ margin: 0, color: colors.textMuted }}>
-							Remix 3 components running on the client, backed by Remix 3
+							Built with Remix 3 components on the client, backed by Remix 3
 							routing in the worker.
 						</p>
 					</div>
