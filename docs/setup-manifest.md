@@ -86,6 +86,6 @@ How to get/set each secret:
     `noreply@example.com`), then store it as a secret.
 
 Preview deploys for pull requests create a separate Worker per PR named
-`<app-name>-pr-<number>` (for kids-ledger: `kids-ledger-pr-123`) plus one Worker per
-mock service named `<app-name>-pr-<number>-mock-<service>`. The same
+`<app-name>-pr-<number>` (for kids-ledger: `kids-ledger-pr-123`) plus one Worker
+per mock service named `<app-name>-pr-<number>-mock-<service>`. The same
 `CLOUDFLARE_API_TOKEN` must be able to create/update and delete those Workers.

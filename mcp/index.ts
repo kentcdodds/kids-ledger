@@ -7,6 +7,11 @@ import { registerTools } from './register-tools.ts'
 export type State = {}
 export type Props = {
 	baseUrl: string
+	user?: {
+		userId?: string
+		email?: string
+		displayName?: string
+	}
 }
 
 const serverMetadata = {
@@ -39,5 +44,16 @@ export class MCP extends McpAgent<Env, State, Props> {
 			'This should never happen, but somehow we did not get the baseUrl from the request handler',
 		)
 		return baseUrl
+	}
+	getUserEmail() {
+		const email = this.props?.user?.email
+		invariant(
+			typeof email === 'string' && email.trim(),
+			'MCP user email is required',
+		)
+		return email.trim().toLowerCase()
+	}
+	getDatabase() {
+		return this.env.APP_DB
 	}
 }

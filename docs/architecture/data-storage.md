@@ -10,6 +10,11 @@ Current schema is defined by migrations in `migrations/`:
 
 - `users`: login identity and password hash
 - `password_resets`: hashed reset tokens with expiry and foreign key to users
+- `households`: one household per authenticated parent user
+- `kids`: child profiles scoped to a household (`sort_order`, archive flags)
+- `accounts`: child account buckets (`color_token`, `sort_order`, archive flags)
+- `transactions`: append-only money movements (signed `amount_cents`)
+- `quick_amount_presets`: ordered household quick-amount values (in cents)
 
 App access pattern:
 
@@ -19,6 +24,8 @@ App access pattern:
 - app handlers and the mock Resend worker perform CRUD/query operations through
   `remix/data-table` (including `findOne`, `create`, `update`, `deleteMany`, and
   `count`)
+- ledger business rules are centralized in `server/ledger/ledger-service.ts` and
+  reused by HTTP handlers and MCP tools
 
 ## KV (`OAUTH_KV`)
 

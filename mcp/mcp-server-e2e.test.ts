@@ -24,6 +24,25 @@ const migrationsDir = join(projectRoot, 'migrations')
 const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
 const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
+const expectedToolNames = [
+	'do_math',
+	'ledger_add_transaction',
+	'ledger_archive_account',
+	'ledger_archive_kid',
+	'ledger_create_account',
+	'ledger_create_kid',
+	'ledger_delete_account',
+	'ledger_delete_kid',
+	'ledger_export_json',
+	'ledger_get_dashboard',
+	'ledger_list_transactions',
+	'ledger_reorder_accounts',
+	'ledger_reorder_kids',
+	'ledger_set_quick_amounts',
+	'ledger_update_account',
+	'ledger_update_kid',
+	'open_calculator_ui',
+].sort()
 
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
@@ -495,7 +514,7 @@ test(
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
-		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
+		expect(toolNames.sort()).toEqual(expectedToolNames)
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -513,7 +532,7 @@ test(
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
-		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
+		expect(toolNames.sort()).toEqual(expectedToolNames)
 
 		const resourcesResult = await mcpClient.client.listResources()
 		const resourceUris = resourcesResult.resources.map(
