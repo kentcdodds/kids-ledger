@@ -9,7 +9,7 @@
   "description": "A starter and reference for building full stack web applications",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/epicweb-dev/epicflare.git"
+    "url": "git+ssh://git@github.com/kentcdodds/kids-ledger.git"
   },
   "scripts": {
     "dev": "bun cli.ts",
