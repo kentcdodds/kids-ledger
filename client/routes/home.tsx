@@ -72,6 +72,22 @@ export function HomeRoute(handle: Handle) {
 			kids = dashboard.kids
 			familyBalance = dashboard.familyBalanceCents
 			quickAmounts = dashboard.quickAmounts
+			const currentTransaction = transactionState
+			if (currentTransaction) {
+				const nextKid = dashboard.kids.find(
+					(kid) => kid.id === currentTransaction.kid.id,
+				)
+				const nextAccount = nextKid?.accounts.find(
+					(account) => account.id === currentTransaction.account.id,
+				)
+				if (nextKid && nextAccount) {
+					transactionState = {
+						...currentTransaction,
+						kid: nextKid,
+						account: nextAccount,
+					}
+				}
+			}
 			status = 'ready'
 			errorMessage = ''
 		} catch (error) {
