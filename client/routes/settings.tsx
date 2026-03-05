@@ -21,6 +21,7 @@ import {
 	shadows,
 	spacing,
 	typography,
+	mq,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
@@ -175,6 +176,12 @@ export function SettingsRoute(handle: Handle) {
 								display: 'grid',
 								gridTemplateColumns: '5rem 1fr auto',
 								gap: spacing.sm,
+								[mq.mobile]: {
+									gridTemplateColumns: '5rem 1fr',
+									'& > button': {
+										gridColumn: '1 / -1',
+									},
+								},
 							}}
 						>
 							<input
@@ -241,52 +248,82 @@ export function SettingsRoute(handle: Handle) {
 								<header
 									css={{
 										display: 'grid',
-										gridTemplateColumns: '4rem 1fr auto auto',
+										gridTemplateColumns: 'auto 4rem 1fr auto',
 										gap: spacing.sm,
 										alignItems: 'center',
+										[mq.mobile]: {
+											gridTemplateColumns: 'auto 4rem 1fr',
+											'& > button': {
+												gridColumn: '1 / -1',
+											},
+										},
 									}}
 								>
+									<div
+										css={{
+											cursor: 'grab',
+											color: colors.textMuted,
+											padding: spacing.xs,
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											fontSize: typography.fontSize.lg,
+											'&:active': { cursor: 'grabbing' },
+										}}
+										title="Drag to reorder"
+									>
+										⋮⋮
+									</div>
 									<input
 										defaultValue={kid.emoji}
 										aria-label={`${kid.name} emoji`}
 										data-kid-emoji={kid.id}
 										maxLength={2}
-										css={inputCss}
+										on={{
+											blur: async (e) => {
+												const emoji = (e.currentTarget as HTMLInputElement).value || '🧒'
+												const nameInput = document.querySelector(
+													`input[data-kid-name="${kid.id}"]`,
+												) as HTMLInputElement
+												await updateKid({
+													kidId: kid.id,
+													name: nameInput?.value || kid.name,
+													emoji,
+												})
+												await refreshSettings()
+											}
+										}}
+										css={{
+											...inputCss,
+											fontSize: typography.fontSize.xl,
+											fontWeight: typography.fontWeight.bold,
+											textAlign: 'center',
+										}}
 									/>
 									<input
 										defaultValue={kid.name}
 										aria-label={`${kid.name} name`}
 										data-kid-name={kid.id}
-										css={inputCss}
-									/>
-									<button
-										type="button"
 										on={{
-											click: async () => {
-												const nameInput = document.querySelector(
-													`input[data-kid-name="${kid.id}"]`,
-												)
+											blur: async (e) => {
+												const name = (e.currentTarget as HTMLInputElement).value || kid.name
 												const emojiInput = document.querySelector(
 													`input[data-kid-emoji="${kid.id}"]`,
-												)
-												if (
-													!(nameInput instanceof HTMLInputElement) ||
-													!(emojiInput instanceof HTMLInputElement)
-												) {
-													return
-												}
+												) as HTMLInputElement
 												await updateKid({
 													kidId: kid.id,
-													name: nameInput.value,
-													emoji: emojiInput.value || '🧒',
+													name,
+													emoji: emojiInput?.value || kid.emoji,
 												})
 												await refreshSettings()
-											},
+											}
 										}}
-										css={buttonCss}
-									>
-										Save
-									</button>
+										css={{
+											...inputCss,
+											fontSize: typography.fontSize.xl,
+											fontWeight: typography.fontWeight.bold,
+										}}
+									/>
 									<button
 										type="button"
 										on={{
@@ -303,8 +340,17 @@ export function SettingsRoute(handle: Handle) {
 								<p css={{ margin: 0, color: colors.textMuted }}>
 									Total: {formatCents(kid.totalBalanceCents)}
 								</p>
-								<div css={{ display: 'grid', gap: spacing.xs }}>
-									{kid.accounts.map((account) => (
+								<div
+									css={{
+										display: 'flex',
+										flexDirection: 'column',
+										backgroundColor: colors.primarySoftest,
+										borderRadius: radius.lg,
+										border: kid.accounts.length > 0 ? `2px solid ${colors.border}` : 'none',
+										overflow: 'hidden',
+									}}
+								>
+									{kid.accounts.map((account, index) => (
 										<div
 											key={account.id}
 											draggable
@@ -322,17 +368,62 @@ export function SettingsRoute(handle: Handle) {
 											}}
 											css={{
 												display: 'grid',
-												gridTemplateColumns: '1fr auto auto auto',
+												gridTemplateColumns: 'auto 1fr auto auto',
 												gap: spacing.xs,
 												alignItems: 'center',
 												padding: spacing.md,
-												borderRadius: radius.lg,
-												backgroundColor: colors.primarySoftest,
-												border: `2px solid ${colors.border}`,
+												borderBottom:
+													index < kid.accounts.length - 1
+														? `1px solid ${colors.border}`
+														: 'none',
+												[mq.mobile]: {
+													gridTemplateColumns: 'auto 1fr',
+													'& > select, & > button': {
+														gridColumn: '2 / -1',
+													},
+												},
 											}}
 										>
+											<div
+												css={{
+													cursor: 'grab',
+													color: colors.textMuted,
+													padding: spacing.xs,
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													fontSize: typography.fontSize.lg,
+													'&:active': { cursor: 'grabbing' },
+												}}
+												title="Drag to reorder"
+											>
+												⋮⋮
+											</div>
 											<div css={{ display: 'grid', gap: 2 }}>
-												<strong>{account.name}</strong>
+												<input
+													defaultValue={account.name}
+													aria-label={`${account.name} name`}
+													data-account-name={account.id}
+													on={{
+														blur: async (e) => {
+															const name = (e.currentTarget as HTMLInputElement).value || account.name
+															const colorSelect = document.querySelector(
+																`select[data-account-color="${account.id}"]`,
+															) as HTMLSelectElement
+															await updateAccount({
+																accountId: account.id,
+																name,
+																colorToken: colorSelect?.value || account.colorToken,
+															})
+															await refreshSettings()
+														}
+													}}
+													css={{
+														...inputCss,
+														fontWeight: 'bold',
+														padding: spacing.xs,
+													}}
+												/>
 												<span
 													css={{
 														color: colors.textMuted,
@@ -346,6 +437,20 @@ export function SettingsRoute(handle: Handle) {
 												defaultValue={account.colorToken}
 												aria-label={`${account.name} color`}
 												data-account-color={account.id}
+												on={{
+													change: async (e) => {
+														const colorToken = (e.currentTarget as HTMLSelectElement).value
+														const nameInput = document.querySelector(
+															`input[data-account-name="${account.id}"]`,
+														) as HTMLInputElement
+														await updateAccount({
+															accountId: account.id,
+															name: nameInput?.value || account.name,
+															colorToken,
+														})
+														await refreshSettings()
+													}
+												}}
 												css={inputCss}
 											>
 												{accountColors.map((color) => (
@@ -354,27 +459,6 @@ export function SettingsRoute(handle: Handle) {
 													</option>
 												))}
 											</select>
-											<button
-												type="button"
-												on={{
-													click: async () => {
-														const colorSelect = document.querySelector(
-															`select[data-account-color="${account.id}"]`,
-														)
-														if (!(colorSelect instanceof HTMLSelectElement))
-															return
-														await updateAccount({
-															accountId: account.id,
-															name: account.name,
-															colorToken: colorSelect.value,
-														})
-														await refreshSettings()
-													},
-												}}
-												css={buttonCss}
-											>
-												Save
-											</button>
 											<button
 												type="button"
 												on={{
@@ -395,6 +479,13 @@ export function SettingsRoute(handle: Handle) {
 										display: 'grid',
 										gridTemplateColumns: '1fr auto auto',
 										gap: spacing.sm,
+										padding: spacing.md,
+										border: `2px dashed ${colors.border}`,
+										borderRadius: radius.lg,
+										backgroundColor: colors.surface,
+										[mq.mobile]: {
+											gridTemplateColumns: '1fr',
+										},
 									}}
 								>
 									<input
@@ -461,34 +552,99 @@ export function SettingsRoute(handle: Handle) {
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.text }}>Quick amounts</h2>
+						
+						<div css={{ display: 'flex', flexWrap: 'wrap', gap: spacing.sm }}>
+							{state.quickAmounts.map((amount) => (
+								<div
+									key={amount}
+									css={{
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.xs,
+										padding: `${spacing.xs} ${spacing.sm}`,
+										backgroundColor: colors.primarySoft,
+										borderRadius: radius.full,
+										border: `2px solid ${colors.primarySoftStrong}`,
+										fontWeight: typography.fontWeight.bold,
+									}}
+								>
+									<span>{formatCents(amount)}</span>
+									<button
+										type="button"
+										on={{
+											click: async () => {
+												if (state.status !== 'ready') return
+												const newAmounts = state.quickAmounts.filter(
+													(a) => a !== amount,
+												)
+												await setQuickAmounts(newAmounts)
+												await refreshSettings()
+											},
+										}}
+										css={{
+											background: 'none',
+											border: 'none',
+											cursor: 'pointer',
+											color: colors.textMuted,
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											padding: 0,
+											fontSize: typography.fontSize.lg,
+											lineHeight: 1,
+											'&:hover': { color: colors.error },
+										}}
+										aria-label={`Remove ${formatCents(amount)}`}
+									>
+										×
+									</button>
+								</div>
+							))}
+						</div>
+
 						<form
 							data-router-skip
 							on={{
 								submit: async (event) => {
 									event.preventDefault()
+									if (state.status !== 'ready') return
 									if (!(event.currentTarget instanceof HTMLFormElement)) return
-									const formData = new FormData(event.currentTarget)
-									const raw = String(formData.get('quickAmounts') ?? '')
-									const amounts = raw
-										.split(',')
-										.map((value) => Number(value.trim()))
-										.filter((value) => Number.isFinite(value) && value > 0)
-										.map((value) => Math.round(value * 100))
-									await setQuickAmounts(amounts)
-									await refreshSettings()
+									const input = event.currentTarget.elements.namedItem(
+										'newAmount',
+									)
+									if (!(input instanceof HTMLInputElement)) return
+									
+									const val = Number(input.value)
+									if (Number.isFinite(val) && val > 0) {
+										const cents = Math.round(val * 100)
+										if (!state.quickAmounts.includes(cents)) {
+											const newAmounts = [...state.quickAmounts, cents].sort(
+												(a, b) => a - b,
+											)
+											await setQuickAmounts(newAmounts)
+											await refreshSettings()
+										}
+										input.value = ''
+									}
 								},
 							}}
-							css={{ display: 'grid', gap: spacing.sm }}
+							css={{
+								display: 'grid',
+								gridTemplateColumns: '1fr auto',
+								gap: spacing.sm,
+								marginTop: spacing.sm,
+							}}
 						>
 							<input
-								name="quickAmounts"
-								defaultValue={state.quickAmounts
-									.map((amount) => (amount / 100).toFixed(2))
-									.join(', ')}
+								name="newAmount"
+								type="number"
+								step="0.01"
+								min="0.01"
+								placeholder="New amount (e.g. 5.00)"
 								css={inputCss}
 							/>
 							<button type="submit" css={buttonCss}>
-								Save quick amounts
+								Add
 							</button>
 						</form>
 					</section>
@@ -496,71 +652,85 @@ export function SettingsRoute(handle: Handle) {
 					<section
 						css={{
 							display: 'grid',
-							gap: spacing.sm,
+							gap: spacing.md,
 							padding: spacing.md,
-							border: `3px solid ${colors.border}`,
+							border: `3px solid ${colors.error}`,
 							borderRadius: radius.xl,
-							backgroundColor: colors.surface,
+							backgroundColor: 'color-mix(in srgb, #dc2626 5%, transparent)',
 							boxShadow: shadows.md,
 						}}
 					>
-						<h2 css={{ margin: 0, color: colors.text }}>Archive management</h2>
-						{state.archived.kids.length === 0 &&
-						state.archived.accounts.length === 0 ? (
-							<p css={{ margin: 0, color: colors.textMuted }}>
-								No archived records.
-							</p>
-						) : null}
-						{state.archived.kids.map((kid) => (
-							<div key={kid.id} css={archivedRowCss}>
-								<span>
-									{kid.emoji} {kid.name}
-								</span>
-								<button
-									type="button"
-									on={{
-										click: async () => {
-											await deleteKid(kid.id)
-											await refreshSettings()
-										},
-									}}
-									css={dangerButtonCss}
-								>
-									Delete forever
-								</button>
-							</div>
-						))}
-						{state.archived.accounts.map((account) => (
-							<div key={account.id} css={archivedRowCss}>
-								<span>
-									{account.kidName} · {account.name}
-								</span>
-								<button
-									type="button"
-									on={{
-										click: async () => {
-											await deleteAccount(account.id)
-											await refreshSettings()
-										},
-									}}
-									css={dangerButtonCss}
-								>
-									Delete forever
-								</button>
-							</div>
-						))}
+						<h2 css={{ margin: 0, color: colors.error }}>Danger Zone</h2>
+						
+						<div css={{ display: 'grid', gap: spacing.sm }}>
+							<h3 css={{ margin: 0, color: colors.text, fontSize: typography.fontSize.lg }}>Archive management</h3>
+							{state.archived.kids.length === 0 &&
+							state.archived.accounts.length === 0 ? (
+								<div css={{ 
+									display: 'flex', 
+									flexDirection: 'column', 
+									alignItems: 'center', 
+									gap: spacing.sm,
+									padding: spacing.xl,
+									color: colors.textMuted 
+								}}>
+									<span css={{ fontSize: '2rem' }}>📭</span>
+									<p css={{ margin: 0 }}>No archived records.</p>
+								</div>
+							) : null}
+							{state.archived.kids.map((kid) => (
+								<div key={kid.id} css={archivedRowCss}>
+									<span>
+										{kid.emoji} {kid.name}
+									</span>
+									<button
+										type="button"
+										on={{
+											click: async () => {
+												await deleteKid(kid.id)
+												await refreshSettings()
+											},
+										}}
+										css={dangerButtonCss}
+									>
+										Delete forever
+									</button>
+								</div>
+							))}
+							{state.archived.accounts.map((account) => (
+								<div key={account.id} css={archivedRowCss}>
+									<span>
+										{account.kidName} · {account.name}
+									</span>
+									<button
+										type="button"
+										on={{
+											click: async () => {
+												await deleteAccount(account.id)
+												await refreshSettings()
+											},
+										}}
+										css={dangerButtonCss}
+									>
+										Delete forever
+									</button>
+								</div>
+							))}
+						</div>
+
+						<div css={{ display: 'grid', gap: spacing.sm, paddingTop: spacing.md, borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)` }}>
+							<h3 css={{ margin: 0, color: colors.text, fontSize: typography.fontSize.lg }}>Data export</h3>
+							<a href="/ledger/export/json" css={{ color: colors.error, fontWeight: typography.fontWeight.bold }}>
+								Download JSON backup
+							</a>
+						</div>
 					</section>
 
-					<section css={{ display: 'grid', gap: spacing.sm }}>
-						<a href="/ledger/export/json" css={{ color: colors.primaryText }}>
-							Download JSON backup
-						</a>
-						{state.message ? (
-							<p css={{ margin: 0, color: colors.textMuted }}>
-								{state.message}
-							</p>
-						) : null}
-					</section>
+					{state.message ? (
+						<p css={{ margin: 0, color: colors.textMuted, textAlign: 'center' }}>
+							{state.message}
+						</p>
+					) : null}
 				</>
 			) : null}
 		</section>
