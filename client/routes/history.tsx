@@ -7,6 +7,7 @@ import {
 import { listenToRouterNavigation, navigate } from '#client/client-router.tsx'
 import { formatCents } from '#client/money.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
+import { getAccountGradientBackground } from '#client/styles/account-colors.ts'
 import { colors, mq, radius, shadows, spacing } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
@@ -74,6 +75,21 @@ const disabledPaginationControlCss = {
 	userSelect: 'none',
 	boxShadow: 'none',
 	transform: 'none',
+}
+
+function getTransactionTextColors(colorToken: string) {
+	if (colorToken === 'sun') {
+		return {
+			text: colors.text,
+			negative: colors.error,
+			muted: colors.textMuted,
+		}
+	}
+	return {
+		text: '#ffffff',
+		negative: '#fee2e2',
+		muted: 'rgba(255, 255, 255, 0.9)',
+	}
 }
 
 export function HistoryRoute(handle: Handle) {
@@ -323,49 +339,58 @@ export function HistoryRoute(handle: Handle) {
 					</p>
 				) : null}
 
-				{state.transactions.map((transaction) => (
-					<article
-						key={transaction.id}
-						css={{
-							display: 'grid',
-							gap: spacing.xs,
-							padding: spacing.md,
-							borderRadius: radius.lg,
-							border: `2px solid ${colors.border}`,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.sm,
-							opacity: showPendingRefresh ? 0.6 : 1,
-							transition: 'opacity 120ms ease',
-						}}
-					>
-						<div
+				{state.transactions.map((transaction) => {
+					const textColors = getTransactionTextColors(transaction.colorToken)
+					return (
+						<article
+							key={transaction.id}
 							css={{
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
+								display: 'grid',
+								gap: spacing.xs,
+								padding: spacing.md,
+								borderRadius: radius.lg,
+								border: `2px solid ${colors.border}`,
+								background: getAccountGradientBackground(
+									transaction.colorToken,
+								),
+								boxShadow: shadows.sm,
+								color: textColors.text,
+								opacity: showPendingRefresh ? 0.6 : 1,
+								transition: 'opacity 120ms ease',
 							}}
 						>
-							<strong>
-								{transaction.kidName} · {transaction.accountName}
-							</strong>
-							<strong
+							<div
 								css={{
-									color:
-										transaction.amountCents < 0 ? colors.error : colors.text,
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
 								}}
 							>
-								{transaction.amountCents < 0 ? '-' : '+'}
-								{formatCents(Math.abs(transaction.amountCents))}
-							</strong>
-						</div>
-						{transaction.note ? (
-							<p css={{ margin: 0, color: colors.text }}>{transaction.note}</p>
-						) : null}
-						<time css={{ color: colors.textMuted }}>
-							{new Date(transaction.createdAt).toLocaleString()}
-						</time>
-					</article>
-				))}
+								<strong>
+									{transaction.kidEmoji} {transaction.kidName} ·{' '}
+									{transaction.accountName}
+								</strong>
+								<strong
+									css={{
+										color:
+											transaction.amountCents < 0
+												? textColors.negative
+												: textColors.text,
+									}}
+								>
+									{transaction.amountCents < 0 ? '-' : '+'}
+									{formatCents(Math.abs(transaction.amountCents))}
+								</strong>
+							</div>
+							{transaction.note ? (
+								<p css={{ margin: 0 }}>{transaction.note}</p>
+							) : null}
+							<time css={{ color: textColors.muted }}>
+								{new Date(transaction.createdAt).toLocaleString()}
+							</time>
+						</article>
+					)
+				})}
 				{state.status !== 'error' &&
 				(state.status === 'ready' || state.transactions.length > 0) ? (
 					<div

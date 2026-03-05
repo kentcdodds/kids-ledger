@@ -37,8 +37,10 @@ export type LedgerTransaction = {
 	householdId: number
 	kidId: number
 	kidName: string
+	kidEmoji: string
 	accountId: number
 	accountName: string
+	colorToken: string
 	amountCents: number
 	note: string
 	createdAt: string
@@ -479,8 +481,10 @@ export class LedgerService {
 				t.household_id,
 				t.kid_id,
 				k.name AS kid_name,
+				k.emoji AS kid_emoji,
 				t.account_id,
 				a.name AS account_name,
+				a.color_token,
 				t.amount_cents,
 				t.note,
 				t.created_at
@@ -573,8 +577,10 @@ export class LedgerService {
 				householdId: getNumber(row.household_id),
 				kidId: getNumber(row.kid_id),
 				kidName: getString(row.kid_name),
+				kidEmoji: getString(row.kid_emoji),
 				accountId: getNumber(row.account_id),
 				accountName: getString(row.account_name),
+				colorToken: getString(row.color_token),
 				amountCents: getNumber(row.amount_cents),
 				note: getString(row.note),
 				createdAt: getString(row.created_at),

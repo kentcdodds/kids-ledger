@@ -18,6 +18,10 @@ import {
 } from '#client/ledger-api.ts'
 import { formatCents } from '#client/money.ts'
 import {
+	accountColorTokens,
+	getAccountGradientBackground,
+} from '#client/styles/account-colors.ts'
+import {
 	colors,
 	radius,
 	shadows,
@@ -27,28 +31,83 @@ import {
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
-const accountColors = [
-	'orchid',
-	'ocean',
-	'meadow',
-	'flame',
-	'sun',
-	'night',
+const defaultKidEmojis = [
+	'🧒',
+	'👦',
+	'👧',
+	'🧑',
+	'🙂',
+	'😊',
+	'😄',
+	'😁',
+	'😎',
+	'🤓',
+	'🥳',
+	'🤠',
+	'🦖',
+	'🦕',
+	'🦄',
+	'🐶',
+	'🐱',
+	'🐼',
+	'🐨',
+	'🦊',
+	'🐸',
+	'🐧',
+	'🦁',
+	'🐯',
+	'🐵',
+	'🐙',
+	'🐢',
+	'🦋',
+	'🚀',
+	'⭐',
 ] as const
 
-const accountRowBackgrounds: Record<(typeof accountColors)[number], string> = {
-	orchid: 'color-mix(in srgb, #9541ff 14%, var(--color-surface))',
-	ocean: 'color-mix(in srgb, #326dff 14%, var(--color-surface))',
-	meadow: 'color-mix(in srgb, #1aa867 14%, var(--color-surface))',
-	flame: 'color-mix(in srgb, #ff6a3c 14%, var(--color-surface))',
-	sun: 'color-mix(in srgb, #f7b500 14%, var(--color-surface))',
-	night: 'color-mix(in srgb, #3f4b66 16%, var(--color-surface))',
+function getRandomDefaultKidEmoji() {
+	return defaultKidEmojis[Math.floor(Math.random() * defaultKidEmojis.length)]!
 }
 
-function getAccountRowBackground(colorToken: string) {
-	return (
-		accountRowBackgrounds[colorToken as (typeof accountColors)[number]] ??
-		accountRowBackgrounds.orchid
+function getAccountTextColors(colorToken: string) {
+	if (colorToken === 'sun') {
+		return {
+			text: colors.text,
+			muted: colors.textMuted,
+		}
+	}
+	return {
+		text: '#ffffff',
+		muted: 'rgba(255, 255, 255, 0.9)',
+	}
+}
+
+function moveItem<T>(items: Array<T>, from: number, to: number) {
+	const nextItems = [...items]
+	nextItems.splice(to, 0, nextItems.splice(from, 1)[0]!)
+	return nextItems
+}
+
+type ReorderDirection = 'up' | 'down'
+
+function TrashIcon(_handle: Handle) {
+	return () => (
+		<svg
+			viewBox="0 0 24 24"
+			width="18"
+			height="18"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"
+		>
+			<path d="M3 6h18" />
+			<path d="M8 6V4h8v2" />
+			<path d="M19 6l-1 14H6L5 6" />
+			<path d="M10 11v6" />
+			<path d="M14 11v6" />
+		</svg>
 	)
 }
 
@@ -80,11 +139,10 @@ type SettingsState =
 export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
 	let isRefreshing = false
+	let isReordering = false
 	let newKidName = ''
-	let newKidEmoji = '🧒'
+	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
-	let draggedKidId: number | null = null
-	let draggedAccount: { kidId: number; accountId: number } | null = null
 
 	async function refreshSettings() {
 		const hadReadyData = state.status === 'ready'
@@ -149,6 +207,55 @@ export function SettingsRoute(handle: Handle) {
 		return newAccountColorsByKidId[kidId] ?? 'orchid'
 	}
 
+	function queueReorderFocus(options: {
+		scope: 'kid' | 'account'
+		kidId: number
+		accountId?: number
+		direction: ReorderDirection
+	}) {
+		if (typeof document === 'undefined' || typeof window === 'undefined') return
+		const accountSelector =
+			options.scope === 'account'
+				? `[data-reorder-account-id="${options.accountId}"]`
+				: ''
+		const selectorForDirection = (direction: ReorderDirection) =>
+			`button[data-reorder-scope="${options.scope}"][data-reorder-kid-id="${options.kidId}"]${accountSelector}[data-reorder-direction="${direction}"]`
+		const focusMatchingButton = () => {
+			const preferredButton = document.querySelector(
+				selectorForDirection(options.direction),
+			)
+			if (
+				preferredButton instanceof HTMLButtonElement &&
+				!preferredButton.disabled
+			) {
+				preferredButton.focus()
+				return true
+			}
+			const fallbackDirection: ReorderDirection =
+				options.direction === 'up' ? 'down' : 'up'
+			const fallbackButton = document.querySelector(
+				selectorForDirection(fallbackDirection),
+			)
+			if (
+				fallbackButton instanceof HTMLButtonElement &&
+				!fallbackButton.disabled
+			) {
+				fallbackButton.focus()
+				return true
+			}
+			return false
+		}
+		let attempts = 0
+		const maxAttempts = 8
+		const tryFocus = () => {
+			if (focusMatchingButton()) return
+			attempts += 1
+			if (attempts >= maxAttempts) return
+			window.requestAnimationFrame(tryFocus)
+		}
+		window.requestAnimationFrame(tryFocus)
+	}
+
 	async function handleCreateKid() {
 		if (state.status !== 'ready') return
 		if (!newKidName.trim()) {
@@ -157,38 +264,67 @@ export function SettingsRoute(handle: Handle) {
 		}
 		await createKid({ name: newKidName, emoji: newKidEmoji })
 		newKidName = ''
+		newKidEmoji = getRandomDefaultKidEmoji()
 		await refreshSettings()
 	}
 
-	async function handleKidReorderDrop(targetKidId: number) {
-		if (state.status !== 'ready' || draggedKidId === null) return
-		if (targetKidId === draggedKidId) return
+	async function handleKidMove(kidId: number, delta: -1 | 1) {
+		if (state.status !== 'ready' || isReordering) return
 		const ids = state.kids.map((kid) => kid.id)
-		const from = ids.indexOf(draggedKidId)
-		const to = ids.indexOf(targetKidId)
-		if (from < 0 || to < 0) return
-		ids.splice(to, 0, ids.splice(from, 1)[0]!)
-		await reorderKids(ids)
-		draggedKidId = null
-		await refreshSettings()
+		const from = ids.indexOf(kidId)
+		if (from < 0) return
+		const to = from + delta
+		if (to < 0 || to >= ids.length) return
+		isReordering = true
+		handle.update()
+		try {
+			await reorderKids(moveItem(ids, from, to))
+			await refreshSettings()
+			queueReorderFocus({
+				scope: 'kid',
+				kidId,
+				direction: delta === -1 ? 'up' : 'down',
+			})
+		} catch (error) {
+			notify(error instanceof Error ? error.message : 'Could not reorder kid.')
+		} finally {
+			isReordering = false
+			handle.update()
+		}
 	}
 
-	async function handleAccountReorderDrop(
+	async function handleAccountMove(
 		kidId: number,
-		targetAccountId: number,
+		accountId: number,
+		delta: -1 | 1,
 	) {
-		if (state.status !== 'ready' || !draggedAccount) return
-		if (draggedAccount.kidId !== kidId) return
+		if (state.status !== 'ready' || isReordering) return
 		const kid = state.kids.find((entry) => entry.id === kidId)
 		if (!kid) return
 		const accountIds = kid.accounts.map((account) => account.id)
-		const from = accountIds.indexOf(draggedAccount.accountId)
-		const to = accountIds.indexOf(targetAccountId)
-		if (from < 0 || to < 0) return
-		accountIds.splice(to, 0, accountIds.splice(from, 1)[0]!)
-		await reorderAccounts(kidId, accountIds)
-		draggedAccount = null
-		await refreshSettings()
+		const from = accountIds.indexOf(accountId)
+		if (from < 0) return
+		const to = from + delta
+		if (to < 0 || to >= accountIds.length) return
+		isReordering = true
+		handle.update()
+		try {
+			await reorderAccounts(kidId, moveItem(accountIds, from, to))
+			await refreshSettings()
+			queueReorderFocus({
+				scope: 'account',
+				kidId,
+				accountId,
+				direction: delta === -1 ? 'up' : 'down',
+			})
+		} catch (error) {
+			notify(
+				error instanceof Error ? error.message : 'Could not reorder account.',
+			)
+		} finally {
+			isReordering = false
+			handle.update()
+		}
 	}
 
 	return () => (
@@ -196,7 +332,7 @@ export function SettingsRoute(handle: Handle) {
 			<header css={{ display: 'grid', gap: spacing.xs }}>
 				<h1 css={{ margin: 0, color: colors.text }}>Household Settings</h1>
 				<p css={{ margin: 0, color: colors.textMuted }}>
-					Manage kids and accounts. Drag rows to reorder.
+					Manage kids and accounts. Use arrow buttons to reorder.
 				</p>
 			</header>
 
@@ -227,10 +363,10 @@ export function SettingsRoute(handle: Handle) {
 						<div
 							css={{
 								display: 'grid',
-								gridTemplateColumns: '5rem 1fr auto',
+								gridTemplateColumns: '4rem 1fr auto',
 								gap: spacing.sm,
 								[mq.mobile]: {
-									gridTemplateColumns: '5rem 1fr',
+									gridTemplateColumns: '4rem 1fr',
 									'& > button': {
 										gridColumn: '1 / -1',
 									},
@@ -249,7 +385,12 @@ export function SettingsRoute(handle: Handle) {
 								}}
 								maxLength={2}
 								aria-label="Kid emoji"
-								css={inputCss}
+								css={{
+									...inputCss,
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.bold,
+									textAlign: 'center',
+								}}
 							/>
 							<input
 								value={newKidName}
@@ -262,7 +403,11 @@ export function SettingsRoute(handle: Handle) {
 									},
 								}}
 								placeholder="Kid name"
-								css={inputCss}
+								css={{
+									...inputCss,
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.bold,
+								}}
 							/>
 							<button
 								type="button"
@@ -275,19 +420,9 @@ export function SettingsRoute(handle: Handle) {
 					</section>
 
 					<section css={{ display: 'grid', gap: spacing.md }}>
-						{state.kids.map((kid) => (
+						{state.kids.map((kid, kidIndex) => (
 							<article
 								key={kid.id}
-								draggable
-								on={{
-									dragstart: () => {
-										draggedKidId = kid.id
-									},
-									dragover: (event) => event.preventDefault(),
-									drop: () => {
-										void handleKidReorderDrop(kid.id)
-									},
-								}}
 								css={{
 									display: 'grid',
 									gap: spacing.sm,
@@ -305,27 +440,41 @@ export function SettingsRoute(handle: Handle) {
 										gap: spacing.sm,
 										alignItems: 'center',
 										[mq.mobile]: {
-											gridTemplateColumns: 'auto 4rem 1fr',
-											'& > button': {
-												gridColumn: '1 / -1',
-											},
+											gridTemplateColumns: 'auto 4rem 1fr auto',
 										},
 									}}
 								>
-									<div
-										css={{
-											cursor: 'grab',
-											color: colors.textMuted,
-											padding: spacing.xs,
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											fontSize: typography.fontSize.lg,
-											'&:active': { cursor: 'grabbing' },
-										}}
-										title="Drag to reorder"
-									>
-										⋮⋮
+									<div css={reorderControlsCss}>
+										<button
+											type="button"
+											data-reorder-scope="kid"
+											data-reorder-kid-id={kid.id}
+											data-reorder-direction="up"
+											aria-label={`Move ${kid.name} up`}
+											disabled={kidIndex === 0 || isReordering}
+											on={{
+												click: () => void handleKidMove(kid.id, -1),
+											}}
+											css={reorderButtonCss}
+										>
+											↑
+										</button>
+										<button
+											type="button"
+											data-reorder-scope="kid"
+											data-reorder-kid-id={kid.id}
+											data-reorder-direction="down"
+											aria-label={`Move ${kid.name} down`}
+											disabled={
+												kidIndex === state.kids.length - 1 || isReordering
+											}
+											on={{
+												click: () => void handleKidMove(kid.id, 1),
+											}}
+											css={reorderButtonCss}
+										>
+											↓
+										</button>
 									</div>
 									<input
 										defaultValue={kid.emoji}
@@ -339,9 +488,13 @@ export function SettingsRoute(handle: Handle) {
 												const nameInput = document.querySelector(
 													`input[data-kid-name="${kid.id}"]`,
 												) as HTMLInputElement
+												const name = nameInput?.value || kid.name
+												if (name === kid.name && emoji === kid.emoji) {
+													return
+												}
 												await updateKid({
 													kidId: kid.id,
-													name: nameInput?.value || kid.name,
+													name,
 													emoji,
 												})
 												await refreshSettings()
@@ -366,10 +519,14 @@ export function SettingsRoute(handle: Handle) {
 												const emojiInput = document.querySelector(
 													`input[data-kid-emoji="${kid.id}"]`,
 												) as HTMLInputElement
+												const emoji = emojiInput?.value || kid.emoji
+												if (name === kid.name && emoji === kid.emoji) {
+													return
+												}
 												await updateKid({
 													kidId: kid.id,
 													name,
-													emoji: emojiInput?.value || kid.emoji,
+													emoji,
 												})
 												await refreshSettings()
 											},
@@ -382,15 +539,16 @@ export function SettingsRoute(handle: Handle) {
 									/>
 									<button
 										type="button"
+										aria-label={`Archive ${kid.name}`}
 										on={{
 											click: async () => {
 												await archiveKid(kid.id)
 												await refreshSettings()
 											},
 										}}
-										css={dangerButtonCss}
+										css={archiveIconButtonCss}
 									>
-										Archive
+										<TrashIcon />
 									</button>
 								</header>
 								<p css={{ margin: 0, color: colors.textMuted }}>
@@ -409,73 +567,144 @@ export function SettingsRoute(handle: Handle) {
 										overflow: 'hidden',
 									}}
 								>
-									{kid.accounts.map((account, index) => (
-										<div
-											key={account.id}
-											draggable
-											on={{
-												dragstart: () => {
-													draggedAccount = {
-														kidId: kid.id,
-														accountId: account.id,
-													}
-												},
-												dragover: (event) => event.preventDefault(),
-												drop: () => {
-													void handleAccountReorderDrop(kid.id, account.id)
-												},
-											}}
-											css={{
-												display: 'grid',
-												gridTemplateColumns: 'auto 1fr auto auto',
-												gap: spacing.xs,
-												alignItems: 'center',
-												padding: spacing.md,
-												backgroundColor: getAccountRowBackground(
-													account.colorToken,
-												),
-												borderBottom:
-													index < kid.accounts.length - 1
-														? `1px solid ${colors.border}`
-														: 'none',
-												[mq.mobile]: {
-													gridTemplateColumns: 'auto 1fr',
-													'& > select, & > button': {
-														gridColumn: '1 / -1',
-													},
-												},
-											}}
-										>
+									{kid.accounts.map((account, index) => {
+										const textColors = getAccountTextColors(account.colorToken)
+										return (
 											<div
+												key={account.id}
 												css={{
-													cursor: 'grab',
-													color: colors.textMuted,
-													padding: spacing.xs,
-													display: 'flex',
+													display: 'grid',
+													gridTemplateColumns: 'auto 1fr auto auto',
+													rowGap: spacing.xs,
+													columnGap: spacing.sm,
 													alignItems: 'center',
-													justifyContent: 'center',
-													fontSize: typography.fontSize.lg,
-													'&:active': { cursor: 'grabbing' },
+													padding: spacing.md,
+													background: getAccountGradientBackground(
+														account.colorToken,
+													),
+													borderBottom:
+														index < kid.accounts.length - 1
+															? `1px solid ${colors.border}`
+															: 'none',
+													[mq.mobile]: {
+														gridTemplateColumns: 'auto 1fr auto auto',
+													},
 												}}
-												title="Drag to reorder"
 											>
-												⋮⋮
-											</div>
-											<div css={{ display: 'grid', gap: 2 }}>
-												<input
-													defaultValue={account.name}
-													aria-label={`${account.name} name`}
-													data-account-name={account.id}
+												<div css={reorderControlsCss}>
+													<button
+														type="button"
+														data-reorder-scope="account"
+														data-reorder-kid-id={kid.id}
+														data-reorder-account-id={account.id}
+														data-reorder-direction="up"
+														aria-label={`Move ${account.name} up`}
+														disabled={index === 0 || isReordering}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, -1),
+														}}
+														css={reorderButtonCss}
+													>
+														↑
+													</button>
+													<button
+														type="button"
+														data-reorder-scope="account"
+														data-reorder-kid-id={kid.id}
+														data-reorder-account-id={account.id}
+														data-reorder-direction="down"
+														aria-label={`Move ${account.name} down`}
+														disabled={
+															index === kid.accounts.length - 1 || isReordering
+														}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, 1),
+														}}
+														css={reorderButtonCss}
+													>
+														↓
+													</button>
+												</div>
+												<div
+													css={{
+														display: 'grid',
+														gap: 2,
+														[mq.mobile]: {
+															gridColumn: '2 / -1',
+															gridRow: '1',
+														},
+													}}
+												>
+													<input
+														defaultValue={account.name}
+														aria-label={`${account.name} name`}
+														data-account-name={account.id}
+														on={{
+															blur: async (e) => {
+																const name =
+																	(e.currentTarget as HTMLInputElement).value ||
+																	account.name
+																const colorSelect = document.querySelector(
+																	`select[data-account-color="${account.id}"]`,
+																) as HTMLSelectElement
+																const colorToken =
+																	colorSelect?.value || account.colorToken
+																if (
+																	name === account.name &&
+																	colorToken === account.colorToken
+																) {
+																	return
+																}
+																updateLocalAccount(account.id, {
+																	name,
+																	colorToken,
+																})
+																await updateAccount({
+																	accountId: account.id,
+																	name,
+																	colorToken,
+																})
+																await refreshSettings()
+															},
+														}}
+														css={{
+															...inputCss,
+															backgroundColor: 'transparent',
+															border: '2px solid transparent',
+															boxShadow: 'none',
+															fontWeight: 'bold',
+															color: textColors.text,
+															padding: spacing.xs,
+															'&:focus': {
+																...inputCss['&:focus'],
+																backgroundColor: colors.surface,
+																color: colors.text,
+															},
+														}}
+													/>
+													<span
+														css={{
+															color: textColors.muted,
+															fontSize: typography.fontSize.sm,
+														}}
+													>
+														{formatCents(account.balanceCents)}
+													</span>
+												</div>
+												<select
+													aria-label={`${account.name} color`}
+													data-account-color={account.id}
 													on={{
-														blur: async (e) => {
-															const name =
-																(e.currentTarget as HTMLInputElement).value ||
-																account.name
-															const colorSelect = document.querySelector(
-																`select[data-account-color="${account.id}"]`,
-															) as HTMLSelectElement
-															const colorToken =
-																colorSelect?.value || account.colorToken
+														change: async (e) => {
+															const colorToken = (
+																e.currentTarget as HTMLSelectElement
+															).value
+															const nameInput = document.querySelector(
+																`input[data-account-name="${account.id}"]`,
+															) as HTMLInputElement
+															const name = nameInput?.value || account.name
 															updateLocalAccount(account.id, {
 																name,
 																colorToken,
@@ -490,73 +719,47 @@ export function SettingsRoute(handle: Handle) {
 													}}
 													css={{
 														...inputCss,
-														backgroundColor: 'transparent',
-														border: '2px solid transparent',
-														boxShadow: 'none',
-														fontWeight: 'bold',
-														padding: spacing.xs,
-														'&:focus': {
-															...inputCss['&:focus'],
-															backgroundColor: colors.surface,
+														backgroundColor: '#ffffff',
+														color: colors.text,
+														[mq.mobile]: {
+															gridColumn: '2 / 4',
+															gridRow: '2',
 														},
 													}}
-												/>
-												<span
+												>
+													{accountColorTokens.map((color) => (
+														<option
+															key={color}
+															value={color}
+															selected={account.colorToken === color}
+														>
+															{color}
+														</option>
+													))}
+												</select>
+												<button
+													type="button"
+													aria-label={`Archive ${account.name}`}
+													on={{
+														click: async () => {
+															await archiveAccount(account.id)
+															await refreshSettings()
+														},
+													}}
 													css={{
-														color: colors.textMuted,
-														fontSize: typography.fontSize.sm,
+														...archiveIconButtonCss,
+														[mq.mobile]: {
+															gridColumn: '4',
+															gridRow: '2',
+															justifySelf: 'end',
+														},
 													}}
 												>
-													{formatCents(account.balanceCents)}
-												</span>
+													<TrashIcon />
+												</button>
 											</div>
-											<select
-												value={account.colorToken}
-												aria-label={`${account.name} color`}
-												data-account-color={account.id}
-												on={{
-													change: async (e) => {
-														const colorToken = (
-															e.currentTarget as HTMLSelectElement
-														).value
-														const nameInput = document.querySelector(
-															`input[data-account-name="${account.id}"]`,
-														) as HTMLInputElement
-														const name = nameInput?.value || account.name
-														updateLocalAccount(account.id, { name, colorToken })
-														await updateAccount({
-															accountId: account.id,
-															name,
-															colorToken,
-														})
-														await refreshSettings()
-													},
-												}}
-												css={{
-													...inputCss,
-													backgroundColor: colors.surface,
-												}}
-											>
-												{accountColors.map((color) => (
-													<option key={color} value={color}>
-														{color}
-													</option>
-												))}
-											</select>
-											<button
-												type="button"
-												on={{
-													click: async () => {
-														await archiveAccount(account.id)
-														await refreshSettings()
-													},
-												}}
-												css={dangerButtonCss}
-											>
-												Archive
-											</button>
-										</div>
-									))}
+										)
+									})}
 								</div>
 								<div
 									css={{
@@ -566,7 +769,7 @@ export function SettingsRoute(handle: Handle) {
 										padding: spacing.md,
 										border: `2px dashed ${colors.border}`,
 										borderRadius: radius.lg,
-										backgroundColor: getAccountRowBackground(
+										background: getAccountGradientBackground(
 											getCreateAccountColor(kid.id),
 										),
 										[mq.mobile]: {
@@ -593,7 +796,7 @@ export function SettingsRoute(handle: Handle) {
 										}}
 										css={inputCss}
 									>
-										{accountColors.map((color) => (
+										{accountColorTokens.map((color) => (
 											<option key={color} value={color}>
 												{color}
 											</option>
@@ -927,6 +1130,17 @@ const dangerButtonCss = {
 	},
 }
 
+const archiveIconButtonCss = {
+	...dangerButtonCss,
+	minHeight: 40,
+	minWidth: 40,
+	padding: 0,
+	lineHeight: 1,
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+}
+
 const archivedRowCss = {
 	display: 'flex',
 	justifyContent: 'space-between',
@@ -949,4 +1163,41 @@ const archivedRowActionsCss = {
 	gap: spacing.xs,
 	flexWrap: 'wrap',
 	justifyContent: 'flex-end',
+}
+
+const reorderControlsCss = {
+	display: 'inline-flex',
+	flexDirection: 'column',
+	gap: 0,
+	alignItems: 'stretch',
+	'& > button': {
+		borderRadius: 0,
+	},
+	'& > button:first-of-type': {
+		borderTopLeftRadius: radius.md,
+		borderTopRightRadius: radius.md,
+	},
+	'& > button:last-of-type': {
+		borderBottomLeftRadius: radius.md,
+		borderBottomRightRadius: radius.md,
+	},
+}
+
+const reorderButtonCss = {
+	...buttonCss,
+	minHeight: 40,
+	minWidth: 40,
+	padding: 0,
+	lineHeight: 1,
+	boxShadow: 'none',
+	'&:active': {
+		transform: 'none',
+		boxShadow: 'none',
+	},
+	'&:disabled': {
+		cursor: 'not-allowed',
+		opacity: 0.55,
+		transform: 'none',
+		boxShadow: 'none',
+	},
 }
