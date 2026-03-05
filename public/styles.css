@@ -99,6 +99,12 @@
 		--spacing-section: var(--spacing-md);
 		--spacing-header: var(--spacing-md);
 	}
+
+	input,
+	select,
+	textarea {
+		font-size: max(16px, 1em);
+	}
 }
 
 :root[data-theme='dark'] {
