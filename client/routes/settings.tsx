@@ -52,6 +52,12 @@ function getAccountRowBackground(colorToken: string) {
 	)
 }
 
+function moveItem<T>(items: Array<T>, from: number, to: number) {
+	const nextItems = [...items]
+	nextItems.splice(to, 0, nextItems.splice(from, 1)[0]!)
+	return nextItems
+}
+
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
 	| {
@@ -167,9 +173,19 @@ export function SettingsRoute(handle: Handle) {
 		const from = ids.indexOf(draggedKidId)
 		const to = ids.indexOf(targetKidId)
 		if (from < 0 || to < 0) return
-		ids.splice(to, 0, ids.splice(from, 1)[0]!)
-		await reorderKids(ids)
+		await reorderKids(moveItem(ids, from, to))
 		draggedKidId = null
+		await refreshSettings()
+	}
+
+	async function handleKidMove(kidId: number, delta: -1 | 1) {
+		if (state.status !== 'ready') return
+		const ids = state.kids.map((kid) => kid.id)
+		const from = ids.indexOf(kidId)
+		if (from < 0) return
+		const to = from + delta
+		if (to < 0 || to >= ids.length) return
+		await reorderKids(moveItem(ids, from, to))
 		await refreshSettings()
 	}
 
@@ -185,9 +201,25 @@ export function SettingsRoute(handle: Handle) {
 		const from = accountIds.indexOf(draggedAccount.accountId)
 		const to = accountIds.indexOf(targetAccountId)
 		if (from < 0 || to < 0) return
-		accountIds.splice(to, 0, accountIds.splice(from, 1)[0]!)
-		await reorderAccounts(kidId, accountIds)
+		await reorderAccounts(kidId, moveItem(accountIds, from, to))
 		draggedAccount = null
+		await refreshSettings()
+	}
+
+	async function handleAccountMove(
+		kidId: number,
+		accountId: number,
+		delta: -1 | 1,
+	) {
+		if (state.status !== 'ready') return
+		const kid = state.kids.find((entry) => entry.id === kidId)
+		if (!kid) return
+		const accountIds = kid.accounts.map((account) => account.id)
+		const from = accountIds.indexOf(accountId)
+		if (from < 0) return
+		const to = from + delta
+		if (to < 0 || to >= accountIds.length) return
+		await reorderAccounts(kidId, moveItem(accountIds, from, to))
 		await refreshSettings()
 	}
 
@@ -196,7 +228,7 @@ export function SettingsRoute(handle: Handle) {
 			<header css={{ display: 'grid', gap: spacing.xs }}>
 				<h1 css={{ margin: 0, color: colors.text }}>Household Settings</h1>
 				<p css={{ margin: 0, color: colors.textMuted }}>
-					Manage kids and accounts. Drag rows to reorder.
+					Manage kids and accounts. Drag on desktop or use arrows on mobile.
 				</p>
 			</header>
 
@@ -275,7 +307,7 @@ export function SettingsRoute(handle: Handle) {
 					</section>
 
 					<section css={{ display: 'grid', gap: spacing.md }}>
-						{state.kids.map((kid) => (
+						{state.kids.map((kid, kidIndex) => (
 							<article
 								key={kid.id}
 								draggable
@@ -301,11 +333,11 @@ export function SettingsRoute(handle: Handle) {
 								<header
 									css={{
 										display: 'grid',
-										gridTemplateColumns: 'auto 4rem 1fr auto',
+										gridTemplateColumns: 'auto auto 4rem 1fr auto',
 										gap: spacing.sm,
 										alignItems: 'center',
 										[mq.mobile]: {
-											gridTemplateColumns: 'auto 4rem 1fr',
+											gridTemplateColumns: '4rem 1fr',
 											'& > button': {
 												gridColumn: '1 / -1',
 											},
@@ -322,10 +354,35 @@ export function SettingsRoute(handle: Handle) {
 											justifyContent: 'center',
 											fontSize: typography.fontSize.lg,
 											'&:active': { cursor: 'grabbing' },
+											[mq.mobile]: { display: 'none' },
 										}}
-										title="Drag to reorder"
+										title="Drag to reorder on desktop"
 									>
 										⋮⋮
+									</div>
+									<div css={reorderControlsCss}>
+										<button
+											type="button"
+											aria-label={`Move ${kid.name} up`}
+											disabled={kidIndex === 0}
+											on={{
+												click: () => void handleKidMove(kid.id, -1),
+											}}
+											css={reorderButtonCss}
+										>
+											↑
+										</button>
+										<button
+											type="button"
+											aria-label={`Move ${kid.name} down`}
+											disabled={kidIndex === state.kids.length - 1}
+											on={{
+												click: () => void handleKidMove(kid.id, 1),
+											}}
+											css={reorderButtonCss}
+										>
+											↓
+										</button>
 									</div>
 									<input
 										defaultValue={kid.emoji}
@@ -427,7 +484,7 @@ export function SettingsRoute(handle: Handle) {
 											}}
 											css={{
 												display: 'grid',
-												gridTemplateColumns: 'auto 1fr auto auto',
+												gridTemplateColumns: 'auto auto 1fr auto auto',
 												gap: spacing.xs,
 												alignItems: 'center',
 												padding: spacing.md,
@@ -456,10 +513,37 @@ export function SettingsRoute(handle: Handle) {
 													justifyContent: 'center',
 													fontSize: typography.fontSize.lg,
 													'&:active': { cursor: 'grabbing' },
+													[mq.mobile]: { display: 'none' },
 												}}
-												title="Drag to reorder"
+												title="Drag to reorder on desktop"
 											>
 												⋮⋮
+											</div>
+											<div css={reorderControlsCss}>
+												<button
+													type="button"
+													aria-label={`Move ${account.name} up`}
+													disabled={index === 0}
+													on={{
+														click: () =>
+															void handleAccountMove(kid.id, account.id, -1),
+													}}
+													css={reorderButtonCss}
+												>
+													↑
+												</button>
+												<button
+													type="button"
+													aria-label={`Move ${account.name} down`}
+													disabled={index === kid.accounts.length - 1}
+													on={{
+														click: () =>
+															void handleAccountMove(kid.id, account.id, 1),
+													}}
+													css={reorderButtonCss}
+												>
+													↓
+												</button>
 											</div>
 											<div css={{ display: 'grid', gap: 2 }}>
 												<input
@@ -949,4 +1033,32 @@ const archivedRowActionsCss = {
 	gap: spacing.xs,
 	flexWrap: 'wrap',
 	justifyContent: 'flex-end',
+}
+
+const reorderControlsCss = {
+	display: 'inline-flex',
+	gap: spacing.xs,
+	alignItems: 'center',
+	[mq.mobile]: {
+		gridColumn: '1 / -1',
+	},
+}
+
+const reorderButtonCss = {
+	...buttonCss,
+	minHeight: 40,
+	minWidth: 40,
+	padding: 0,
+	lineHeight: 1,
+	boxShadow: `0 2px 0 0 ${colors.primaryActive}`,
+	'&:active': {
+		transform: 'translateY(2px)',
+		boxShadow: `0 0 0 0 ${colors.primaryActive}`,
+	},
+	'&:disabled': {
+		cursor: 'not-allowed',
+		opacity: 0.55,
+		transform: 'none',
+		boxShadow: `0 2px 0 0 ${colors.border}`,
+	},
 }
