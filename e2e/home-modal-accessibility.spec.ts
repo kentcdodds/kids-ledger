@@ -32,6 +32,7 @@ test('transaction modal is keyboard accessible and passes axe', async ({
 	const closeButton = modal.getByRole('button', { name: 'Close' })
 	await expect(modal).toBeVisible()
 	await expect(closeButton).toBeFocused()
+	await page.waitForTimeout(500) // Wait for modal animation to finish
 
 	const accessibilityScanResults = await new AxeBuilder({ page })
 		.include('[role="dialog"]')

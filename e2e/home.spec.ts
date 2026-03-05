@@ -4,7 +4,7 @@ test('home page renders the shell', async ({ page }) => {
 	await page.goto('/')
 	await expect(page).toHaveTitle('Kids Ledger')
 	await expect(page.getByAltText('kids-ledger logo')).toBeVisible()
-	await expect(page.getByText('Family Total:')).toBeVisible()
+	await expect(page.getByText('A money tracker for kids')).toBeVisible()
 })
 
 test('login link navigates without full page reload', async ({ page }) => {
