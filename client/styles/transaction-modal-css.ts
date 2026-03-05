@@ -1,5 +1,62 @@
 function isLikelyCssStylesheet(cssText: string) {
-	return cssText.includes('{') || cssText.includes('@')
+	let inSingleQuote = false
+	let inDoubleQuote = false
+	let inComment = false
+
+	for (let index = 0; index < cssText.length; index += 1) {
+		const char = cssText[index]
+		const next = cssText[index + 1]
+
+		if (inComment) {
+			if (char === '*' && next === '/') {
+				inComment = false
+				index += 1
+			}
+			continue
+		}
+
+		if (inSingleQuote) {
+			if (char === '\\') {
+				index += 1
+				continue
+			}
+			if (char === "'") {
+				inSingleQuote = false
+			}
+			continue
+		}
+
+		if (inDoubleQuote) {
+			if (char === '\\') {
+				index += 1
+				continue
+			}
+			if (char === '"') {
+				inDoubleQuote = false
+			}
+			continue
+		}
+
+		if (char === '/' && next === '*') {
+			inComment = true
+			index += 1
+			continue
+		}
+
+		if (char === "'") {
+			inSingleQuote = true
+			continue
+		}
+
+		if (char === '"') {
+			inDoubleQuote = true
+			continue
+		}
+
+		if (char === '{' || char === '@') return true
+	}
+
+	return false
 }
 
 export function buildTransactionModalCss(transactionModalCss: string) {
