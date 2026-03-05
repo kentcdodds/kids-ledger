@@ -116,17 +116,31 @@ export class LedgerService {
 		}
 	}
 
-	async createKid(input: { name: string; emoji: string }) {
+	async createKid(input: {
+		name: string
+		emoji: string
+		transactionModalCss?: string
+	}) {
 		const household = await this.#ensureHousehold()
 		const nextSortOrder = await this.#nextSortOrder(
 			'kids',
 			'household_id',
 			household.id,
 		)
+		const transactionModalCss =
+			typeof input.transactionModalCss === 'string'
+				? input.transactionModalCss
+				: ''
 		const inserted = await this.#run(
-			`INSERT INTO kids (household_id, name, emoji, sort_order)
-			 VALUES (?, ?, ?, ?)`,
-			[household.id, input.name.trim(), input.emoji.trim(), nextSortOrder],
+			`INSERT INTO kids (household_id, name, emoji, transaction_modal_css, sort_order)
+			 VALUES (?, ?, ?, ?, ?)`,
+			[
+				household.id,
+				input.name.trim(),
+				input.emoji.trim(),
+				transactionModalCss,
+				nextSortOrder,
+			],
 		)
 		const kidId = inserted.meta?.last_row_id
 		invariant(typeof kidId === 'number', 'Could not create kid.')

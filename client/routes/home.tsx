@@ -53,6 +53,15 @@ export function HomeRoute(handle: Handle) {
 	let transactionModalClosing = false
 	let closeModalTimeoutId: number | null = null
 
+	function removeTransactionModalStyles() {
+		if (typeof document === 'undefined') return
+		for (const element of document.querySelectorAll(
+			'style[data-kid-transaction-modal-css]',
+		)) {
+			element.remove()
+		}
+	}
+
 	function clearCloseModalTimeout() {
 		if (closeModalTimeoutId === null) return
 		window.clearTimeout(closeModalTimeoutId)
@@ -65,6 +74,7 @@ export function HomeRoute(handle: Handle) {
 		opener: HTMLButtonElement,
 	) {
 		clearCloseModalTimeout()
+		removeTransactionModalStyles()
 		transactionModalOpener = opener
 		transactionModalClosing = false
 		transactionState = {
@@ -95,6 +105,7 @@ export function HomeRoute(handle: Handle) {
 			transactionState = null
 			transactionModalClosing = false
 			closeModalTimeoutId = null
+			removeTransactionModalStyles()
 			handle.update()
 			if (opener?.isConnected) {
 				handle.queueTask(() => {
@@ -164,6 +175,12 @@ export function HomeRoute(handle: Handle) {
 
 	handle.queueTask(async () => {
 		await refreshDashboard()
+	})
+	handle.queueTask(() => {
+		return () => {
+			clearCloseModalTimeout()
+			removeTransactionModalStyles()
+		}
 	})
 
 	function setTransactionAmountFromQuick(cents: number) {
@@ -369,8 +386,7 @@ export function HomeRoute(handle: Handle) {
 							: 'modal-backdrop-in 180ms ease-out forwards',
 					}}
 				>
-					{!transactionModalClosing &&
-					transactionState.kid.transactionModalCss.trim() ? (
+					{transactionState.kid.transactionModalCss.trim() ? (
 						<style data-kid-transaction-modal-css>
 							{buildTransactionModalCss(
 								transactionState.kid.transactionModalCss,

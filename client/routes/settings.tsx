@@ -112,6 +112,25 @@ function TrashIcon(_handle: Handle) {
 	)
 }
 
+function PaintbrushIcon(_handle: Handle) {
+	return () => (
+		<svg
+			viewBox="0 0 24 24"
+			width="18"
+			height="18"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"
+		>
+			<circle cx="12" cy="12" r="3" />
+			<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+		</svg>
+	)
+}
+
 const transactionModalCssVariables = [
 	'--color-primary',
 	'--color-primary-hover',
@@ -134,6 +153,7 @@ const transactionModalCssGoogleFontExample = `@import url("https://fonts.googlea
 :root {
 	--font-family: "MedievalSharp", cursive;
 }`
+const modalCloseAnimationDurationMs = 220
 
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
@@ -172,6 +192,23 @@ export function SettingsRoute(handle: Handle) {
 	let transactionModalCssDraft = ''
 	let transactionModalCssSaveError: string | null = null
 	let transactionModalCssSaving = false
+	let transactionModalCssClosing = false
+	let closeTransactionModalCssTimeoutId: number | null = null
+
+	function removeTransactionModalPreviewStyles() {
+		if (typeof document === 'undefined') return
+		for (const element of document.querySelectorAll(
+			'style[data-kid-transaction-modal-preview-css]',
+		)) {
+			element.remove()
+		}
+	}
+
+	function clearCloseTransactionModalCssTimeout() {
+		if (closeTransactionModalCssTimeoutId === null) return
+		window.clearTimeout(closeTransactionModalCssTimeoutId)
+		closeTransactionModalCssTimeoutId = null
+	}
 
 	async function refreshSettings() {
 		const hadReadyData = state.status === 'ready'
@@ -208,6 +245,12 @@ export function SettingsRoute(handle: Handle) {
 
 	handle.queueTask(async () => {
 		await refreshSettings()
+	})
+	handle.queueTask(() => {
+		return () => {
+			clearCloseTransactionModalCssTimeout()
+			removeTransactionModalPreviewStyles()
+		}
 	})
 
 	function notify(message: string) {
@@ -286,19 +329,42 @@ export function SettingsRoute(handle: Handle) {
 	}
 
 	function openTransactionModalCssEditor(kid: KidSummary) {
+		clearCloseTransactionModalCssTimeout()
+		removeTransactionModalPreviewStyles()
 		editingKidTransactionModalCss = { kidId: kid.id, kidName: kid.name }
 		transactionModalCssDraft = kid.transactionModalCss
 		transactionModalCssSaveError = null
 		transactionModalCssSaving = false
+		transactionModalCssClosing = false
 		handle.update()
+		handle.queueTask(() => {
+			const cssInput = document.getElementById(
+				'kid-transaction-modal-css-input',
+			)
+			if (cssInput instanceof HTMLTextAreaElement) {
+				cssInput.focus()
+			}
+		})
 	}
 
 	function closeTransactionModalCssEditor() {
-		if (transactionModalCssSaving) return
-		editingKidTransactionModalCss = null
-		transactionModalCssDraft = ''
-		transactionModalCssSaveError = null
+		if (
+			transactionModalCssSaving ||
+			!editingKidTransactionModalCss ||
+			transactionModalCssClosing
+		)
+			return
+		transactionModalCssClosing = true
 		handle.update()
+		closeTransactionModalCssTimeoutId = window.setTimeout(() => {
+			editingKidTransactionModalCss = null
+			transactionModalCssDraft = ''
+			transactionModalCssSaveError = null
+			transactionModalCssClosing = false
+			closeTransactionModalCssTimeoutId = null
+			removeTransactionModalPreviewStyles()
+			handle.update()
+		}, modalCloseAnimationDurationMs)
 	}
 
 	async function saveTransactionModalCss() {
@@ -317,8 +383,11 @@ export function SettingsRoute(handle: Handle) {
 				emoji: kid.emoji,
 				transactionModalCss: transactionModalCssDraft,
 			})
+			clearCloseTransactionModalCssTimeout()
 			editingKidTransactionModalCss = null
 			transactionModalCssDraft = ''
+			transactionModalCssClosing = false
+			removeTransactionModalPreviewStyles()
 			await refreshSettings()
 			if (state.status === 'ready') {
 				notify(`Saved transaction modal CSS for ${kid.name}.`)
@@ -628,14 +697,16 @@ export function SettingsRoute(handle: Handle) {
 									>
 										<button
 											type="button"
+											aria-label={`Customize ${kid.name}'s transaction modal`}
+											title="Customize transaction modal"
 											on={{
 												click: () => {
 													openTransactionModalCssEditor(kid)
 												},
 											}}
-											css={buttonCss}
+											css={transactionModalIconButtonCss}
 										>
-											Customize transaction modal
+											<PaintbrushIcon />
 										</button>
 										<button
 											type="button"
@@ -1219,6 +1290,14 @@ export function SettingsRoute(handle: Handle) {
 								placeItems: 'center',
 								padding: spacing.md,
 								zIndex: 1000,
+								pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
+								animation: transactionModalCssClosing
+									? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+									: 'modal-backdrop-in 180ms ease-out forwards',
+								[mq.mobile]: {
+									padding: 0,
+									placeItems: 'stretch',
+								},
 							}}
 						>
 							<section
@@ -1244,6 +1323,18 @@ export function SettingsRoute(handle: Handle) {
 									border: `3px solid ${colors.border}`,
 									backgroundColor: colors.surface,
 									boxShadow: shadows.lg,
+									animation: transactionModalCssClosing
+										? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+										: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+									[mq.mobile]: {
+										width: '100%',
+										maxHeight: '100dvh',
+										minHeight: '100dvh',
+										borderRadius: 0,
+										border: 'none',
+										gap: spacing.sm,
+										padding: spacing.md,
+									},
 								}}
 							>
 								<header
@@ -1278,7 +1369,7 @@ export function SettingsRoute(handle: Handle) {
 										Updates in real time as you type.
 									</p>
 									{transactionModalCssDraft.trim() ? (
-										<style>
+										<style data-kid-transaction-modal-preview-css>
 											{buildTransactionModalCss(transactionModalCssDraft)}
 										</style>
 									) : null}
@@ -1337,6 +1428,7 @@ export function SettingsRoute(handle: Handle) {
 										Custom CSS declarations
 									</span>
 									<textarea
+										id="kid-transaction-modal-css-input"
 										value={transactionModalCssDraft}
 										on={{
 											input: (event) => {
@@ -1484,6 +1576,17 @@ const dangerButtonCss = {
 
 const archiveIconButtonCss = {
 	...dangerButtonCss,
+	minHeight: 40,
+	minWidth: 40,
+	padding: 0,
+	lineHeight: 1,
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+}
+
+const transactionModalIconButtonCss = {
+	...buttonCss,
 	minHeight: 40,
 	minWidth: 40,
 	padding: 0,

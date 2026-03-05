@@ -662,3 +662,58 @@ test(
 	},
 	{ timeout: defaultTimeoutMs },
 )
+
+test(
+	'mcp server supports transaction modal css on kid create and update',
+	async () => {
+		await using database = await createTestDatabase()
+		await using server = await startDevServer(database.persistDir)
+		await using mcpClient = await createMcpClient(server.origin, database.user)
+
+		const createdResult = await mcpClient.client.callTool({
+			name: 'ledger_create_kid',
+			arguments: {
+				name: 'Luna',
+				emoji: '🧙',
+				transactionModalCss: '--color-primary: #7c3aed;',
+			},
+		})
+		const createdStructured = (createdResult as CallToolResult).structuredContent as
+			| { id?: unknown }
+			| undefined
+		const kidId = Number(createdStructured?.id)
+		expect(Number.isInteger(kidId)).toBe(true)
+
+		const updatedCss = '--color-primary: #1d4ed8;'
+		await mcpClient.client.callTool({
+			name: 'ledger_update_kid',
+			arguments: {
+				kidId,
+				name: 'Luna Lovegood',
+				emoji: '🧙',
+				transactionModalCss: updatedCss,
+			},
+		})
+
+		const dashboardResult = await mcpClient.client.callTool({
+			name: 'ledger_get_dashboard',
+			arguments: {},
+		})
+		const dashboardStructured = (dashboardResult as CallToolResult)
+			.structuredContent as
+			| {
+					kids?: Array<{
+						id?: number
+						name?: string
+						transactionModalCss?: string
+					}>
+			  }
+			| undefined
+		const createdKid = dashboardStructured?.kids?.find(
+			(kid) => Number(kid.id) === kidId,
+		)
+		expect(createdKid?.name).toBe('Luna Lovegood')
+		expect(createdKid?.transactionModalCss).toBe(updatedCss)
+	},
+	{ timeout: defaultTimeoutMs },
+)
