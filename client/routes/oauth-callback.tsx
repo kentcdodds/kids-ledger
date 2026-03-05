@@ -71,3 +71,14 @@ export function OAuthCallbackRoute(_handle: Handle) {
 		)
 	}
 }
+
+export const Component = OAuthCallbackRoute
+
+export function getMetadata({ url }: { url: URL; params: Record<string, string> }) {
+	return {
+		title:
+			url.searchParams.get('error') || url.searchParams.get('error_description')
+				? 'Authorization Failed'
+				: 'Authorization Complete',
+	}
+}

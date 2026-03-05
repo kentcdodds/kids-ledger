@@ -444,6 +444,12 @@ export function HomeRoute(handle: Handle) {
 	)
 }
 
+export const Component = HomeRoute
+
+export function getMetadata() {
+	return { title: null }
+}
+
 function modalButtonCss(
 	background: string,
 	color: string,

@@ -314,3 +314,9 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		)
 	}
 }
+
+export const Component = LoginRoute
+
+export function getMetadata() {
+	return { title: 'Sign In' }
+}

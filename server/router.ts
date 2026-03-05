@@ -10,12 +10,14 @@ import {
 	createAccountCreateHandler,
 	createAccountDeleteHandler,
 	createAccountReorderHandler,
+	createAccountUnarchiveHandler,
 	createAccountUpdateHandler,
 	createExportJsonHandler,
 	createKidArchiveHandler,
 	createKidCreateHandler,
 	createKidDeleteHandler,
 	createKidReorderHandler,
+	createKidUnarchiveHandler,
 	createKidUpdateHandler,
 	createLedgerDashboardHandler,
 	createLedgerHistoryHandler,
@@ -26,10 +28,13 @@ import {
 import { home } from './handlers/home.ts'
 import { login } from './handlers/login.ts'
 import { logout } from './handlers/logout.ts'
+import { oauthAuthorizePage } from './handlers/oauth-authorize-page.ts'
+import { oauthCallbackPage } from './handlers/oauth-callback-page.ts'
 import {
 	createPasswordResetConfirmHandler,
 	createPasswordResetRequestHandler,
 } from './handlers/password-reset.ts'
+import { resetPasswordPage } from './handlers/reset-password-page.ts'
 import { session } from './handlers/session.ts'
 import { settings } from './handlers/settings.ts'
 import { signup } from './handlers/signup.ts'
@@ -41,7 +46,7 @@ export function createAppRouter(appEnv: AppEnv) {
 	const router = createRouter({
 		middleware: [],
 		async defaultHandler() {
-			return render(Layout({}))
+			return render(Layout({ title: 'Not Found' }))
 		},
 	})
 
@@ -50,6 +55,9 @@ export function createAppRouter(appEnv: AppEnv) {
 	router.map(routes.health, createHealthHandler(appEnv))
 	router.map(routes.login, login)
 	router.map(routes.signup, signup)
+	router.map(routes.resetPassword, resetPasswordPage)
+	router.map(routes.oauthAuthorize, oauthAuthorizePage)
+	router.map(routes.oauthCallback, oauthCallbackPage)
 	router.map(routes.account, account)
 	router.map(routes.history, history)
 	router.map(routes.settings, settings)
@@ -71,11 +79,13 @@ export function createAppRouter(appEnv: AppEnv) {
 	router.map(routes.apiKidsUpdate, createKidUpdateHandler(appEnv))
 	router.map(routes.apiKidsReorder, createKidReorderHandler(appEnv))
 	router.map(routes.apiKidsArchive, createKidArchiveHandler(appEnv))
+	router.map(routes.apiKidsUnarchive, createKidUnarchiveHandler(appEnv))
 	router.map(routes.apiKidsDelete, createKidDeleteHandler(appEnv))
 	router.map(routes.apiAccountsCreate, createAccountCreateHandler(appEnv))
 	router.map(routes.apiAccountsUpdate, createAccountUpdateHandler(appEnv))
 	router.map(routes.apiAccountsReorder, createAccountReorderHandler(appEnv))
 	router.map(routes.apiAccountsArchive, createAccountArchiveHandler(appEnv))
+	router.map(routes.apiAccountsUnarchive, createAccountUnarchiveHandler(appEnv))
 	router.map(routes.apiAccountsDelete, createAccountDeleteHandler(appEnv))
 	router.map(
 		routes.apiTransactionsCreate,

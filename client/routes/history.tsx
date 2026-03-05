@@ -99,6 +99,9 @@ export function HistoryRoute(handle: Handle) {
 					borderRadius: radius.xl,
 					backgroundColor: colors.surface,
 					boxShadow: shadows.md,
+					[mq.mobile]: {
+						gridTemplateColumns: '1fr',
+					},
 				}}
 				on={{
 					submit: (event) => {
@@ -224,4 +227,10 @@ export function HistoryRoute(handle: Handle) {
 			))}
 		</section>
 	)
+}
+
+export const Component = HistoryRoute
+
+export function getMetadata() {
+	return { title: 'History' }
 }

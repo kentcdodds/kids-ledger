@@ -1,5 +1,5 @@
 import { type Handle } from 'remix/component'
-import { clientRoutes } from './routes/index.tsx'
+import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
 import {
 	fetchSessionInfo,
@@ -7,7 +7,7 @@ import {
 	type SessionStatus,
 } from './session.ts'
 import { buildAuthLink } from './auth-links.ts'
-import { colors, spacing, typography } from './styles/tokens.ts'
+import { colors, spacing, typography, mq } from './styles/tokens.ts'
 
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
@@ -43,10 +43,19 @@ export function App(handle: Handle) {
 		}
 	}
 
+	function syncDocumentTitle() {
+		if (typeof window === 'undefined') return
+		document.title = getClientDocumentTitle(new URL(window.location.href))
+	}
+
 	handle.queueTask(() => {
 		queueSessionRefresh()
+		syncDocumentTitle()
 	})
-	listenToRouterNavigation(handle, queueSessionRefresh)
+	listenToRouterNavigation(handle, () => {
+		queueSessionRefresh()
+		syncDocumentTitle()
+	})
 
 	const navLinkCss = {
 		padding: `${spacing.xs} ${spacing.md}`,
@@ -255,8 +264,11 @@ export function App(handle: Handle) {
 				css={{
 					maxWidth: '52rem',
 					margin: '0 auto',
-					padding: spacing['2xl'],
+					padding: spacing.md,
 					fontFamily: typography.fontFamily,
+					[mq.mobile]: {
+						padding: spacing.sm,
+					},
 				}}
 			>
 				<nav

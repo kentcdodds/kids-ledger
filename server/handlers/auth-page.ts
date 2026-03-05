@@ -13,9 +13,9 @@ export function createAuthPageHandler() {
 	return {
 		middleware: [],
 		async action({ request }: { request: Request }) {
+			const url = new URL(request.url)
 			const session = await readAuthSession(request)
 			if (session) {
-				const url = new URL(request.url)
 				const redirectTo = normalizeRedirectTo(
 					url.searchParams.get('redirectTo'),
 				)
@@ -23,7 +23,8 @@ export function createAuthPageHandler() {
 				return Response.redirect(new URL(redirectTarget, request.url), 302)
 			}
 
-			return render(Layout({}))
+			const pageTitle = url.pathname === '/signup' ? 'Sign Up' : 'Sign In'
+			return render(Layout({ title: pageTitle }))
 		},
 	}
 }

@@ -18,3 +18,9 @@ export function ChatRoute(_handle: Handle) {
 		</section>
 	)
 }
+
+export const Component = ChatRoute
+
+export function getMetadata() {
+	return { title: 'Chat' }
+}

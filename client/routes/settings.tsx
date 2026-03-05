@@ -10,6 +10,8 @@ import {
 	reorderAccounts,
 	reorderKids,
 	setQuickAmounts,
+	unarchiveAccount,
+	unarchiveKid,
 	updateAccount,
 	updateKid,
 	type KidSummary,
@@ -439,7 +441,7 @@ export function SettingsRoute(handle: Handle) {
 												[mq.mobile]: {
 													gridTemplateColumns: 'auto 1fr',
 													'& > select, & > button': {
-														gridColumn: '2 / -1',
+														gridColumn: '1 / -1',
 													},
 												},
 											}}
@@ -727,6 +729,9 @@ export function SettingsRoute(handle: Handle) {
 								gridTemplateColumns: '1fr auto',
 								gap: spacing.sm,
 								marginTop: spacing.sm,
+								[mq.mobile]: {
+									gridTemplateColumns: '1fr',
+								},
 							}}
 						>
 							<input
@@ -787,18 +792,40 @@ export function SettingsRoute(handle: Handle) {
 									<span>
 										{kid.emoji} {kid.name}
 									</span>
-									<button
-										type="button"
-										on={{
-											click: async () => {
-												await deleteKid(kid.id)
-												await refreshSettings()
-											},
-										}}
-										css={dangerButtonCss}
-									>
-										Delete forever
-									</button>
+									<div css={archivedRowActionsCss}>
+										<button
+											type="button"
+											on={{
+												click: async () => {
+													try {
+														await unarchiveKid(kid.id)
+														await refreshSettings()
+													} catch (error) {
+														notify(
+															error instanceof Error
+																? error.message
+																: 'Could not unarchive kid.',
+														)
+													}
+												},
+											}}
+											css={buttonCss}
+										>
+											Unarchive
+										</button>
+										<button
+											type="button"
+											on={{
+												click: async () => {
+													await deleteKid(kid.id)
+													await refreshSettings()
+												},
+											}}
+											css={dangerButtonCss}
+										>
+											Delete forever
+										</button>
+									</div>
 								</div>
 							))}
 							{state.archived.accounts.map((account) => (
@@ -806,18 +833,40 @@ export function SettingsRoute(handle: Handle) {
 									<span>
 										{account.kidName} · {account.name}
 									</span>
-									<button
-										type="button"
-										on={{
-											click: async () => {
-												await deleteAccount(account.id)
-												await refreshSettings()
-											},
-										}}
-										css={dangerButtonCss}
-									>
-										Delete forever
-									</button>
+									<div css={archivedRowActionsCss}>
+										<button
+											type="button"
+											on={{
+												click: async () => {
+													try {
+														await unarchiveAccount(account.id)
+														await refreshSettings()
+													} catch (error) {
+														notify(
+															error instanceof Error
+																? error.message
+																: 'Could not unarchive account.',
+														)
+													}
+												},
+											}}
+											css={buttonCss}
+										>
+											Unarchive
+										</button>
+										<button
+											type="button"
+											on={{
+												click: async () => {
+													await deleteAccount(account.id)
+													await refreshSettings()
+												},
+											}}
+											css={dangerButtonCss}
+										>
+											Delete forever
+										</button>
+									</div>
 								</div>
 							))}
 						</div>
@@ -864,6 +913,12 @@ export function SettingsRoute(handle: Handle) {
 	)
 }
 
+export const Component = SettingsRoute
+
+export function getMetadata() {
+	return { title: 'Settings' }
+}
+
 const dangerButtonCss = {
 	...buttonCss,
 	backgroundColor: colors.error,
@@ -884,4 +939,16 @@ const archivedRowCss = {
 	borderRadius: radius.lg,
 	backgroundColor: colors.surface,
 	boxShadow: shadows.sm,
+	[mq.mobile]: {
+		flexDirection: 'column',
+		alignItems: 'stretch',
+		textAlign: 'center',
+	},
+}
+
+const archivedRowActionsCss = {
+	display: 'flex',
+	gap: spacing.xs,
+	flexWrap: 'wrap',
+	justifyContent: 'flex-end',
 }

@@ -80,3 +80,9 @@ export function AccountRoute(handle: Handle) {
 		)
 	}
 }
+
+export const Component = AccountRoute
+
+export function getMetadata() {
+	return { title: 'Account' }
+}

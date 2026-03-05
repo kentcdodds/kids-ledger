@@ -1,7 +1,11 @@
 import { type Handle } from 'remix/component'
 
+type RouteDefinition = {
+	Component: (...args: Array<any>) => any
+}
+
 type RouterSetup = {
-	routes: Record<string, JSX.Element>
+	routes: Record<string, RouteDefinition>
 	fallback?: JSX.Element
 }
 
@@ -21,24 +25,16 @@ function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
 }
 
-function compileRoutePattern(pattern: string) {
-	const regexPattern = pattern
-		.replace(/:([^/]+)/g, '([^/]+)')
-		.replace(/\*/g, '.*')
-
-	return {
-		pattern: new RegExp(`^${regexPattern}$`),
-	}
+function matchPathname(pattern: string, pathname: string) {
+	return new URLPattern({ pathname: pattern }).test({ pathname })
 }
 
 function matchRoute(
 	path: string,
-	routes: Record<string, JSX.Element>,
-): JSX.Element | null {
+	routes: Record<string, RouteDefinition>,
+): RouteDefinition | null {
 	for (const [pattern, routeElement] of Object.entries(routes)) {
-		const { pattern: compiled } = compileRoutePattern(pattern)
-		const result = compiled.exec(path)
-		if (!result) continue
+		if (!matchPathname(pattern, path)) continue
 		return routeElement
 	}
 
@@ -289,7 +285,10 @@ export function Router(handle: Handle, setup: RouterSetup) {
 	return () => {
 		const path = getPathname()
 		const routeElement = matchRoute(path, setup.routes)
-		if (routeElement) return routeElement
+		if (routeElement) {
+			const RouteComponent = routeElement.Component
+			return <RouteComponent />
+		}
 		return setup.fallback ?? null
 	}
 }

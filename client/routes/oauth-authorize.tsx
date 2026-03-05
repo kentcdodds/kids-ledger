@@ -419,3 +419,9 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 }
+
+export const Component = OAuthAuthorizeRoute
+
+export function getMetadata() {
+	return { title: 'Authorize App' }
+}

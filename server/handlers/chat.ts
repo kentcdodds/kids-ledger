@@ -14,6 +14,6 @@ export const chat = {
 			return redirectToLogin(request)
 		}
 
-		return render(Layout({}))
+		return render(Layout({ title: 'Chat' }))
 	},
 } satisfies BuildAction<typeof routes.chat.method, typeof routes.chat.pattern>

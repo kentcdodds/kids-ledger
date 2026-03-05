@@ -1,5 +1,12 @@
 import { html, type SafeHtml } from 'remix/html-template'
 
+const appTitle = 'Kids Ledger'
+
+function formatDocumentTitle(pageTitle: string | null = null) {
+	if (!pageTitle) return appTitle
+	return `${pageTitle} | ${appTitle}`
+}
+
 const defaultEntryScripts: Array<string> = ['/client-entry.js']
 const defaultShell = html`<div class="app-shell">
 	<div
@@ -12,15 +19,16 @@ const defaultShell = html`<div class="app-shell">
 
 export function Layout({
 	children,
-	title = 'kids-ledger',
+	title = null,
 	entryScripts = defaultEntryScripts,
 }: {
 	children?: SafeHtml
-	title?: string
+	title?: string | null
 	entryScripts?: Array<string> | false
 }) {
 	const scripts = entryScripts === false ? [] : entryScripts
 	const shell = children ?? defaultShell
+	const documentTitle = formatDocumentTitle(title)
 	return html`<html lang="en">
 		<head>
 			<meta charset="utf-8" />
@@ -45,7 +53,7 @@ export function Layout({
 			/>
 			<link rel="manifest" href="/site.webmanifest" />
 			<meta name="theme-color" content="#f47c00" />
-			<title>${title}</title>
+			<title>${documentTitle}</title>
 			<link rel="stylesheet" href="/styles.css" />
 		</head>
 		<body>
