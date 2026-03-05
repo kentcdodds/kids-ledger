@@ -495,7 +495,7 @@ export function SettingsRoute(handle: Handle) {
 														? `1px solid ${colors.border}`
 														: 'none',
 												[mq.mobile]: {
-													gridTemplateColumns: 'auto 1fr',
+													gridTemplateColumns: '1fr',
 													'& > select': {
 														gridColumn: '1 / -1',
 													},
