@@ -20,7 +20,7 @@ test('kid transaction modal custom css applies only while open', async ({
 	await kidCard.getByRole('button', { name: 'Add account' }).click()
 
 	await kidCard
-		.getByRole('button', { name: 'Customize transaction modal' })
+		.getByTitle('Customize transaction modal')
 		.click()
 
 	const customizationDialog = page.getByRole('dialog')
