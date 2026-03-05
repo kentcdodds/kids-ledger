@@ -63,6 +63,25 @@ let db = createDatabase(createD1DataTableAdapter(env.APP_DB))
 
 Table metadata and shared table definitions live in `worker/db.ts`.
 
+## kids-ledger preference and exception
+
+Prefer `remix/data-table` for all new D1 access by default.
+
+Why this is the default:
+
+- centralizes table metadata and runtime wiring in `worker/db.ts`
+- provides typed CRUD/query helpers for common operations
+- keeps patterns consistent across app handlers, mock servers, and MCP tools
+
+Documented exception:
+
+- `server/ledger/ledger-service.ts` uses direct prepared SQL against D1
+  intentionally
+- ledger operations rely on custom joins, aggregates, and report-style read
+  shapes that are simpler to express and optimize in SQL
+- this exception is scoped to the ledger domain service to keep direct SQL in a
+  single, well-defined boundary
+
 ## Adapter packages
 
 - `remix/data-table-postgres`

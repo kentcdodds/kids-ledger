@@ -27,6 +27,19 @@ App access pattern:
 - ledger business rules are centralized in `server/ledger/ledger-service.ts` and
   reused by HTTP handlers and MCP tools
 
+### Database access preference
+
+Use `remix/data-table` as the default access layer for D1 queries and writes.
+This keeps table definitions centralized in `worker/db.ts`, preserves typed
+CRUD/query helpers, and makes access patterns consistent across handlers, tests,
+and MCP tools.
+
+Exception: `server/ledger/ledger-service.ts` intentionally uses direct prepared
+SQL (`D1Database.prepare`) for ledger workflows. The ledger domain depends on
+custom joins, aggregates, and shape-specific read models that are easier to
+express and tune with hand-written SQL while keeping all ledger persistence
+logic centralized in one service.
+
 ## KV (`OAUTH_KV`)
 
 OAuth provider state is stored in KV through the
