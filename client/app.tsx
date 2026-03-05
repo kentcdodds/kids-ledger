@@ -92,10 +92,18 @@ export function App(handle: Handle) {
 	let targetMouseDirY = 0
 	let currentMouseDirX = 0
 	let currentMouseDirY = 0
+	let isCoarsePointer = false
+	let showTiltEnableButton = false
+	let isRequestingTiltPermission = false
+	let requestTiltPermission: null | (() => void) = null
 	let lastTime = typeof performance !== 'undefined' ? performance.now() : 0
 
 	function wrapDriftOffset(value: number, tileSize: number) {
 		return ((value % tileSize) + tileSize) % tileSize
+	}
+
+	function clamp(value: number, min: number, max: number) {
+		return Math.min(max, Math.max(min, value))
 	}
 
 	// Keep dot drift and pointer influence on CSS vars to avoid rerenders.
@@ -103,10 +111,17 @@ export function App(handle: Handle) {
 		if (typeof window === 'undefined') return
 
 		let animationFrameId: number
+		let hasOrientationListener = false
 
 		function updateDrift(time: number) {
 			const delta = time - lastTime
 			lastTime = time
+
+			if (isCoarsePointer && !hasOrientationListener) {
+				// Fallback for mobile when orientation is unavailable/denied.
+				targetMouseDirX = Math.sin(time / 2800) * 0.25
+				targetMouseDirY = -1
+			}
 
 			// Move in pointer direction (relative to viewport center).
 			const driftSpeed = 10 / 1000
@@ -140,19 +155,82 @@ export function App(handle: Handle) {
 			targetMouseDirY = Math.max(-1, Math.min(1, relativeY))
 		}
 
+		function updateOrientationTarget(event: DeviceOrientationEvent) {
+			if (event.beta === null || event.gamma === null) return
+			const nextX = clamp(event.gamma / 35, -1, 1)
+			const nextY = clamp(event.beta / 35, -1, 1)
+			targetMouseDirX = nextX
+			targetMouseDirY = nextY
+		}
+
+		function startOrientationMotion() {
+			if (hasOrientationListener) return
+			window.addEventListener(
+				'deviceorientation',
+				updateOrientationTarget,
+				true,
+			)
+			hasOrientationListener = true
+		}
+
 		const clearPointerTarget = () => {
 			targetMouseDirX = 0
 			targetMouseDirY = 0
 		}
 
-		window.addEventListener('pointermove', updatePointerTarget)
-		window.addEventListener('pointerleave', clearPointerTarget)
-		window.addEventListener('blur', clearPointerTarget)
+		isCoarsePointer =
+			window.matchMedia('(pointer: coarse)').matches ||
+			navigator.maxTouchPoints > 0
+
+		if (isCoarsePointer) {
+			const OrientationEventWithPermission =
+				DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+					requestPermission?: () => Promise<'granted' | 'denied'>
+				}
+			if (
+				typeof OrientationEventWithPermission.requestPermission === 'function'
+			) {
+				showTiltEnableButton = true
+				requestTiltPermission = () => {
+					if (isRequestingTiltPermission) return
+					isRequestingTiltPermission = true
+					handle.update()
+					void OrientationEventWithPermission?.requestPermission?.()
+						.then((permissionState) => {
+							if (permissionState === 'granted') {
+								startOrientationMotion()
+							}
+							showTiltEnableButton = false
+							isRequestingTiltPermission = false
+							handle.update()
+						})
+						.catch(() => {
+							showTiltEnableButton = false
+							isRequestingTiltPermission = false
+							handle.update()
+						})
+				}
+				handle.update()
+			} else {
+				startOrientationMotion()
+			}
+		} else {
+			window.addEventListener('pointermove', updatePointerTarget)
+			window.addEventListener('pointerleave', clearPointerTarget)
+			window.addEventListener('blur', clearPointerTarget)
+		}
 
 		animationFrameId = requestAnimationFrame(updateDrift)
 
 		return () => {
 			cancelAnimationFrame(animationFrameId)
+			if (hasOrientationListener) {
+				window.removeEventListener(
+					'deviceorientation',
+					updateOrientationTarget,
+					true,
+				)
+			}
 			window.removeEventListener('pointermove', updatePointerTarget)
 			window.removeEventListener('pointerleave', clearPointerTarget)
 			window.removeEventListener('blur', clearPointerTarget)
@@ -246,6 +324,34 @@ export function App(handle: Handle) {
 						),
 					}}
 				/>
+				{showTiltEnableButton ? (
+					<button
+						type="button"
+						on={{
+							click: () => {
+								requestTiltPermission?.()
+							},
+						}}
+						css={{
+							position: 'fixed',
+							right: spacing.md,
+							bottom: spacing.md,
+							zIndex: 1000,
+							padding: `${spacing.xs} ${spacing.md}`,
+							borderRadius: '999px',
+							border: `2px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							color: colors.primaryText,
+							fontWeight: typography.fontWeight.semibold,
+							boxShadow: `0 2px 0 0 ${colors.border}`,
+							cursor: 'pointer',
+						}}
+					>
+						{isRequestingTiltPermission
+							? 'Enabling tilt...'
+							: 'Enable tilt motion'}
+					</button>
+				) : null}
 			</main>
 		)
 	}
