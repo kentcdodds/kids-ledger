@@ -333,14 +333,11 @@ export function SettingsRoute(handle: Handle) {
 								<header
 									css={{
 										display: 'grid',
-										gridTemplateColumns: 'auto auto 4rem 1fr auto',
+										gridTemplateColumns: 'auto 4rem 1fr',
 										gap: spacing.sm,
 										alignItems: 'center',
 										[mq.mobile]: {
 											gridTemplateColumns: '4rem 1fr',
-											'& > button': {
-												gridColumn: '1 / -1',
-											},
 										},
 									}}
 								>
@@ -359,30 +356,6 @@ export function SettingsRoute(handle: Handle) {
 										title="Drag to reorder on desktop"
 									>
 										⋮⋮
-									</div>
-									<div css={reorderControlsCss}>
-										<button
-											type="button"
-											aria-label={`Move ${kid.name} up`}
-											disabled={kidIndex === 0}
-											on={{
-												click: () => void handleKidMove(kid.id, -1),
-											}}
-											css={reorderButtonCss}
-										>
-											↑
-										</button>
-										<button
-											type="button"
-											aria-label={`Move ${kid.name} down`}
-											disabled={kidIndex === state.kids.length - 1}
-											on={{
-												click: () => void handleKidMove(kid.id, 1),
-											}}
-											css={reorderButtonCss}
-										>
-											↓
-										</button>
 									</div>
 									<input
 										defaultValue={kid.emoji}
@@ -437,18 +410,44 @@ export function SettingsRoute(handle: Handle) {
 											fontWeight: typography.fontWeight.bold,
 										}}
 									/>
-									<button
-										type="button"
-										on={{
-											click: async () => {
-												await archiveKid(kid.id)
-												await refreshSettings()
-											},
-										}}
-										css={dangerButtonCss}
-									>
-										Archive
-									</button>
+									<div css={sortArchiveRowCss}>
+										<div css={reorderControlsCss}>
+											<button
+												type="button"
+												aria-label={`Move ${kid.name} up`}
+												disabled={kidIndex === 0}
+												on={{
+													click: () => void handleKidMove(kid.id, -1),
+												}}
+												css={reorderButtonCss}
+											>
+												↑
+											</button>
+											<button
+												type="button"
+												aria-label={`Move ${kid.name} down`}
+												disabled={kidIndex === state.kids.length - 1}
+												on={{
+													click: () => void handleKidMove(kid.id, 1),
+												}}
+												css={reorderButtonCss}
+											>
+												↓
+											</button>
+										</div>
+										<button
+											type="button"
+											on={{
+												click: async () => {
+													await archiveKid(kid.id)
+													await refreshSettings()
+												},
+											}}
+											css={dangerButtonCss}
+										>
+											Archive
+										</button>
+									</div>
 								</header>
 								<p css={{ margin: 0, color: colors.textMuted }}>
 									Total: {formatCents(kid.totalBalanceCents)}
@@ -484,7 +483,7 @@ export function SettingsRoute(handle: Handle) {
 											}}
 											css={{
 												display: 'grid',
-												gridTemplateColumns: 'auto auto 1fr auto auto',
+												gridTemplateColumns: 'auto 1fr auto',
 												gap: spacing.xs,
 												alignItems: 'center',
 												padding: spacing.md,
@@ -497,7 +496,7 @@ export function SettingsRoute(handle: Handle) {
 														: 'none',
 												[mq.mobile]: {
 													gridTemplateColumns: 'auto 1fr',
-													'& > select, & > button': {
+													'& > select': {
 														gridColumn: '1 / -1',
 													},
 												},
@@ -518,32 +517,6 @@ export function SettingsRoute(handle: Handle) {
 												title="Drag to reorder on desktop"
 											>
 												⋮⋮
-											</div>
-											<div css={reorderControlsCss}>
-												<button
-													type="button"
-													aria-label={`Move ${account.name} up`}
-													disabled={index === 0}
-													on={{
-														click: () =>
-															void handleAccountMove(kid.id, account.id, -1),
-													}}
-													css={reorderButtonCss}
-												>
-													↑
-												</button>
-												<button
-													type="button"
-													aria-label={`Move ${account.name} down`}
-													disabled={index === kid.accounts.length - 1}
-													on={{
-														click: () =>
-															void handleAccountMove(kid.id, account.id, 1),
-													}}
-													css={reorderButtonCss}
-												>
-													↓
-												</button>
 											</div>
 											<div css={{ display: 'grid', gap: 2 }}>
 												<input
@@ -627,18 +600,46 @@ export function SettingsRoute(handle: Handle) {
 													</option>
 												))}
 											</select>
-											<button
-												type="button"
-												on={{
-													click: async () => {
-														await archiveAccount(account.id)
-														await refreshSettings()
-													},
-												}}
-												css={dangerButtonCss}
-											>
-												Archive
-											</button>
+											<div css={sortArchiveRowCss}>
+												<div css={reorderControlsCss}>
+													<button
+														type="button"
+														aria-label={`Move ${account.name} up`}
+														disabled={index === 0}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, -1),
+														}}
+														css={reorderButtonCss}
+													>
+														↑
+													</button>
+													<button
+														type="button"
+														aria-label={`Move ${account.name} down`}
+														disabled={index === kid.accounts.length - 1}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, 1),
+														}}
+														css={reorderButtonCss}
+													>
+														↓
+													</button>
+												</div>
+												<button
+													type="button"
+													on={{
+														click: async () => {
+															await archiveAccount(account.id)
+															await refreshSettings()
+														},
+													}}
+													css={dangerButtonCss}
+												>
+													Archive
+												</button>
+											</div>
 										</div>
 									))}
 								</div>
@@ -1036,11 +1037,22 @@ const archivedRowActionsCss = {
 }
 
 const reorderControlsCss = {
-	display: 'inline-flex',
+	display: 'none',
 	gap: spacing.xs,
 	alignItems: 'center',
 	[mq.mobile]: {
-		gridColumn: '1 / -1',
+		display: 'inline-flex',
+	},
+}
+
+const sortArchiveRowCss = {
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'flex-end',
+	gap: spacing.sm,
+	gridColumn: '1 / -1',
+	[mq.mobile]: {
+		justifyContent: 'space-between',
 	},
 }
 
