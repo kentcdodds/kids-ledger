@@ -48,32 +48,38 @@ export function App(handle: Handle) {
 		document.title = getClientDocumentTitle(new URL(window.location.href))
 	}
 
+	let currentPath = typeof window !== 'undefined' ? window.location.pathname : '/'
+
 	handle.queueTask(() => {
 		queueSessionRefresh()
 		syncDocumentTitle()
 	})
 	listenToRouterNavigation(handle, () => {
+		currentPath = window.location.pathname
 		queueSessionRefresh()
 		syncDocumentTitle()
 	})
 
-	const navLinkCss = {
-		padding: `${spacing.xs} ${spacing.md}`,
-		borderRadius: '999px',
-		backgroundColor: colors.surface,
-		color: colors.primaryText,
-		fontWeight: typography.fontWeight.semibold,
-		textDecoration: 'none',
-		border: `2px solid ${colors.border}`,
-		boxShadow: `0 2px 0 0 ${colors.border}`,
-		transition: 'all 0.1s ease',
-		'&:hover': {
-			backgroundColor: colors.primarySoftest,
-		},
-		'&:active': {
-			transform: 'translateY(2px)',
-			boxShadow: `0 0 0 0 ${colors.border}`,
-		},
+	function getNavLinkCss(href: string) {
+		const isActive = currentPath === href
+		return {
+			padding: `${spacing.xs} ${spacing.md}`,
+			borderRadius: '999px',
+			backgroundColor: isActive ? colors.primarySoftest : colors.surface,
+			color: colors.primaryText,
+			fontWeight: typography.fontWeight.semibold,
+			textDecoration: 'none',
+			border: `2px solid ${isActive ? colors.primary : colors.border}`,
+			boxShadow: `0 2px 0 0 ${isActive ? colors.primary : colors.border}`,
+			transition: 'all 0.1s ease',
+			'&:hover': {
+				backgroundColor: colors.primarySoftest,
+			},
+			'&:active': {
+				transform: 'translateY(2px)',
+				boxShadow: `0 0 0 0 ${isActive ? colors.primary : colors.border}`,
+			},
+		}
 	}
 
 	const navLogoLinkCss = {
@@ -288,23 +294,23 @@ export function App(handle: Handle) {
 					) : null}
 					{showAuthLinks ? (
 						<>
-							<a href={loginHref} css={navLinkCss}>
+							<a href={loginHref} css={getNavLinkCss('/login')}>
 								Login
 							</a>
-							<a href={signupHref} css={navLinkCss}>
+							<a href={signupHref} css={getNavLinkCss('/signup')}>
 								Signup
 							</a>
 						</>
 					) : null}
 					{isLoggedIn ? (
 						<>
-							<a href="/history" css={navLinkCss}>
+							<a href="/history" css={getNavLinkCss('/history')}>
 								History
 							</a>
-							<a href="/settings" css={navLinkCss}>
+							<a href="/settings" css={getNavLinkCss('/settings')}>
 								Settings
 							</a>
-							<a href="/account" css={navLinkCss}>
+							<a href="/account" css={getNavLinkCss('/account')}>
 								{sessionEmail}
 							</a>
 						</>
