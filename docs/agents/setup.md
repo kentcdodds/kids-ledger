@@ -26,7 +26,7 @@ Quick notes for getting a local kids-ledger environment running.
 
 ## Checks
 
-- `bun run validate` runs format check, lint fix, build, typecheck, Playwright
+- `bun run validate` runs format check, lint, build, typecheck, Playwright
   tests, and MCP E2E tests.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
