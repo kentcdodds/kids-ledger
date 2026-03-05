@@ -32,7 +32,7 @@ import {
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
-import { getFocusableElements } from '#client/dom-utils.ts'
+import { handleModalKeydown } from '#client/dom-utils.ts'
 
 const defaultKidEmojis = [
 	'🧒',
@@ -369,41 +369,7 @@ export function SettingsRoute(handle: Handle) {
 	}
 
 	function handleTransactionModalCssKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			event.preventDefault()
-			closeTransactionModalCssEditor()
-			return
-		}
-
-		if (event.key !== 'Tab') return
-		if (!(event.currentTarget instanceof HTMLElement)) return
-
-		const focusableElements = getFocusableElements(event.currentTarget)
-		if (focusableElements.length === 0) {
-			event.preventDefault()
-			return
-		}
-
-		const activeElement = document.activeElement
-		const firstFocusableElement = focusableElements[0]
-		const lastFocusableElement = focusableElements[focusableElements.length - 1]
-		if (!firstFocusableElement || !lastFocusableElement) return
-		const activeInModal = focusableElements.includes(
-			activeElement as HTMLElement,
-		)
-
-		if (event.shiftKey) {
-			if (activeElement === firstFocusableElement || !activeInModal) {
-				event.preventDefault()
-				lastFocusableElement.focus()
-			}
-			return
-		}
-
-		if (activeElement === lastFocusableElement || !activeInModal) {
-			event.preventDefault()
-			firstFocusableElement.focus()
-		}
+		handleModalKeydown(event, closeTransactionModalCssEditor)
 	}
 
 	async function saveTransactionModalCss() {
