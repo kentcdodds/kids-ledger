@@ -1,3 +1,4 @@
+import * as about from './about.tsx'
 import * as account from './account.tsx'
 import * as chat from './chat.tsx'
 import * as history from './history.tsx'
@@ -5,9 +6,11 @@ import * as home from './home.tsx'
 import * as login from './login.tsx'
 import * as oauthAuthorize from './oauth-authorize.tsx'
 import * as oauthCallback from './oauth-callback.tsx'
+import * as privacyPolicy from './privacy-policy.tsx'
 import * as resetPassword from './reset-password.tsx'
 import * as settings from './settings.tsx'
 import * as signup from './signup.tsx'
+import * as termsOfService from './terms-of-service.tsx'
 
 const appTitle = 'Kids Ledger'
 
@@ -24,6 +27,7 @@ type RouteModule = {
 
 export const clientRoutes = {
 	'/': home,
+	'/about': about,
 	'/chat': chat,
 	'/history': history,
 	'/settings': settings,
@@ -31,6 +35,8 @@ export const clientRoutes = {
 	'/login': login,
 	'/signup': signup,
 	'/reset-password': resetPassword,
+	'/privacy-policy': privacyPolicy,
+	'/terms-of-service': termsOfService,
 	'/oauth/authorize': oauthAuthorize,
 	'/oauth/callback': oauthCallback,
 } satisfies Record<string, RouteModule>

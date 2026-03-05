@@ -55,6 +55,7 @@ function getFocusableElements(container: HTMLElement) {
 export function HomeRoute(handle: Handle) {
 	let status: 'loading' | 'ready' | 'error' = 'loading'
 	let errorMessage = ''
+	let needsLogin = false
 	let kids: Array<KidSummary> = []
 	let familyBalance = 0
 	let quickAmounts: Array<number> = []
@@ -152,6 +153,7 @@ export function HomeRoute(handle: Handle) {
 
 	async function refreshDashboard() {
 		status = 'loading'
+		needsLogin = false
 		handle.update()
 		try {
 			const dashboard = await fetchDashboard()
@@ -164,6 +166,7 @@ export function HomeRoute(handle: Handle) {
 			status = 'error'
 			errorMessage =
 				error instanceof Error ? error.message : 'Failed to load ledger data.'
+			needsLogin = isAuthError(errorMessage)
 		}
 		handle.update()
 	}
@@ -216,33 +219,32 @@ export function HomeRoute(handle: Handle) {
 
 	return () => (
 		<section css={{ display: 'grid', gap: spacing.lg }}>
-			<header
-				css={{
-					display: 'grid',
-					gap: spacing.sm,
-					justifyItems: 'center',
-					textAlign: 'center',
-				}}
-			>
-				<img
-					src="/logo.png"
-					alt="kids-ledger logo"
-					css={{ width: '240px', maxWidth: '100%', height: 'auto' }}
-				/>
-				<p css={{ margin: 0, color: colors.textMuted }}>
-					Family Total:{' '}
-					<strong css={{ color: colors.text }}>
-						{formatCents(familyBalance)}
-					</strong>
-				</p>
-			</header>
+			{status === 'ready' ? (
+				<header
+					css={{
+						display: 'grid',
+						gap: spacing.sm,
+						justifyItems: 'center',
+						textAlign: 'center',
+					}}
+				>
+					<h1 css={{ margin: 0, color: colors.text }}>Family Ledger</h1>
+					<p css={{ margin: 0, color: colors.textMuted }}>
+						Family Total:{' '}
+						<strong css={{ color: colors.text }}>
+							{formatCents(familyBalance)}
+						</strong>
+					</p>
+				</header>
+			) : null}
 
 			{status === 'loading' ? (
 				<p css={{ color: colors.textMuted }}>Loading your ledger...</p>
 			) : null}
-			{status === 'error' ? (
+			{status === 'error' && needsLogin ? LoggedOutHome() : null}
+			{status === 'error' && !needsLogin ? (
 				<p css={{ color: colors.error }}>
-					{errorMessage} <a href="/login">Log in</a> to continue.
+					{errorMessage}
 				</p>
 			) : null}
 			{status === 'ready' && kids.length === 0 ? (
@@ -556,6 +558,16 @@ export function getMetadata() {
 	return { title: null }
 }
 
+function isAuthError(errorMessage: string) {
+	const normalizedErrorMessage = errorMessage.toLowerCase()
+	return (
+		normalizedErrorMessage.includes('(401)') ||
+		normalizedErrorMessage.includes('(403)') ||
+		normalizedErrorMessage.includes('unauthorized') ||
+		normalizedErrorMessage.includes('not authenticated')
+	)
+}
+
 function modalButtonCss(
 	background: string,
 	color: string,
@@ -571,4 +583,126 @@ function modalButtonCss(
 			boxShadow: `0 0 0 0 ${activeShadow}`,
 		},
 	}
+}
+
+function LoggedOutHome() {
+	return (
+		<section
+			css={{
+				display: 'grid',
+				gap: spacing.lg,
+			}}
+		>
+			<section
+				css={{
+					padding: spacing.lg,
+					borderRadius: radius.xl,
+					border: `3px solid ${colors.border}`,
+					backgroundColor: colors.surface,
+					boxShadow: shadows.md,
+					display: 'grid',
+					gap: spacing.md,
+				}}
+			>
+				<img
+					src="/logo.png"
+					alt="kids-ledger logo"
+					css={{ width: '240px', maxWidth: '100%', height: 'auto' }}
+				/>
+				<h2 css={{ margin: 0, color: colors.text }}>A money tracker for kids</h2>
+				<p css={{ margin: 0, color: colors.textMuted }}>
+					Track allowances, chores, and spending with simple balances each kid can
+					understand at a glance.
+				</p>
+				<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+					<a
+						href="/signup"
+						css={{
+							...buttonCss,
+							textDecoration: 'none',
+							display: 'inline-flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+						}}
+					>
+						Create account
+					</a>
+					<a
+						href="/login"
+						css={{
+							...buttonCss,
+							backgroundColor: colors.surface,
+							color: colors.text,
+							border: `2px solid ${colors.border}`,
+							boxShadow: `0 2px 0 0 ${colors.border}`,
+							textDecoration: 'none',
+							display: 'inline-flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							'&:active': {
+								transform: 'translateY(2px)',
+								boxShadow: `0 0 0 0 ${colors.border}`,
+							},
+						}}
+					>
+						Log in
+					</a>
+				</div>
+			</section>
+
+			<section
+				css={{
+					display: 'grid',
+					gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))',
+					gap: spacing.md,
+				}}
+			>
+				<article
+					css={{
+						padding: spacing.md,
+						borderRadius: radius.lg,
+						border: `2px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+					}}
+				>
+					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+						Quick family overview
+					</h3>
+					<p css={{ margin: 0, color: colors.textMuted }}>
+						See each kid&apos;s total and account balances in one place.
+					</p>
+				</article>
+				<article
+					css={{
+						padding: spacing.md,
+						borderRadius: radius.lg,
+						border: `2px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+					}}
+				>
+					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+						Fast adjustments
+					</h3>
+					<p css={{ margin: 0, color: colors.textMuted }}>
+						Add or remove money with quick amounts and optional notes.
+					</p>
+				</article>
+				<article
+					css={{
+						padding: spacing.md,
+						borderRadius: radius.lg,
+						border: `2px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+					}}
+				>
+					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+						History and settings
+					</h3>
+					<p css={{ margin: 0, color: colors.textMuted }}>
+						Review transaction history and manage kids, accounts, and quick amounts.
+					</p>
+				</article>
+			</section>
+		</section>
+	)
 }

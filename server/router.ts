@@ -51,6 +51,7 @@ export function createAppRouter(appEnv: AppEnv) {
 	})
 
 	router.map(routes.home, home)
+	router.map(routes.about, home)
 	router.map(routes.chat, chat)
 	router.map(routes.health, createHealthHandler(appEnv))
 	router.map(routes.login, login)
@@ -61,6 +62,8 @@ export function createAppRouter(appEnv: AppEnv) {
 	router.map(routes.account, account)
 	router.map(routes.history, history)
 	router.map(routes.settings, settings)
+	router.map(routes.privacyPolicy, home)
+	router.map(routes.termsOfService, home)
 	router.map(routes.auth, createAuthHandler(appEnv))
 	router.map(routes.session, session)
 	router.map(routes.logout, logout)

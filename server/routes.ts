@@ -2,6 +2,7 @@ import { post, route } from 'remix/fetch-router/routes'
 
 export const routes = route({
 	home: '/',
+	about: '/about',
 	chat: '/chat',
 	health: '/health',
 	login: '/login',
@@ -12,6 +13,8 @@ export const routes = route({
 	account: '/account',
 	history: '/history',
 	settings: '/settings',
+	privacyPolicy: '/privacy-policy',
+	termsOfService: '/terms-of-service',
 	auth: post('/auth'),
 	session: '/session',
 	logout: post('/logout'),
