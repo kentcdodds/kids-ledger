@@ -39,6 +39,16 @@ function getAccountBackground(colorToken: string) {
 	return accountGradients[colorToken] ?? accountGradients.orchid
 }
 
+function getFocusableElements(container: HTMLElement) {
+	const selector =
+		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+	const candidates = Array.from(container.querySelectorAll(selector))
+	return candidates.filter(
+		(element): element is HTMLElement =>
+			element instanceof HTMLElement && element.tabIndex >= 0,
+	)
+}
+
 export function HomeRoute(handle: Handle) {
 	let status: 'loading' | 'ready' | 'error' = 'loading'
 	let errorMessage = ''
@@ -46,8 +56,14 @@ export function HomeRoute(handle: Handle) {
 	let familyBalance = 0
 	let quickAmounts: Array<number> = []
 	let transactionState: TransactionState | null = null
+	let transactionModalOpener: HTMLButtonElement | null = null
 
-	function openTransactionModal(kid: KidSummary, account: KidAccount) {
+	function openTransactionModal(
+		kid: KidSummary,
+		account: KidAccount,
+		opener: HTMLButtonElement,
+	) {
+		transactionModalOpener = opener
 		transactionState = {
 			kid,
 			account,
@@ -58,11 +74,60 @@ export function HomeRoute(handle: Handle) {
 			warning: null,
 		}
 		handle.update()
+		handle.queueTask(() => {
+			const closeButton = document.getElementById('transaction-modal-close')
+			if (closeButton instanceof HTMLButtonElement) {
+				closeButton.focus()
+			}
+		})
 	}
 
 	function closeTransactionModal() {
+		const opener = transactionModalOpener
+		transactionModalOpener = null
 		transactionState = null
 		handle.update()
+		if (opener?.isConnected) {
+			handle.queueTask(() => {
+				opener.focus()
+			})
+		}
+	}
+
+	function handleTransactionModalKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault()
+			closeTransactionModal()
+			return
+		}
+
+		if (event.key !== 'Tab') return
+		if (!(event.currentTarget instanceof HTMLElement)) return
+
+		const focusableElements = getFocusableElements(event.currentTarget)
+		if (focusableElements.length === 0) {
+			event.preventDefault()
+			return
+		}
+
+		const activeElement = document.activeElement
+		const firstFocusableElement = focusableElements[0]
+		const lastFocusableElement = focusableElements[focusableElements.length - 1]
+		if (!firstFocusableElement || !lastFocusableElement) return
+		const activeInModal = focusableElements.includes(activeElement as HTMLElement)
+
+		if (event.shiftKey) {
+			if (activeElement === firstFocusableElement || !activeInModal) {
+				event.preventDefault()
+				lastFocusableElement.focus()
+			}
+			return
+		}
+
+		if (activeElement === lastFocusableElement || !activeInModal) {
+			event.preventDefault()
+			firstFocusableElement.focus()
+		}
 	}
 
 	async function refreshDashboard() {
@@ -218,7 +283,13 @@ export function HomeRoute(handle: Handle) {
 							<button
 								key={account.id}
 								type="button"
-								on={{ click: () => openTransactionModal(kid, account) }}
+								on={{
+									click: (event) => {
+										if (!(event.currentTarget instanceof HTMLButtonElement))
+											return
+										openTransactionModal(kid, account, event.currentTarget)
+									},
+								}}
 								css={{
 									display: 'flex',
 									justifyContent: 'space-between',
@@ -276,6 +347,11 @@ export function HomeRoute(handle: Handle) {
 					}}
 				>
 					<section
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="transaction-modal-title"
+						aria-describedby="transaction-modal-description"
+						on={{ keydown: handleTransactionModalKeydown }}
 						css={{
 							width: 'min(30rem, 100%)',
 							display: 'grid',
@@ -291,15 +367,22 @@ export function HomeRoute(handle: Handle) {
 					>
 						<header css={{ display: 'flex', justifyContent: 'space-between' }}>
 							<div>
-								<h3 css={{ margin: 0, color: colors.text }}>
+								<h3
+									id="transaction-modal-title"
+									css={{ margin: 0, color: colors.text }}
+								>
 									{transactionState.kid.emoji} {transactionState.kid.name}
 								</h3>
-								<p css={{ margin: 0, color: colors.textMuted }}>
+								<p
+									id="transaction-modal-description"
+									css={{ margin: 0, color: colors.textMuted }}
+								>
 									{transactionState.account.name} ·{' '}
 									{formatCents(transactionState.account.balanceCents)}
 								</p>
 							</div>
 							<button
+								id="transaction-modal-close"
 								type="button"
 								on={{ click: closeTransactionModal }}
 								css={{
@@ -421,7 +504,7 @@ export function HomeRoute(handle: Handle) {
 								type="button"
 								disabled={transactionState.status === 'saving'}
 								on={{ click: () => void submitTransaction('add') }}
-								css={modalButtonCss('#22c55e', '#ffffff', '#16a34a')}
+								css={modalButtonCss('#86efac', '#052e16', '#16a34a')}
 							>
 								Add
 							</button>
@@ -429,7 +512,7 @@ export function HomeRoute(handle: Handle) {
 								type="button"
 								disabled={transactionState.status === 'saving'}
 								on={{ click: () => void submitTransaction('remove') }}
-								css={modalButtonCss('#ef4444', '#ffffff', '#dc2626')}
+								css={modalButtonCss('#fecaca', '#450a0a', '#dc2626')}
 							>
 								Remove
 							</button>
