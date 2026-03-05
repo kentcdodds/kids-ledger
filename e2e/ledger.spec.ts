@@ -18,7 +18,9 @@ test('parent can complete first kid/account/transaction flow', async ({
 	const kidCard = page.locator('article').filter({ has: kidNameInput }).first()
 	await kidCard.getByPlaceholder('New account name').fill(accountName)
 	await kidCard.getByRole('button', { name: 'Add account' }).click()
-	await expect(kidCard.getByText(accountName)).toBeVisible()
+	await expect(
+		kidCard.getByRole('textbox', { name: `${accountName} name` }),
+	).toHaveValue(accountName)
 
 	await page.goto('/')
 	await page.getByRole('button', { name: new RegExp(accountName) }).click()

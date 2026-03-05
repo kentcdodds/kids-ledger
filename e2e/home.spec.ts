@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('home page renders the shell', async ({ page }) => {
 	await page.goto('/')
-	await expect(page).toHaveTitle('kids-ledger')
+	await expect(page).toHaveTitle('Kids Ledger')
 	await expect(page.getByAltText('kids-ledger logo')).toBeVisible()
 	await expect(page.getByText('Family Total:')).toBeVisible()
 })
