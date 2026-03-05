@@ -341,8 +341,9 @@ export function App(handle: Handle) {
 				/>
 				<footer
 					css={{
-						marginTop: 'auto',
+						marginTop: spacing.xl,
 						paddingTop: spacing.md,
+						paddingBottom: spacing.md,
 						borderTop: `2px solid ${colors.border}`,
 						display: 'flex',
 						flexWrap: 'wrap',

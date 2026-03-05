@@ -19,7 +19,7 @@ import {
 import { formatCents } from '#client/money.ts'
 import {
 	accountColorTokens,
-	getAccountSurfaceBackground,
+	getAccountGradientBackground,
 } from '#client/styles/account-colors.ts'
 import {
 	colors,
@@ -30,6 +30,43 @@ import {
 	mq,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+
+const defaultKidEmojis = [
+	'🧒',
+	'👦',
+	'👧',
+	'🧑',
+	'🙂',
+	'😊',
+	'😄',
+	'😁',
+	'😎',
+	'🤓',
+	'🥳',
+	'🤠',
+	'🦖',
+	'🦕',
+	'🦄',
+	'🐶',
+	'🐱',
+	'🐼',
+	'🐨',
+	'🦊',
+	'🐸',
+	'🐧',
+	'🦁',
+	'🐯',
+	'🐵',
+	'🐙',
+	'🐢',
+	'🦋',
+	'🚀',
+	'⭐',
+] as const
+
+function getRandomDefaultKidEmoji() {
+	return defaultKidEmojis[Math.floor(Math.random() * defaultKidEmojis.length)]!
+}
 
 function moveItem<T>(items: Array<T>, from: number, to: number) {
 	const nextItems = [...items]
@@ -90,7 +127,7 @@ export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
 	let isRefreshing = false
 	let newKidName = ''
-	let newKidEmoji = '🧒'
+	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
 
 	async function refreshSettings() {
@@ -213,6 +250,7 @@ export function SettingsRoute(handle: Handle) {
 		}
 		await createKid({ name: newKidName, emoji: newKidEmoji })
 		newKidName = ''
+		newKidEmoji = getRandomDefaultKidEmoji()
 		await refreshSettings()
 	}
 
@@ -301,10 +339,10 @@ export function SettingsRoute(handle: Handle) {
 						<div
 							css={{
 								display: 'grid',
-								gridTemplateColumns: '5rem 1fr auto',
+								gridTemplateColumns: '4rem 1fr auto',
 								gap: spacing.sm,
 								[mq.mobile]: {
-									gridTemplateColumns: '5rem 1fr',
+									gridTemplateColumns: '4rem 1fr',
 									'& > button': {
 										gridColumn: '1 / -1',
 									},
@@ -323,7 +361,12 @@ export function SettingsRoute(handle: Handle) {
 								}}
 								maxLength={2}
 								aria-label="Kid emoji"
-								css={inputCss}
+								css={{
+									...inputCss,
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.bold,
+									textAlign: 'center',
+								}}
 							/>
 							<input
 								value={newKidName}
@@ -336,7 +379,11 @@ export function SettingsRoute(handle: Handle) {
 									},
 								}}
 								placeholder="Kid name"
-								css={inputCss}
+								css={{
+									...inputCss,
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.bold,
+								}}
 							/>
 							<button
 								type="button"
@@ -369,10 +416,7 @@ export function SettingsRoute(handle: Handle) {
 										gap: spacing.sm,
 										alignItems: 'center',
 										[mq.mobile]: {
-											gridTemplateColumns: 'auto 4rem 1fr',
-											'& > button': {
-												gridColumn: '1 / -1',
-											},
+											gridTemplateColumns: 'auto 4rem 1fr auto',
 										},
 									}}
 								>
@@ -503,10 +547,11 @@ export function SettingsRoute(handle: Handle) {
 											css={{
 												display: 'grid',
 												gridTemplateColumns: 'auto 1fr auto auto',
-												gap: spacing.xs,
+												rowGap: spacing.xs,
+												columnGap: spacing.sm,
 												alignItems: 'center',
 												padding: spacing.md,
-												backgroundColor: getAccountSurfaceBackground(
+												background: getAccountGradientBackground(
 													account.colorToken,
 												),
 												borderBottom:
@@ -514,10 +559,7 @@ export function SettingsRoute(handle: Handle) {
 														? `1px solid ${colors.border}`
 														: 'none',
 												[mq.mobile]: {
-													gridTemplateColumns: 'auto 1fr auto',
-													'& > select': {
-														gridColumn: '1 / -1',
-													},
+													gridTemplateColumns: 'auto 1fr auto auto',
 												},
 											}}
 										>
@@ -555,7 +597,16 @@ export function SettingsRoute(handle: Handle) {
 													↓
 												</button>
 											</div>
-											<div css={{ display: 'grid', gap: 2 }}>
+											<div
+												css={{
+													display: 'grid',
+													gap: 2,
+													[mq.mobile]: {
+														gridColumn: '2 / -1',
+														gridRow: '1',
+													},
+												}}
+											>
 												<input
 													defaultValue={account.name}
 													aria-label={`${account.name} name`}
@@ -594,16 +645,18 @@ export function SettingsRoute(handle: Handle) {
 														border: '2px solid transparent',
 														boxShadow: 'none',
 														fontWeight: 'bold',
+													color: '#ffffff',
 														padding: spacing.xs,
 														'&:focus': {
 															...inputCss['&:focus'],
 															backgroundColor: colors.surface,
+														color: colors.text,
 														},
 													}}
 												/>
 												<span
 													css={{
-														color: colors.textMuted,
+														color: 'rgba(255, 255, 255, 0.9)',
 														fontSize: typography.fontSize.sm,
 													}}
 												>
@@ -633,9 +686,12 @@ export function SettingsRoute(handle: Handle) {
 												}}
 												css={{
 													...inputCss,
-													backgroundColor: getAccountSurfaceBackground(
-														account.colorToken,
-													),
+													backgroundColor: '#ffffff',
+													color: colors.text,
+													[mq.mobile]: {
+														gridColumn: '2 / 4',
+														gridRow: '2',
+													},
 												}}
 											>
 												{accountColorTokens.map((color) => (
@@ -657,7 +713,14 @@ export function SettingsRoute(handle: Handle) {
 														await refreshSettings()
 													},
 												}}
-												css={archiveIconButtonCss}
+												css={{
+													...archiveIconButtonCss,
+													[mq.mobile]: {
+														gridColumn: '4',
+														gridRow: '2',
+														justifySelf: 'end',
+													},
+												}}
 											>
 												<TrashIcon />
 											</button>
@@ -672,7 +735,7 @@ export function SettingsRoute(handle: Handle) {
 										padding: spacing.md,
 										border: `2px dashed ${colors.border}`,
 										borderRadius: radius.lg,
-										backgroundColor: getAccountSurfaceBackground(
+										background: getAccountGradientBackground(
 											getCreateAccountColor(kid.id),
 										),
 										[mq.mobile]: {

@@ -7,7 +7,7 @@ import {
 import { listenToRouterNavigation, navigate } from '#client/client-router.tsx'
 import { formatCents } from '#client/money.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
-import { getAccountSurfaceBackground } from '#client/styles/account-colors.ts'
+import { getAccountGradientBackground } from '#client/styles/account-colors.ts'
 import { colors, mq, radius, shadows, spacing } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
@@ -333,10 +333,11 @@ export function HistoryRoute(handle: Handle) {
 							padding: spacing.md,
 							borderRadius: radius.lg,
 							border: `2px solid ${colors.border}`,
-							backgroundColor: getAccountSurfaceBackground(
+							background: getAccountGradientBackground(
 								transaction.colorToken,
 							),
 							boxShadow: shadows.sm,
+							color: '#ffffff',
 							opacity: showPendingRefresh ? 0.6 : 1,
 							transition: 'opacity 120ms ease',
 						}}
@@ -355,7 +356,7 @@ export function HistoryRoute(handle: Handle) {
 							<strong
 								css={{
 									color:
-										transaction.amountCents < 0 ? colors.error : colors.text,
+										transaction.amountCents < 0 ? '#fee2e2' : '#ffffff',
 								}}
 							>
 								{transaction.amountCents < 0 ? '-' : '+'}
@@ -363,9 +364,9 @@ export function HistoryRoute(handle: Handle) {
 							</strong>
 						</div>
 						{transaction.note ? (
-							<p css={{ margin: 0, color: colors.text }}>{transaction.note}</p>
+							<p css={{ margin: 0 }}>{transaction.note}</p>
 						) : null}
-						<time css={{ color: colors.textMuted }}>
+						<time css={{ color: 'rgba(255, 255, 255, 0.9)' }}>
 							{new Date(transaction.createdAt).toLocaleString()}
 						</time>
 					</article>

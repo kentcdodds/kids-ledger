@@ -287,7 +287,7 @@ export function HomeRoute(handle: Handle) {
 					<div css={{ display: 'grid', gap: spacing.sm }}>
 						{kid.accounts.length === 0 ? (
 							<p css={{ margin: 0, color: colors.textMuted }}>
-								No accounts yet. Add one in settings.
+								No accounts yet. <a href="/settings">Add one in settings.</a>
 							</p>
 						) : null}
 						{kid.accounts.map((account) => (
