@@ -368,17 +368,27 @@ export function HomeRoute(handle: Handle) {
 							: 'modal-backdrop-in 180ms ease-out forwards',
 					}}
 				>
+					{!transactionModalClosing &&
+					transactionState.kid.transactionModalCss.trim() ? (
+						<style data-kid-transaction-modal-css>
+							{buildTransactionModalCustomCss(
+								transactionState.kid.transactionModalCss,
+							)}
+						</style>
+					) : null}
 					<section
 						role="dialog"
 						aria-modal="true"
 						aria-labelledby="transaction-modal-title"
 						aria-describedby="transaction-modal-description"
+						data-kid-transaction-modal
 						on={{ keydown: handleTransactionModalKeydown }}
 						css={{
 							width: 'min(30rem, 100%)',
 							display: 'grid',
 							gap: spacing.md,
 							padding: spacing.lg,
+							fontFamily: typography.fontFamily,
 							borderRadius: radius.xl,
 							border: `3px solid ${colors.border}`,
 							backgroundColor: colors.surface,
@@ -578,6 +588,12 @@ function modalButtonCss(
 			boxShadow: `0 0 0 0 ${activeShadow}`,
 		},
 	}
+}
+
+function buildTransactionModalCustomCss(transactionModalCss: string) {
+	const trimmed = transactionModalCss.trim()
+	if (!trimmed) return ''
+	return `[data-kid-transaction-modal] {\n${trimmed}\n}`
 }
 
 function LoggedOutHome() {

@@ -17,6 +17,7 @@ const updateKidSchema = object({
 	kidId: number(),
 	name: string(),
 	emoji: string(),
+	transactionModalCss: optional(string()),
 })
 
 const reorderKidsSchema = object({

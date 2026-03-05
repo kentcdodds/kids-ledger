@@ -13,6 +13,7 @@ export type KidSummary = {
 	householdId: number
 	name: string
 	emoji: string
+	transactionModalCss: string
 	sortOrder: number
 	isArchived: boolean
 	totalBalanceCents: number
@@ -156,6 +157,7 @@ export async function updateKid(input: {
 	kidId: number
 	name: string
 	emoji: string
+	transactionModalCss?: string
 }) {
 	return postJson<{ ok: true }>('/ledger/kids/update', input)
 }
