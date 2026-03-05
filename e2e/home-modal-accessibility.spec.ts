@@ -22,7 +22,9 @@ test('transaction modal is keyboard accessible and passes axe', async ({
 	).toHaveValue(accountName)
 
 	await page.goto('/')
-	const accountButton = page.getByRole('button', { name: new RegExp(accountName) })
+	const accountButton = page.getByRole('button', {
+		name: new RegExp(accountName),
+	})
 	await expect(accountButton).toBeVisible()
 	await accountButton.click()
 
@@ -44,6 +46,15 @@ test('transaction modal is keyboard accessible and passes axe', async ({
 	await expect(closeButton).toBeFocused()
 
 	await page.keyboard.press('Escape')
+	await expect(modal).toBeHidden()
+	await expect(accountButton).toBeFocused()
+
+	// Test clicking outside closes modal
+	await accountButton.click()
+	await expect(modal).toBeVisible()
+
+	// Click outside the modal dialog (on the backdrop)
+	await page.mouse.click(10, 10)
 	await expect(modal).toBeHidden()
 	await expect(accountButton).toBeFocused()
 })

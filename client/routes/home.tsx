@@ -135,7 +135,9 @@ export function HomeRoute(handle: Handle) {
 		const firstFocusableElement = focusableElements[0]
 		const lastFocusableElement = focusableElements[focusableElements.length - 1]
 		if (!firstFocusableElement || !lastFocusableElement) return
-		const activeInModal = focusableElements.includes(activeElement as HTMLElement)
+		const activeInModal = focusableElements.includes(
+			activeElement as HTMLElement,
+		)
 
 		if (event.shiftKey) {
 			if (activeElement === firstFocusableElement || !activeInModal) {
@@ -243,9 +245,7 @@ export function HomeRoute(handle: Handle) {
 			) : null}
 			{status === 'error' && needsLogin ? LoggedOutHome() : null}
 			{status === 'error' && !needsLogin ? (
-				<p css={{ color: colors.error }}>
-					{errorMessage}
-				</p>
+				<p css={{ color: colors.error }}>{errorMessage}</p>
 			) : null}
 			{status === 'ready' && kids.length === 0 ? (
 				<section
@@ -359,6 +359,13 @@ export function HomeRoute(handle: Handle) {
 
 			{transactionState ? (
 				<div
+					on={{
+						click: (event) => {
+							if (event.target === event.currentTarget) {
+								closeTransactionModal()
+							}
+						},
+					}}
 					css={{
 						position: 'fixed',
 						inset: 0,
@@ -609,10 +616,12 @@ function LoggedOutHome() {
 					alt="kids-ledger logo"
 					css={{ width: '240px', maxWidth: '100%', height: 'auto' }}
 				/>
-				<h2 css={{ margin: 0, color: colors.text }}>A money tracker for kids</h2>
+				<h2 css={{ margin: 0, color: colors.text }}>
+					A money tracker for kids
+				</h2>
 				<p css={{ margin: 0, color: colors.textMuted }}>
-					Track allowances, chores, and spending with simple balances each kid can
-					understand at a glance.
+					Track allowances, chores, and spending with simple balances each kid
+					can understand at a glance.
 				</p>
 				<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
 					<a
@@ -665,7 +674,9 @@ function LoggedOutHome() {
 						backgroundColor: colors.surface,
 					}}
 				>
-					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+					<h3
+						css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}
+					>
 						Quick family overview
 					</h3>
 					<p css={{ margin: 0, color: colors.textMuted }}>
@@ -680,7 +691,9 @@ function LoggedOutHome() {
 						backgroundColor: colors.surface,
 					}}
 				>
-					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+					<h3
+						css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}
+					>
 						Fast adjustments
 					</h3>
 					<p css={{ margin: 0, color: colors.textMuted }}>
@@ -695,11 +708,14 @@ function LoggedOutHome() {
 						backgroundColor: colors.surface,
 					}}
 				>
-					<h3 css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}>
+					<h3
+						css={{ marginTop: 0, marginBottom: spacing.xs, color: colors.text }}
+					>
 						History and settings
 					</h3>
 					<p css={{ margin: 0, color: colors.textMuted }}>
-						Review transaction history and manage kids, accounts, and quick amounts.
+						Review transaction history and manage kids, accounts, and quick
+						amounts.
 					</p>
 				</article>
 			</section>
