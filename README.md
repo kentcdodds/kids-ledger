@@ -16,9 +16,19 @@
 
 ---
 
-kids-ledger ships a Remix-powered UI, server routing, and OAuth-protected MCP
-endpoints so you can build both a user-facing app and tooling APIs on the same
-Worker.
+kids-ledger is a mobile-first family ledger app for parents. It includes a
+transaction-first UI, authenticated JSON APIs, and OAuth-protected MCP tools on
+the same Worker runtime.
+
+## V1 Highlights
+
+- Parent-only account with email/password auth.
+- Main ledger board optimized for one-tap add/remove money.
+- Multiple kids and multiple accounts per kid.
+- Archive-first lifecycle with permanent delete in settings.
+- Recent-first transaction history route with URL-synced filters.
+- Quick amount presets and JSON export backups.
+- MCP tools for all primary ledger operations (without an MCP App UI yet).
 
 ## Quick Start
 
@@ -60,6 +70,30 @@ Request → worker/index.ts
 - OAuth requests are handled first, then MCP requests, then static assets
 - Non-asset requests fall through to the server handler and router
 - Client assets are bundled into `public/` and served via the `ASSETS` binding
+
+## App Routes
+
+- `/`: main ledger dashboard
+- `/history`: transaction feed with URL filters/date range
+- `/settings`: kids/accounts management, archive management, quick amounts,
+  export
+
+## API Routes
+
+- `/ledger/dashboard`
+- `/ledger/history`
+- `/ledger/settings`
+- `/ledger/kids/*`
+- `/ledger/accounts/*`
+- `/ledger/transactions/create`
+- `/ledger/quick-amounts/set`
+- `/ledger/export/json`
+
+## MCP Tools
+
+The server now exposes ledger MCP tools for create/update/reorder/archive/delete
+operations, transaction writes/reads, quick amount updates, dashboard reads, and
+JSON export payload generation.
 
 ## Documentation
 

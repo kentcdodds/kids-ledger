@@ -18,3 +18,6 @@ This folder documents the important runtime architecture for `kids-ledger`.
 - Router and HTTP route mapping: `server/router.ts` and `server/routes.ts`
 - OAuth handlers: `worker/oauth-handlers.ts`
 - MCP auth checks: `worker/mcp-auth.ts`
+- Ledger domain service: `server/ledger/ledger-service.ts`
+- Ledger HTTP handlers: `server/handlers/ledger-api.ts`
+- Ledger MCP tools: `mcp/tools/ledger-tools.ts`

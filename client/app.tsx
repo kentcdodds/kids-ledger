@@ -112,8 +112,14 @@ export function App(handle: Handle) {
 					) : null}
 					{isLoggedIn ? (
 						<>
-							<a href="/chat" css={navLinkCss}>
-								Chat
+							<a href="/" css={navLinkCss}>
+								Ledger
+							</a>
+							<a href="/history" css={navLinkCss}>
+								History
+							</a>
+							<a href="/settings" css={navLinkCss}>
+								Settings
 							</a>
 							<a href="/account" css={navLinkCss}>
 								{sessionEmail}

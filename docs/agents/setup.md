@@ -32,6 +32,15 @@ Quick notes for getting a local kids-ledger environment running.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
 
+## Ledger-specific smoke checks
+
+After `bun run dev` is running and you are logged in:
+
+- `/` should render the main ledger board with family total and account cards.
+- `/settings` should allow creating kids/accounts and managing archive/delete.
+- `/history` should show recent-first transactions and URL-synced filters.
+- `/ledger/export/json` should download a JSON backup while authenticated.
+
 ## PR preview deployments
 
 The GitHub Actions preview workflow creates per-preview Cloudflare resources so
