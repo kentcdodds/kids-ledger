@@ -29,6 +29,7 @@
     "format:check": "prettier --check .",
     "migrate:local": "bun ./wrangler-env.ts d1 migrations apply APP_DB --local",
     "migrate:e2e": "bun ./wrangler-env.ts d1 migrations apply APP_DB --local --persist-to .wrangler/state/e2e",
+    "seed:test-data": "bun tools/ci/seed-test-data.ts",
     "preview": "bun run build:mcp-apps && bun run migrate:local && bun ./wrangler-env.ts dev --local",
     "preview:e2e": "bun run build:mcp-apps && bun run migrate:e2e && bun ./wrangler-env.ts dev --local --persist-to .wrangler/state/e2e",
     "generate-types": "bun ./wrangler-env.ts types ./types/worker-configuration.d.ts",

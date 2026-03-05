@@ -18,6 +18,9 @@ Quick notes for getting a local kids-ledger environment running.
 - `bun run dev` (starts mock API servers automatically and sets
   `RESEND_API_BASE_URL` to the local mock Worker).
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
+- Seed local D1 test data (after migrations):
+  `bun run seed:test-data -- --local`
+  - test login: `kody@kcd.dev` / `kodylovesyou`
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
   - `bun run dev:worker`
@@ -48,6 +51,12 @@ each PR preview is isolated:
 
 - D1 database: `<preview-worker-name>-db`
 - KV namespace (OAuth state): `<preview-worker-name>-oauth-kv`
+
+After preview migrations complete, the workflow seeds the preview D1 database
+with deterministic test ledger data and a test login account:
+
+- username/email: `kody@kcd.dev`
+- password: `kodylovesyou`
 
 When a PR is closed, the cleanup job deletes the preview Worker(s) and these
 resources as well.

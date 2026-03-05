@@ -89,3 +89,9 @@ Preview deploys for pull requests create a separate Worker per PR named
 `<app-name>-pr-<number>` (for kids-ledger: `kids-ledger-pr-123`) plus one Worker
 per mock service named `<app-name>-pr-<number>-mock-<service>`. The same
 `CLOUDFLARE_API_TOKEN` must be able to create/update and delete those Workers.
+
+Preview deploys also seed the preview D1 database automatically via
+`bun run seed:test-data -- --remote --env preview --config <generated-config>`,
+including a test account:
+
+- `kody@kcd.dev` / `kodylovesyou`
