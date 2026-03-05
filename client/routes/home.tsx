@@ -207,9 +207,6 @@ export function HomeRoute(handle: Handle) {
 								Total: {formatCents(kid.totalBalanceCents)}
 							</p>
 						</div>
-						<a href="/settings" css={{ color: colors.primaryText }}>
-							Manage
-						</a>
 					</header>
 					<div css={{ display: 'grid', gap: spacing.sm }}>
 						{kid.accounts.length === 0 ? (

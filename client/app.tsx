@@ -294,9 +294,6 @@ export function App(handle: Handle) {
 					) : null}
 					{isLoggedIn ? (
 						<>
-							<a href="/" css={navLinkCss}>
-								Ledger
-							</a>
 							<a href="/history" css={navLinkCss}>
 								History
 							</a>
