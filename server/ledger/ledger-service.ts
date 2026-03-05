@@ -162,6 +162,16 @@ export class LedgerService {
 		)
 	}
 
+	async unarchiveKid(kidId: number) {
+		const kid = await this.#requireKid(kidId)
+		await this.#run(
+			`UPDATE kids
+			 SET is_archived = 0, archived_at = '', updated_at = CURRENT_TIMESTAMP
+			 WHERE id = ?`,
+			[kid.id],
+		)
+	}
+
 	async deleteKidPermanently(kidId: number) {
 		const kid = await this.#requireKid(kidId)
 		if (!kid.isArchived) {
@@ -240,6 +250,20 @@ export class LedgerService {
 		await this.#run(
 			`UPDATE accounts
 			 SET is_archived = 1, archived_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+			 WHERE id = ?`,
+			[account.id],
+		)
+	}
+
+	async unarchiveAccount(accountId: number) {
+		const account = await this.#requireAccount(accountId)
+		const kid = await this.#requireKid(account.kidId)
+		if (kid.isArchived) {
+			throw new Error('Account cannot be unarchived while kid is archived.')
+		}
+		await this.#run(
+			`UPDATE accounts
+			 SET is_archived = 0, archived_at = '', updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
 			[account.id],
 		)

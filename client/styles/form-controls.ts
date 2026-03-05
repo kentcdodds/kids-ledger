@@ -9,6 +9,8 @@ export const inputCss = {
 	boxShadow: `inset 0 2px 4px rgba(0,0,0,0.05)`,
 	transition: 'all 0.2s ease',
 	outline: 'none',
+	width: '100%',
+	minWidth: 0,
 	'&:focus': {
 		borderColor: colors.primary,
 		boxShadow: `0 0 0 4px ${colors.primarySoft}`,

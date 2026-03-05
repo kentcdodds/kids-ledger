@@ -130,6 +130,10 @@ export async function archiveKid(kidId: number) {
 	return postJson<{ ok: true }>('/ledger/kids/archive', { kidId })
 }
 
+export async function unarchiveKid(kidId: number) {
+	return postJson<{ ok: true }>('/ledger/kids/unarchive', { kidId })
+}
+
 export async function deleteKid(kidId: number) {
 	return postJson<{ ok: true }>('/ledger/kids/delete', { kidId })
 }
@@ -165,6 +169,10 @@ export async function reorderAccounts(
 
 export async function archiveAccount(accountId: number) {
 	return postJson<{ ok: true }>('/ledger/accounts/archive', { accountId })
+}
+
+export async function unarchiveAccount(accountId: number) {
+	return postJson<{ ok: true }>('/ledger/accounts/unarchive', { accountId })
 }
 
 export async function deleteAccount(accountId: number) {

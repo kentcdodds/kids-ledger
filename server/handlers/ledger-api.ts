@@ -205,6 +205,23 @@ export function createKidArchiveHandler(appEnv: AppEnv) {
 	>
 }
 
+export function createKidUnarchiveHandler(appEnv: AppEnv) {
+	return {
+		middleware: [],
+		async action({ request }) {
+			const access = await readLedgerService(request, appEnv)
+			if (!access.ok) return access.response
+			const parsedBody = await parseJsonBody(request, kidIdSchema)
+			if (!parsedBody.ok) return parsedBody.response
+			await access.service.unarchiveKid(parsedBody.value.kidId)
+			return jsonResponse({ ok: true })
+		},
+	} satisfies BuildAction<
+		typeof routes.apiKidsUnarchive.method,
+		typeof routes.apiKidsUnarchive.pattern
+	>
+}
+
 export function createKidDeleteHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
@@ -287,6 +304,23 @@ export function createAccountArchiveHandler(appEnv: AppEnv) {
 	} satisfies BuildAction<
 		typeof routes.apiAccountsArchive.method,
 		typeof routes.apiAccountsArchive.pattern
+	>
+}
+
+export function createAccountUnarchiveHandler(appEnv: AppEnv) {
+	return {
+		middleware: [],
+		async action({ request }) {
+			const access = await readLedgerService(request, appEnv)
+			if (!access.ok) return access.response
+			const parsedBody = await parseJsonBody(request, accountIdSchema)
+			if (!parsedBody.ok) return parsedBody.response
+			await access.service.unarchiveAccount(parsedBody.value.accountId)
+			return jsonResponse({ ok: true })
+		},
+	} satisfies BuildAction<
+		typeof routes.apiAccountsUnarchive.method,
+		typeof routes.apiAccountsUnarchive.pattern
 	>
 }
 
