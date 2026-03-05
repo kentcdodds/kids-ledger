@@ -113,7 +113,7 @@ function TrashIcon(_handle: Handle) {
 	)
 }
 
-function PaintbrushIcon(_handle: Handle) {
+function SettingsIcon(_handle: Handle) {
 	return () => (
 		<svg
 			viewBox="0 0 24 24"
@@ -691,7 +691,7 @@ export function SettingsRoute(handle: Handle) {
 											}}
 											css={transactionModalIconButtonCss}
 										>
-											<PaintbrushIcon />
+											<SettingsIcon />
 										</button>
 										<button
 											type="button"
