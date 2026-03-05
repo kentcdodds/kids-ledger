@@ -33,9 +33,15 @@ test('kid transaction modal custom css applies only while open', async ({
 		.getByRole('textbox', { name: 'Custom CSS declarations' })
 		.fill(
 			[
-				'--font-family: "Courier New", monospace;',
-				'--color-surface: #fff7dd;',
-				'--color-border: #f59e0b;',
+				':root {',
+				'	--font-family: "Courier New", monospace;',
+				'	--color-surface: #fff7dd;',
+				'	--color-border: #f59e0b;',
+				'}',
+				'',
+				'body {',
+				'	background-image: none !important;',
+				'}',
 			].join('\n'),
 		)
 
@@ -56,6 +62,10 @@ test('kid transaction modal custom css applies only while open', async ({
 		window.getComputedStyle(element).fontFamily.toLowerCase(),
 	)
 	expect(fontFamily).toContain('courier new')
+	const bodyBackgroundImageWhileOpen = await page.evaluate(() =>
+		window.getComputedStyle(document.body).backgroundImage.toLowerCase(),
+	)
+	expect(bodyBackgroundImageWhileOpen).toBe('none')
 
 	const customStyleTagCountWhileOpen = await page
 		.locator('style[data-kid-transaction-modal-css]')
@@ -70,4 +80,8 @@ test('kid transaction modal custom css applies only while open', async ({
 			page.locator('style[data-kid-transaction-modal-css]').count(),
 		)
 		.toBe(0)
+	const bodyBackgroundImageAfterClose = await page.evaluate(() =>
+		window.getComputedStyle(document.body).backgroundImage.toLowerCase(),
+	)
+	expect(bodyBackgroundImageAfterClose).not.toBe('none')
 })

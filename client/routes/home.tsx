@@ -593,7 +593,12 @@ function modalButtonCss(
 function buildTransactionModalCustomCss(transactionModalCss: string) {
 	const trimmed = transactionModalCss.trim()
 	if (!trimmed) return ''
-	return `[data-kid-transaction-modal] {\n${trimmed}\n}`
+	if (isLikelyCssStylesheet(trimmed)) return trimmed
+	return `:root {\n${trimmed}\n}`
+}
+
+function isLikelyCssStylesheet(cssText: string) {
+	return cssText.includes('{') || cssText.includes('@')
 }
 
 function LoggedOutHome() {

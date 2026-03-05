@@ -128,11 +128,21 @@ const transactionModalCssVariables = [
 ] as const
 
 const transactionModalCssFontExample = `--font-family: "Comic Sans MS", "Comic Sans", cursive;`
+const transactionModalCssGoogleFontExample = `@import url("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap");
+
+:root {
+	--font-family: "MedievalSharp", cursive;
+}`
 
 function buildTransactionModalPreviewCss(transactionModalCss: string) {
 	const trimmed = transactionModalCss.trim()
 	if (!trimmed) return ''
-	return `[data-kid-transaction-modal-preview] {\n${trimmed}\n}`
+	if (isLikelyCssStylesheet(trimmed)) return trimmed
+	return `:root {\n${trimmed}\n}`
+}
+
+function isLikelyCssStylesheet(cssText: string) {
+	return cssText.includes('{') || cssText.includes('@')
 }
 
 type SettingsState =
@@ -1258,8 +1268,9 @@ export function SettingsRoute(handle: Handle) {
 											transaction modal
 										</h3>
 										<p css={{ margin: 0, color: colors.textMuted }}>
-											Enter CSS declarations. These only apply while this
-											kid&apos;s transaction modal is open.
+											Enter declarations or full CSS rules. When this kid&apos;s
+											transaction modal is open on Home, the styles apply to the
+											whole page.
 										</p>
 									</div>
 									<button
@@ -1400,6 +1411,24 @@ export function SettingsRoute(handle: Handle) {
 										}}
 									>
 										{transactionModalCssFontExample}
+									</pre>
+								</div>
+								<div css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>
+										Google Fonts example
+									</strong>
+									<pre
+										css={{
+											margin: 0,
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `2px solid ${colors.border}`,
+											backgroundColor: colors.primarySoftest,
+											color: colors.text,
+											overflowX: 'auto',
+										}}
+									>
+										{transactionModalCssGoogleFontExample}
 									</pre>
 								</div>
 								{transactionModalCssSaveError ? (
