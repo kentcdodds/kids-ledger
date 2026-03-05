@@ -10,6 +10,7 @@ import {
 	transitions,
 	typography,
 } from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
@@ -156,10 +157,10 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 						display: 'grid',
 						gap: spacing.md,
 						padding: spacing.lg,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
 						backgroundColor: colors.surface,
-						boxShadow: shadows.sm,
+						boxShadow: shadows.md,
 					}}
 					on={{ submit: handleSubmit }}
 				>
@@ -181,9 +182,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							autoComplete="email"
 							placeholder="you@example.com"
 							css={{
-								padding: spacing.sm,
-								borderRadius: radius.md,
-								border: `1px solid ${colors.border}`,
+								...inputCss,
 								fontSize: typography.fontSize.base,
 								fontFamily: typography.fontFamily,
 							}}
@@ -206,9 +205,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							autoComplete={isSignup ? 'new-password' : 'current-password'}
 							placeholder="At least 8 characters"
 							css={{
-								padding: spacing.sm,
-								borderRadius: radius.md,
-								border: `1px solid ${colors.border}`,
+								...inputCss,
 								fontSize: typography.fontSize.base,
 								fontFamily: typography.fontFamily,
 							}}
@@ -218,27 +215,24 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 						type="submit"
 						disabled={isSubmitting}
 						css={{
+							...buttonCss,
 							padding: `${spacing.sm} ${spacing.lg}`,
 							borderRadius: radius.full,
-							border: 'none',
-							backgroundColor: colors.primary,
-							color: colors.onPrimary,
 							fontSize: typography.fontSize.base,
-							fontWeight: typography.fontWeight.semibold,
 							cursor: isSubmitting ? 'not-allowed' : 'pointer',
 							opacity: isSubmitting ? 0.7 : 1,
-							transition: `transform ${transitions.fast}, background-color ${transitions.normal}`,
+							transition: `all ${transitions.fast}`,
 							'&:hover': isSubmitting
 								? undefined
 								: {
 										backgroundColor: colors.primaryHover,
-										transform: 'translateY(-1px)',
+										filter: 'brightness(1.1)',
 									},
 							'&:active': isSubmitting
 								? undefined
 								: {
-										backgroundColor: colors.primaryActive,
-										transform: 'translateY(0)',
+										transform: 'translateY(4px)',
+										boxShadow: `0 0 0 0 ${colors.primaryActive}`,
 									},
 						}}
 					>

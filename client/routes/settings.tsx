@@ -15,7 +15,14 @@ import {
 	type KidSummary,
 } from '#client/ledger-api.ts'
 import { formatCents } from '#client/money.ts'
-import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
+import {
+	colors,
+	radius,
+	shadows,
+	spacing,
+	typography,
+} from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 const accountColors = [
 	'orchid',
@@ -156,9 +163,10 @@ export function SettingsRoute(handle: Handle) {
 							display: 'grid',
 							gap: spacing.sm,
 							padding: spacing.md,
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.lg,
+							border: `3px solid ${colors.border}`,
+							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.text }}>Add kid</h2>
@@ -223,10 +231,11 @@ export function SettingsRoute(handle: Handle) {
 								css={{
 									display: 'grid',
 									gap: spacing.sm,
-									padding: spacing.md,
-									border: `1px solid ${colors.border}`,
-									borderRadius: radius.lg,
+									padding: spacing.lg,
+									border: `3px solid ${colors.border}`,
+									borderRadius: radius.xl,
 									backgroundColor: colors.surface,
+									boxShadow: shadows.md,
 								}}
 							>
 								<header
@@ -316,9 +325,10 @@ export function SettingsRoute(handle: Handle) {
 												gridTemplateColumns: '1fr auto auto auto',
 												gap: spacing.xs,
 												alignItems: 'center',
-												padding: spacing.sm,
-												borderRadius: radius.md,
+												padding: spacing.md,
+												borderRadius: radius.lg,
 												backgroundColor: colors.primarySoftest,
+												border: `2px solid ${colors.border}`,
 											}}
 										>
 											<div css={{ display: 'grid', gap: 2 }}>
@@ -444,9 +454,10 @@ export function SettingsRoute(handle: Handle) {
 							display: 'grid',
 							gap: spacing.sm,
 							padding: spacing.md,
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.lg,
+							border: `3px solid ${colors.border}`,
+							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.text }}>Quick amounts</h2>
@@ -487,9 +498,10 @@ export function SettingsRoute(handle: Handle) {
 							display: 'grid',
 							gap: spacing.sm,
 							padding: spacing.md,
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.lg,
+							border: `3px solid ${colors.border}`,
+							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.text }}>Archive management</h2>
@@ -555,26 +567,14 @@ export function SettingsRoute(handle: Handle) {
 	)
 }
 
-const inputCss = {
-	padding: spacing.sm,
-	borderRadius: radius.md,
-	border: `1px solid ${colors.border}`,
-	backgroundColor: colors.surface,
-	color: colors.text,
-}
-
-const buttonCss = {
-	padding: `${spacing.sm} ${spacing.md}`,
-	borderRadius: radius.md,
-	border: 'none',
-	backgroundColor: colors.primary,
-	color: colors.onPrimary,
-	cursor: 'pointer',
-}
-
 const dangerButtonCss = {
 	...buttonCss,
 	backgroundColor: colors.error,
+	boxShadow: `0 4px 0 0 #b91c1c`,
+	'&:active': {
+		transform: 'translateY(4px)',
+		boxShadow: `0 0 0 0 #b91c1c`,
+	},
 }
 
 const archivedRowCss = {
@@ -582,7 +582,9 @@ const archivedRowCss = {
 	justifyContent: 'space-between',
 	alignItems: 'center',
 	gap: spacing.md,
-	padding: spacing.sm,
-	border: `1px solid ${colors.border}`,
-	borderRadius: radius.md,
+	padding: spacing.md,
+	border: `2px solid ${colors.border}`,
+	borderRadius: radius.lg,
+	backgroundColor: colors.surface,
+	boxShadow: shadows.sm,
 }

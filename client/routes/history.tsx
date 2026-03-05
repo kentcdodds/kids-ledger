@@ -6,7 +6,8 @@ import {
 } from '#client/ledger-api.ts'
 import { navigate } from '#client/client-router.tsx'
 import { formatCents } from '#client/money.ts'
-import { colors, radius, spacing } from '#client/styles/tokens.ts'
+import { colors, radius, shadows, spacing } from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 type HistoryState = {
 	status: 'loading' | 'ready' | 'error'
@@ -94,9 +95,10 @@ export function HistoryRoute(handle: Handle) {
 					gridTemplateColumns: 'repeat(5, minmax(0, 1fr)) auto',
 					gap: spacing.sm,
 					padding: spacing.md,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.lg,
+					border: `3px solid ${colors.border}`,
+					borderRadius: radius.xl,
 					backgroundColor: colors.surface,
+					boxShadow: shadows.md,
 				}}
 				on={{
 					submit: (event) => {
@@ -187,9 +189,10 @@ export function HistoryRoute(handle: Handle) {
 						display: 'grid',
 						gap: spacing.xs,
 						padding: spacing.md,
-						borderRadius: radius.md,
-						border: `1px solid ${colors.border}`,
+						borderRadius: radius.lg,
+						border: `2px solid ${colors.border}`,
 						backgroundColor: colors.surface,
+						boxShadow: shadows.sm,
 					}}
 				>
 					<div
@@ -221,21 +224,4 @@ export function HistoryRoute(handle: Handle) {
 			))}
 		</section>
 	)
-}
-
-const inputCss = {
-	padding: spacing.sm,
-	borderRadius: radius.md,
-	border: `1px solid ${colors.border}`,
-	backgroundColor: colors.surface,
-	color: colors.text,
-}
-
-const buttonCss = {
-	padding: `${spacing.sm} ${spacing.md}`,
-	borderRadius: radius.md,
-	border: 'none',
-	backgroundColor: colors.primary,
-	color: colors.onPrimary,
-	cursor: 'pointer',
 }

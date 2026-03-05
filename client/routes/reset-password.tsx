@@ -6,6 +6,7 @@ import {
 	spacing,
 	typography,
 } from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 type ResetStatus = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -135,10 +136,10 @@ export function ResetPasswordRoute(handle: Handle) {
 						display: 'grid',
 						gap: spacing.md,
 						padding: spacing.lg,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
 						backgroundColor: colors.surface,
-						boxShadow: shadows.sm,
+						boxShadow: shadows.md,
 					}}
 					on={{
 						submit: (event) =>
@@ -166,9 +167,7 @@ export function ResetPasswordRoute(handle: Handle) {
 								placeholder="At least 8 characters"
 								disabled={isSubmitting}
 								css={{
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
+									...inputCss,
 									fontSize: typography.fontSize.base,
 									fontFamily: typography.fontFamily,
 								}}
@@ -193,9 +192,7 @@ export function ResetPasswordRoute(handle: Handle) {
 								placeholder="you@example.com"
 								disabled={isSubmitting}
 								css={{
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
+									...inputCss,
 									fontSize: typography.fontSize.base,
 									fontFamily: typography.fontFamily,
 								}}
@@ -206,13 +203,10 @@ export function ResetPasswordRoute(handle: Handle) {
 						type="submit"
 						disabled={isSubmitting}
 						css={{
+							...buttonCss,
 							padding: `${spacing.sm} ${spacing.lg}`,
 							borderRadius: radius.full,
-							border: 'none',
-							backgroundColor: colors.primary,
-							color: colors.onPrimary,
 							fontSize: typography.fontSize.base,
-							fontWeight: typography.fontWeight.semibold,
 							cursor: isSubmitting ? 'not-allowed' : 'pointer',
 							opacity: isSubmitting ? 0.7 : 1,
 						}}

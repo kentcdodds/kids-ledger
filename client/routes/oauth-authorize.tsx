@@ -11,6 +11,7 @@ import {
 	spacing,
 	typography,
 } from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }
@@ -231,10 +232,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				<section
 					css={{
 						padding: spacing.lg,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
 						backgroundColor: colors.surface,
-						boxShadow: shadows.sm,
+						boxShadow: shadows.md,
 						display: 'grid',
 						gap: spacing.sm,
 					}}
@@ -257,8 +258,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 					<section
 						css={{
 							padding: spacing.md,
-							borderRadius: radius.md,
-							border: `1px solid ${colors.border}`,
+							borderRadius: radius.lg,
+							border: `2px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							display: 'grid',
 							gap: spacing.xs,
@@ -299,10 +300,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						display: 'grid',
 						gap: spacing.md,
 						padding: spacing.lg,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
 						backgroundColor: colors.surface,
-						boxShadow: shadows.sm,
+						boxShadow: shadows.md,
 						opacity: formReady ? 1 : 0.7,
 					}}
 					on={{ submit: handleSubmit }}
@@ -327,9 +328,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									placeholder="you@example.com"
 									disabled={actionsDisabled}
 									css={{
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										border: `1px solid ${colors.border}`,
+										...inputCss,
 										fontSize: typography.fontSize.base,
 										fontFamily: typography.fontFamily,
 									}}
@@ -353,9 +352,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									placeholder="Enter your password"
 									disabled={actionsDisabled}
 									css={{
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										border: `1px solid ${colors.border}`,
+										...inputCss,
 										fontSize: typography.fontSize.base,
 										fontFamily: typography.fontFamily,
 									}}
@@ -368,13 +365,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 							type="submit"
 							disabled={actionsDisabled}
 							css={{
+								...buttonCss,
 								padding: `${spacing.sm} ${spacing.lg}`,
 								borderRadius: radius.full,
-								border: 'none',
-								backgroundColor: colors.primary,
-								color: colors.onPrimary,
 								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.semibold,
 								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
 								opacity: actionsDisabled ? 0.7 : 1,
 							}}
@@ -386,15 +380,22 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 							disabled={actionsDisabled}
 							on={{ click: () => submitDecision('deny') }}
 							css={{
+								...buttonCss,
 								padding: `${spacing.sm} ${spacing.lg}`,
 								borderRadius: radius.full,
-								border: `1px solid ${colors.border}`,
-								backgroundColor: 'transparent',
+								border: `2px solid ${colors.border}`,
+								backgroundColor: colors.surface,
 								color: colors.text,
 								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.medium,
 								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
 								opacity: actionsDisabled ? 0.7 : 1,
+								boxShadow: `0 4px 0 0 ${colors.border}`,
+								'&:active': actionsDisabled
+									? undefined
+									: {
+											transform: 'translateY(4px)',
+											boxShadow: `0 0 0 0 ${colors.border}`,
+										},
 							}}
 						>
 							Deny

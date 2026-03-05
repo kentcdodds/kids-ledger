@@ -49,23 +49,83 @@ export function App(handle: Handle) {
 	listenToRouterNavigation(handle, queueSessionRefresh)
 
 	const navLinkCss = {
+		padding: `${spacing.xs} ${spacing.md}`,
+		borderRadius: '999px',
+		backgroundColor: colors.surface,
 		color: colors.primaryText,
-		fontWeight: typography.fontWeight.medium,
+		fontWeight: typography.fontWeight.semibold,
 		textDecoration: 'none',
+		border: `2px solid ${colors.border}`,
+		boxShadow: `0 2px 0 0 ${colors.border}`,
+		transition: 'all 0.1s ease',
 		'&:hover': {
-			textDecoration: 'underline',
+			backgroundColor: colors.primarySoftest,
+		},
+		'&:active': {
+			transform: 'translateY(2px)',
+			boxShadow: `0 0 0 0 ${colors.border}`,
 		},
 	}
 
 	const logOutButtonCss = {
 		padding: `${spacing.xs} ${spacing.md}`,
 		borderRadius: '999px',
-		border: `1px solid ${colors.border}`,
-		backgroundColor: 'transparent',
+		backgroundColor: colors.surface,
 		color: colors.text,
-		fontWeight: typography.fontWeight.medium,
+		fontWeight: typography.fontWeight.semibold,
+		border: `2px solid ${colors.border}`,
+		boxShadow: `0 2px 0 0 ${colors.border}`,
 		cursor: 'pointer',
+		transition: 'all 0.1s ease',
+		'&:hover': {
+			backgroundColor: colors.primarySoftest,
+		},
+		'&:active': {
+			transform: 'translateY(2px)',
+			boxShadow: `0 0 0 0 ${colors.border}`,
+		},
 	}
+
+	let driftX = 0
+	let driftY = 0
+	let targetMouseX = 0
+	let targetMouseY = 0
+	let currentMouseX = 0
+	let currentMouseY = 0
+	let lastTime = typeof performance !== 'undefined' ? performance.now() : 0
+
+	// Set up continuous drift animation that works alongside mouse position
+	handle.queueTask(() => {
+		if (typeof window === 'undefined') return
+
+		let animationFrameId: number
+
+		function updateDrift(time: number) {
+			const delta = time - lastTime
+			lastTime = time
+
+			// Move 2px per second (60px every 30s)
+			const driftSpeed = 2 / 1000
+			driftX = (driftX + delta * driftSpeed) % 60
+			driftY = (driftY + delta * driftSpeed) % 60
+
+			// Smoothly interpolate mouse position for fluid movement
+			currentMouseX += (targetMouseX - currentMouseX) * 0.1
+			currentMouseY += (targetMouseY - currentMouseY) * 0.1
+
+			document.body.style.setProperty('--drift-x', `${driftX}px`)
+			document.body.style.setProperty('--drift-y', `${driftY}px`)
+			document.body.style.setProperty('--mouse-x', `${currentMouseX}px`)
+			document.body.style.setProperty('--mouse-y', `${currentMouseY}px`)
+
+			animationFrameId = requestAnimationFrame(updateDrift)
+		}
+
+		animationFrameId = requestAnimationFrame(updateDrift)
+
+		// Clean up on unmount (though App rarely unmounts)
+		return () => cancelAnimationFrame(animationFrameId)
+	})
 
 	return () => {
 		const sessionEmail = session?.email ?? ''
@@ -82,6 +142,23 @@ export function App(handle: Handle) {
 
 		return (
 			<main
+				on={{
+					mousemove: (event) => {
+						if (typeof window === 'undefined') return
+						// Calculate mouse position relative to center of screen (-1 to 1)
+						const x = (event.clientX / window.innerWidth) * 2 - 1
+						const y = (event.clientY / window.innerHeight) * 2 - 1
+
+						// Update CSS variables for mouse offset (move opposite to mouse for parallax)
+						document.body.style.setProperty('--mouse-x', `${-x * 15}px`)
+						document.body.style.setProperty('--mouse-y', `${-y * 15}px`)
+					},
+					mouseleave: () => {
+						if (typeof window === 'undefined') return
+						document.body.style.setProperty('--mouse-x', '0px')
+						document.body.style.setProperty('--mouse-y', '0px')
+					},
+				}}
 				css={{
 					maxWidth: '52rem',
 					margin: '0 auto',

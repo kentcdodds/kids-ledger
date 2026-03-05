@@ -14,6 +14,7 @@ import {
 	transitions,
 	typography,
 } from '#client/styles/tokens.ts'
+import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
 type TransactionState = {
 	kid: KidSummary
@@ -162,8 +163,8 @@ export function HomeRoute(handle: Handle) {
 				<section
 					css={{
 						padding: spacing.lg,
-						border: `1px dashed ${colors.border}`,
-						borderRadius: radius.lg,
+						border: `3px dashed ${colors.border}`,
+						borderRadius: radius.xl,
 						backgroundColor: colors.surface,
 						display: 'grid',
 						gap: spacing.sm,
@@ -183,11 +184,11 @@ export function HomeRoute(handle: Handle) {
 					css={{
 						display: 'grid',
 						gap: spacing.md,
-						padding: spacing.md,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
+						padding: spacing.lg,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
 						backgroundColor: colors.surface,
-						boxShadow: shadows.sm,
+						boxShadow: shadows.md,
 					}}
 				>
 					<header
@@ -227,13 +228,18 @@ export function HomeRoute(handle: Handle) {
 									alignItems: 'center',
 									gap: spacing.sm,
 									padding: spacing.md,
-									borderRadius: radius.md,
+									borderRadius: radius.lg,
 									border: 'none',
 									background: getAccountBackground(account.colorToken),
 									color: '#ffffff',
 									cursor: 'pointer',
-									transition: `transform ${transitions.fast}`,
-									'&:hover': { transform: 'translateY(-1px)' },
+									boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
+									transition: `all ${transitions.fast}`,
+									'&:hover': { filter: 'brightness(1.1)' },
+									'&:active': {
+										transform: 'translateY(4px)',
+										boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
+									},
 								}}
 							>
 								<span
@@ -278,8 +284,12 @@ export function HomeRoute(handle: Handle) {
 							display: 'grid',
 							gap: spacing.md,
 							padding: spacing.lg,
-							borderRadius: radius.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
 							backgroundColor: colors.surface,
+							boxShadow: shadows.lg,
+							animation:
+								'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
 						}}
 					>
 						<header css={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -322,11 +332,7 @@ export function HomeRoute(handle: Handle) {
 										handle.update()
 									},
 								}}
-								css={{
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
-								}}
+								css={inputCss}
 							/>
 						</label>
 
@@ -352,11 +358,15 @@ export function HomeRoute(handle: Handle) {
 										type="button"
 										on={{ click: () => setTransactionAmountFromQuick(amount) }}
 										css={{
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
+											...buttonCss,
 											backgroundColor: colors.surface,
-											cursor: 'pointer',
+											color: colors.text,
+											border: `2px solid ${colors.border}`,
+											boxShadow: `0 2px 0 0 ${colors.border}`,
+											'&:active': {
+												transform: 'translateY(2px)',
+												boxShadow: `0 0 0 0 ${colors.border}`,
+											},
 										}}
 									>
 										{formatCents(amount)}
@@ -378,11 +388,7 @@ export function HomeRoute(handle: Handle) {
 										handle.update()
 									},
 								}}
-								css={{
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
-								}}
+								css={inputCss}
 							/>
 						</label>
 
@@ -407,7 +413,10 @@ export function HomeRoute(handle: Handle) {
 							<button
 								type="button"
 								on={{ click: closeTransactionModal }}
-								css={modalButtonCss(colors.surface, colors.text)}
+								css={{
+									...modalButtonCss(colors.surface, colors.text, colors.border),
+									border: `2px solid ${colors.border}`,
+								}}
 							>
 								Cancel
 							</button>
@@ -415,7 +424,7 @@ export function HomeRoute(handle: Handle) {
 								type="button"
 								disabled={transactionState.status === 'saving'}
 								on={{ click: () => void submitTransaction('add') }}
-								css={modalButtonCss('#1f9d5d', '#ffffff')}
+								css={modalButtonCss('#22c55e', '#ffffff', '#16a34a')}
 							>
 								Add
 							</button>
@@ -423,7 +432,7 @@ export function HomeRoute(handle: Handle) {
 								type="button"
 								disabled={transactionState.status === 'saving'}
 								on={{ click: () => void submitTransaction('remove') }}
-								css={modalButtonCss('#c13853', '#ffffff')}
+								css={modalButtonCss('#ef4444', '#ffffff', '#dc2626')}
 							>
 								Remove
 							</button>
@@ -435,14 +444,19 @@ export function HomeRoute(handle: Handle) {
 	)
 }
 
-function modalButtonCss(background: string, color: string) {
+function modalButtonCss(
+	background: string,
+	color: string,
+	activeShadow: string,
+) {
 	return {
-		padding: `${spacing.sm} ${spacing.md}`,
-		borderRadius: radius.md,
-		border: 'none',
+		...buttonCss,
 		background,
 		color,
-		fontWeight: typography.fontWeight.semibold,
-		cursor: 'pointer',
+		boxShadow: `0 4px 0 0 ${activeShadow}`,
+		'&:active': {
+			transform: 'translateY(4px)',
+			boxShadow: `0 0 0 0 ${activeShadow}`,
+		},
 	}
 }
