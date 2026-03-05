@@ -88,13 +88,17 @@ export function App(handle: Handle) {
 
 	let driftX = 0
 	let driftY = 0
-	let targetMouseX = 0
-	let targetMouseY = 0
-	let currentMouseX = 0
-	let currentMouseY = 0
+	let targetMouseDirX = 0
+	let targetMouseDirY = 0
+	let currentMouseDirX = 0
+	let currentMouseDirY = 0
 	let lastTime = typeof performance !== 'undefined' ? performance.now() : 0
 
-	// Set up continuous drift animation that works alongside mouse position
+	function wrapDriftOffset(value: number, tileSize: number) {
+		return ((value % tileSize) + tileSize) % tileSize
+	}
+
+	// Keep dot drift and pointer influence on CSS vars to avoid rerenders.
 	handle.queueTask(() => {
 		if (typeof window === 'undefined') return
 
@@ -104,27 +108,55 @@ export function App(handle: Handle) {
 			const delta = time - lastTime
 			lastTime = time
 
-			// Move 2px per second (60px every 30s)
-			const driftSpeed = 2 / 1000
-			driftX = (driftX + delta * driftSpeed) % 60
-			driftY = (driftY + delta * driftSpeed) % 60
+			// Move in pointer direction (relative to viewport center).
+			const driftSpeed = 10 / 1000
+			const directionMagnitude = Math.hypot(currentMouseDirX, currentMouseDirY)
+			const normalizedDirX =
+				directionMagnitude > 0.001 ? currentMouseDirX / directionMagnitude : 0
+			const normalizedDirY =
+				directionMagnitude > 0.001 ? currentMouseDirY / directionMagnitude : 0
+			driftX = wrapDriftOffset(driftX + delta * driftSpeed * normalizedDirX, 60)
+			driftY = wrapDriftOffset(driftY + delta * driftSpeed * normalizedDirY, 60)
 
-			// Smoothly interpolate mouse position for fluid movement
-			currentMouseX += (targetMouseX - currentMouseX) * 0.1
-			currentMouseY += (targetMouseY - currentMouseY) * 0.1
+			// Smooth interpolation keeps movement subtle and fluid.
+			currentMouseDirX += (targetMouseDirX - currentMouseDirX) * 0.08
+			currentMouseDirY += (targetMouseDirY - currentMouseDirY) * 0.08
 
 			document.body.style.setProperty('--drift-x', `${driftX}px`)
 			document.body.style.setProperty('--drift-y', `${driftY}px`)
-			document.body.style.setProperty('--mouse-x', `${currentMouseX}px`)
-			document.body.style.setProperty('--mouse-y', `${currentMouseY}px`)
+			document.body.style.setProperty('--mouse-dir-x', `${currentMouseDirX}`)
+			document.body.style.setProperty('--mouse-dir-y', `${currentMouseDirY}`)
 
 			animationFrameId = requestAnimationFrame(updateDrift)
 		}
 
+		const updatePointerTarget = (event: PointerEvent) => {
+			// Normalize pointer position relative to viewport center (-1 to 1).
+			const centerX = window.innerWidth / 2
+			const centerY = window.innerHeight / 2
+			const relativeX = (event.clientX - centerX) / centerX
+			const relativeY = (event.clientY - centerY) / centerY
+			targetMouseDirX = Math.max(-1, Math.min(1, relativeX))
+			targetMouseDirY = Math.max(-1, Math.min(1, relativeY))
+		}
+
+		const clearPointerTarget = () => {
+			targetMouseDirX = 0
+			targetMouseDirY = 0
+		}
+
+		window.addEventListener('pointermove', updatePointerTarget)
+		window.addEventListener('pointerleave', clearPointerTarget)
+		window.addEventListener('blur', clearPointerTarget)
+
 		animationFrameId = requestAnimationFrame(updateDrift)
 
-		// Clean up on unmount (though App rarely unmounts)
-		return () => cancelAnimationFrame(animationFrameId)
+		return () => {
+			cancelAnimationFrame(animationFrameId)
+			window.removeEventListener('pointermove', updatePointerTarget)
+			window.removeEventListener('pointerleave', clearPointerTarget)
+			window.removeEventListener('blur', clearPointerTarget)
+		}
 	})
 
 	return () => {
@@ -142,23 +174,6 @@ export function App(handle: Handle) {
 
 		return (
 			<main
-				on={{
-					mousemove: (event) => {
-						if (typeof window === 'undefined') return
-						// Calculate mouse position relative to center of screen (-1 to 1)
-						const x = (event.clientX / window.innerWidth) * 2 - 1
-						const y = (event.clientY / window.innerHeight) * 2 - 1
-
-						// Update CSS variables for mouse offset (move opposite to mouse for parallax)
-						document.body.style.setProperty('--mouse-x', `${-x * 15}px`)
-						document.body.style.setProperty('--mouse-y', `${-y * 15}px`)
-					},
-					mouseleave: () => {
-						if (typeof window === 'undefined') return
-						document.body.style.setProperty('--mouse-x', '0px')
-						document.body.style.setProperty('--mouse-y', '0px')
-					},
-				}}
 				css={{
 					maxWidth: '52rem',
 					margin: '0 auto',
