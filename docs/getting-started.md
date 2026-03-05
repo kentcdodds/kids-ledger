@@ -122,7 +122,7 @@ See `docs/agents/setup.md` for local dev commands and verification steps.
 
 To create a deterministic local test login, run:
 
-```
+```bash
 bun run migrate:local
 bun tools/seed-test-data.ts --local
 ```

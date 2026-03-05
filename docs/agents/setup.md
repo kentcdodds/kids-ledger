@@ -18,8 +18,9 @@ Quick notes for getting a local kids-ledger environment running.
 - `bun run dev` (starts mock API servers automatically and sets
   `RESEND_API_BASE_URL` to the local mock Worker).
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
-- Seed or refresh the local test login (after migrations):
-  `bun tools/seed-test-data.ts --local`
+- Seed or refresh the local test login:
+  - `bun run migrate:local`
+  - `bun tools/seed-test-data.ts --local`
   - test login: `kody@kcd.dev` / `kodylovesyou`
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
