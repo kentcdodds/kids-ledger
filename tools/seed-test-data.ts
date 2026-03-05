@@ -16,7 +16,6 @@ const defaultTestEmail = 'kody@kcd.dev'
 const defaultTestPassword = 'kodylovesyou'
 
 function parseArgs(argv: Array<string>): CliOptions {
-	let usernameProvided = false
 	const options: CliOptions = {
 		email: defaultTestEmail,
 		username: '',
@@ -40,7 +39,6 @@ function parseArgs(argv: Array<string>): CliOptions {
 				break
 			}
 			case '--username': {
-				usernameProvided = true
 				options.username = argv[index + 1] ?? ''
 				hasCustomUsername = true
 				index += 1
@@ -98,9 +96,6 @@ function parseArgs(argv: Array<string>): CliOptions {
 	}
 	if (!options.email) {
 		fail('Missing required --email <email> value.')
-	}
-	if (!usernameProvided) {
-		options.username = options.email
 	}
 	if (!options.username) {
 		fail('Missing required --username <username> value.')
