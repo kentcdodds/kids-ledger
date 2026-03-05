@@ -62,6 +62,7 @@ function formatDocumentTitle(pageTitle: string | null = null) {
 export function getClientDocumentTitle(url: URL) {
 	const match = matchClientRoute(url.pathname)
 	if (!match) return formatDocumentTitle('Not Found')
-	const title = match.route.getMetadata?.({ url, params: match.params }).title ?? null
+	const title =
+		match.route.getMetadata?.({ url, params: match.params }).title ?? null
 	return formatDocumentTitle(title)
 }

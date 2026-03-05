@@ -48,7 +48,8 @@ export function App(handle: Handle) {
 		document.title = getClientDocumentTitle(new URL(window.location.href))
 	}
 
-	let currentPath = typeof window !== 'undefined' ? window.location.pathname : '/'
+	let currentPath =
+		typeof window !== 'undefined' ? window.location.pathname : '/'
 
 	handle.queueTask(() => {
 		queueSessionRefresh()

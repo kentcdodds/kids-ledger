@@ -16,8 +16,8 @@ export function TermsOfServiceRoute(handle: Handle) {
 				Terms of Service
 			</h1>
 			<p css={{ margin: 0, color: colors.textMuted }}>
-				Kids Ledger is provided as-is, with no guarantees, uptime commitments, or
-				other service-level agreement.
+				Kids Ledger is provided as-is, with no guarantees, uptime commitments,
+				or other service-level agreement.
 			</p>
 			<p css={{ margin: 0, color: colors.textMuted }}>
 				Data may be lost or removed at any time. Do not rely on this app as your

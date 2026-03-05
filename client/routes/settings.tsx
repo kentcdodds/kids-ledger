@@ -498,7 +498,7 @@ export function SettingsRoute(handle: Handle) {
 														'&:focus': {
 															...inputCss['&:focus'],
 															backgroundColor: colors.surface,
-														}
+														},
 													}}
 												/>
 												<span
@@ -584,9 +584,7 @@ export function SettingsRoute(handle: Handle) {
 										value={getCreateAccountColor(kid.id)}
 										on={{
 											change: (event) => {
-												if (
-													!(event.currentTarget instanceof HTMLSelectElement)
-												)
+												if (!(event.currentTarget instanceof HTMLSelectElement))
 													return
 												newAccountColorsByKidId[kid.id] =
 													event.currentTarget.value

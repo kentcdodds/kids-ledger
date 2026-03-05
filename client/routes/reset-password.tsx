@@ -264,8 +264,15 @@ export function ResetPasswordRoute(handle: Handle) {
 
 export const Component = ResetPasswordRoute
 
-export function getMetadata({ url }: { url: URL; params: Record<string, string> }) {
+export function getMetadata({
+	url,
+}: {
+	url: URL
+	params: Record<string, string>
+}) {
 	return {
-		title: url.searchParams.get('token') ? 'Set New Password' : 'Reset Password',
+		title: url.searchParams.get('token')
+			? 'Set New Password'
+			: 'Reset Password',
 	}
 }

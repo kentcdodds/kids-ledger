@@ -20,7 +20,8 @@ export function AboutRoute(handle: Handle) {
 				saving in a way kids can understand.
 			</p>
 			<p css={{ margin: 0, color: colors.textMuted }}>
-				It is made with ❤️ by Dad and built to be practical, lightweight, and fun.
+				It is made with ❤️ by Dad and built to be practical, lightweight, and
+				fun.
 			</p>
 		</section>
 	)
