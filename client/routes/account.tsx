@@ -1,5 +1,6 @@
 import { type Handle } from 'remix/component'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
+import { buttonCss } from '#client/styles/form-controls.ts'
 
 type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -75,6 +76,26 @@ export function AccountRoute(handle: Handle) {
 					<p css={{ color: colors.error }} role="alert">
 						{message}
 					</p>
+				) : null}
+				{status === 'ready' ? (
+					<form method="post" action="/logout">
+						<button
+							type="submit"
+							css={{
+								...buttonCss,
+								backgroundColor: colors.surface,
+								color: colors.text,
+								border: `2px solid ${colors.border}`,
+								boxShadow: `0 2px 0 0 ${colors.border}`,
+								'&:active': {
+									transform: 'translateY(2px)',
+									boxShadow: `0 0 0 0 ${colors.border}`,
+								},
+							}}
+						>
+							Log out
+						</button>
+					</form>
 				) : null}
 			</section>
 		)
