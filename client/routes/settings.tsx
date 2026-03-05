@@ -68,6 +68,19 @@ function getRandomDefaultKidEmoji() {
 	return defaultKidEmojis[Math.floor(Math.random() * defaultKidEmojis.length)]!
 }
 
+function getAccountTextColors(colorToken: string) {
+	if (colorToken === 'sun') {
+		return {
+			text: colors.text,
+			muted: colors.textMuted,
+		}
+	}
+	return {
+		text: '#ffffff',
+		muted: 'rgba(255, 255, 255, 0.9)',
+	}
+}
+
 function moveItem<T>(items: Array<T>, from: number, to: number) {
 	const nextItems = [...items]
 	nextItems.splice(to, 0, nextItems.splice(from, 1)[0]!)
@@ -554,94 +567,144 @@ export function SettingsRoute(handle: Handle) {
 										overflow: 'hidden',
 									}}
 								>
-									{kid.accounts.map((account, index) => (
-										<div
-											key={account.id}
-											css={{
-												display: 'grid',
-												gridTemplateColumns: 'auto 1fr auto auto',
-												rowGap: spacing.xs,
-												columnGap: spacing.sm,
-												alignItems: 'center',
-												padding: spacing.md,
-												background: getAccountGradientBackground(
-													account.colorToken,
-												),
-												borderBottom:
-													index < kid.accounts.length - 1
-														? `1px solid ${colors.border}`
-														: 'none',
-												[mq.mobile]: {
-													gridTemplateColumns: 'auto 1fr auto auto',
-												},
-											}}
-										>
-											<div css={reorderControlsCss}>
-												<button
-													type="button"
-													data-reorder-scope="account"
-													data-reorder-kid-id={kid.id}
-													data-reorder-account-id={account.id}
-													data-reorder-direction="up"
-													aria-label={`Move ${account.name} up`}
-													disabled={index === 0 || isReordering}
-													on={{
-														click: () =>
-															void handleAccountMove(kid.id, account.id, -1),
-													}}
-													css={reorderButtonCss}
-												>
-													↑
-												</button>
-												<button
-													type="button"
-													data-reorder-scope="account"
-													data-reorder-kid-id={kid.id}
-													data-reorder-account-id={account.id}
-													data-reorder-direction="down"
-													aria-label={`Move ${account.name} down`}
-													disabled={
-														index === kid.accounts.length - 1 || isReordering
-													}
-													on={{
-														click: () =>
-															void handleAccountMove(kid.id, account.id, 1),
-													}}
-													css={reorderButtonCss}
-												>
-													↓
-												</button>
-											</div>
+									{kid.accounts.map((account, index) => {
+										const textColors = getAccountTextColors(account.colorToken)
+										return (
 											<div
+												key={account.id}
 												css={{
 													display: 'grid',
-													gap: 2,
+													gridTemplateColumns: 'auto 1fr auto auto',
+													rowGap: spacing.xs,
+													columnGap: spacing.sm,
+													alignItems: 'center',
+													padding: spacing.md,
+													background: getAccountGradientBackground(
+														account.colorToken,
+													),
+													borderBottom:
+														index < kid.accounts.length - 1
+															? `1px solid ${colors.border}`
+															: 'none',
 													[mq.mobile]: {
-														gridColumn: '2 / -1',
-														gridRow: '1',
+														gridTemplateColumns: 'auto 1fr auto auto',
 													},
 												}}
 											>
-												<input
-													defaultValue={account.name}
-													aria-label={`${account.name} name`}
-													data-account-name={account.id}
+												<div css={reorderControlsCss}>
+													<button
+														type="button"
+														data-reorder-scope="account"
+														data-reorder-kid-id={kid.id}
+														data-reorder-account-id={account.id}
+														data-reorder-direction="up"
+														aria-label={`Move ${account.name} up`}
+														disabled={index === 0 || isReordering}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, -1),
+														}}
+														css={reorderButtonCss}
+													>
+														↑
+													</button>
+													<button
+														type="button"
+														data-reorder-scope="account"
+														data-reorder-kid-id={kid.id}
+														data-reorder-account-id={account.id}
+														data-reorder-direction="down"
+														aria-label={`Move ${account.name} down`}
+														disabled={
+															index === kid.accounts.length - 1 || isReordering
+														}
+														on={{
+															click: () =>
+																void handleAccountMove(kid.id, account.id, 1),
+														}}
+														css={reorderButtonCss}
+													>
+														↓
+													</button>
+												</div>
+												<div
+													css={{
+														display: 'grid',
+														gap: 2,
+														[mq.mobile]: {
+															gridColumn: '2 / -1',
+															gridRow: '1',
+														},
+													}}
+												>
+													<input
+														defaultValue={account.name}
+														aria-label={`${account.name} name`}
+														data-account-name={account.id}
+														on={{
+															blur: async (e) => {
+																const name =
+																	(e.currentTarget as HTMLInputElement).value ||
+																	account.name
+																const colorSelect = document.querySelector(
+																	`select[data-account-color="${account.id}"]`,
+																) as HTMLSelectElement
+																const colorToken =
+																	colorSelect?.value || account.colorToken
+																if (
+																	name === account.name &&
+																	colorToken === account.colorToken
+																) {
+																	return
+																}
+																updateLocalAccount(account.id, {
+																	name,
+																	colorToken,
+																})
+																await updateAccount({
+																	accountId: account.id,
+																	name,
+																	colorToken,
+																})
+																await refreshSettings()
+															},
+														}}
+														css={{
+															...inputCss,
+															backgroundColor: 'transparent',
+															border: '2px solid transparent',
+															boxShadow: 'none',
+															fontWeight: 'bold',
+															color: textColors.text,
+															padding: spacing.xs,
+															'&:focus': {
+																...inputCss['&:focus'],
+																backgroundColor: colors.surface,
+																color: colors.text,
+															},
+														}}
+													/>
+													<span
+														css={{
+															color: textColors.muted,
+															fontSize: typography.fontSize.sm,
+														}}
+													>
+														{formatCents(account.balanceCents)}
+													</span>
+												</div>
+												<select
+													aria-label={`${account.name} color`}
+													data-account-color={account.id}
 													on={{
-														blur: async (e) => {
-															const name =
-																(e.currentTarget as HTMLInputElement).value ||
-																account.name
-															const colorSelect = document.querySelector(
-																`select[data-account-color="${account.id}"]`,
-															) as HTMLSelectElement
-															const colorToken =
-																colorSelect?.value || account.colorToken
-															if (
-																name === account.name &&
-																colorToken === account.colorToken
-															) {
-																return
-															}
+														change: async (e) => {
+															const colorToken = (
+																e.currentTarget as HTMLSelectElement
+															).value
+															const nameInput = document.querySelector(
+																`input[data-account-name="${account.id}"]`,
+															) as HTMLInputElement
+															const name = nameInput?.value || account.name
 															updateLocalAccount(account.id, {
 																name,
 																colorToken,
@@ -656,91 +719,47 @@ export function SettingsRoute(handle: Handle) {
 													}}
 													css={{
 														...inputCss,
-														backgroundColor: 'transparent',
-														border: '2px solid transparent',
-														boxShadow: 'none',
-														fontWeight: 'bold',
-														color: '#ffffff',
-														padding: spacing.xs,
-														'&:focus': {
-															...inputCss['&:focus'],
-															backgroundColor: colors.surface,
-															color: colors.text,
+														backgroundColor: '#ffffff',
+														color: colors.text,
+														[mq.mobile]: {
+															gridColumn: '2 / 4',
+															gridRow: '2',
 														},
 													}}
-												/>
-												<span
+												>
+													{accountColorTokens.map((color) => (
+														<option
+															key={color}
+															value={color}
+															selected={account.colorToken === color}
+														>
+															{color}
+														</option>
+													))}
+												</select>
+												<button
+													type="button"
+													aria-label={`Archive ${account.name}`}
+													on={{
+														click: async () => {
+															await archiveAccount(account.id)
+															await refreshSettings()
+														},
+													}}
 													css={{
-														color: 'rgba(255, 255, 255, 0.9)',
-														fontSize: typography.fontSize.sm,
+														...archiveIconButtonCss,
+														[mq.mobile]: {
+															gridColumn: '4',
+															gridRow: '2',
+															justifySelf: 'end',
+														},
 													}}
 												>
-													{formatCents(account.balanceCents)}
-												</span>
+													<TrashIcon />
+												</button>
 											</div>
-											<select
-												aria-label={`${account.name} color`}
-												data-account-color={account.id}
-												on={{
-													change: async (e) => {
-														const colorToken = (
-															e.currentTarget as HTMLSelectElement
-														).value
-														const nameInput = document.querySelector(
-															`input[data-account-name="${account.id}"]`,
-														) as HTMLInputElement
-														const name = nameInput?.value || account.name
-														updateLocalAccount(account.id, { name, colorToken })
-														await updateAccount({
-															accountId: account.id,
-															name,
-															colorToken,
-														})
-														await refreshSettings()
-													},
-												}}
-												css={{
-													...inputCss,
-													backgroundColor: '#ffffff',
-													color: colors.text,
-													[mq.mobile]: {
-														gridColumn: '2 / 4',
-														gridRow: '2',
-													},
-												}}
-											>
-												{accountColorTokens.map((color) => (
-													<option
-														key={color}
-														value={color}
-														selected={account.colorToken === color}
-													>
-														{color}
-													</option>
-												))}
-											</select>
-											<button
-												type="button"
-												aria-label={`Archive ${account.name}`}
-												on={{
-													click: async () => {
-														await archiveAccount(account.id)
-														await refreshSettings()
-													},
-												}}
-												css={{
-													...archiveIconButtonCss,
-													[mq.mobile]: {
-														gridColumn: '4',
-														gridRow: '2',
-														justifySelf: 'end',
-													},
-												}}
-											>
-												<TrashIcon />
-											</button>
-										</div>
-									))}
+										)
+									})}
 								</div>
 								<div
 									css={{
