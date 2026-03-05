@@ -42,8 +42,9 @@ After `bun run dev` is running and you are logged in:
 - `/` should render the main ledger board with family total and account cards.
 - `/settings` should allow creating kids/accounts and managing archive/delete.
 - `/settings` kid cards should allow saving per-kid transaction modal CSS
-  declarations (for example `--font-family`) and `/` should apply them only
-  while that kid's transaction modal is open.
+  declarations (for example `--font-family`), show a live in-modal preview while
+  editing, and `/` should apply saved CSS only while that kid's transaction
+  modal is open.
 - `/history` should show recent-first transactions and URL-synced filters.
 - `/ledger/export/json` should download a JSON backup while authenticated.
 

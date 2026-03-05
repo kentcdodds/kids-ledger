@@ -25,6 +25,10 @@ test('kid transaction modal custom css applies only while open', async ({
 
 	const customizationDialog = page.getByRole('dialog')
 	await expect(customizationDialog).toBeVisible()
+	const livePreview = customizationDialog.locator(
+		'[data-kid-transaction-modal-preview]',
+	)
+	await expect(livePreview).toBeVisible()
 	await customizationDialog
 		.getByRole('textbox', { name: 'Custom CSS declarations' })
 		.fill(
@@ -34,6 +38,12 @@ test('kid transaction modal custom css applies only while open', async ({
 				'--color-border: #f59e0b;',
 			].join('\n'),
 		)
+
+	const livePreviewFontFamily = await livePreview.evaluate((element) =>
+		window.getComputedStyle(element).fontFamily.toLowerCase(),
+	)
+	expect(livePreviewFontFamily).toContain('courier new')
+
 	await customizationDialog.getByRole('button', { name: 'Save CSS' }).click()
 	await expect(customizationDialog).toBeHidden()
 

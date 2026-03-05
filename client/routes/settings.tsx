@@ -129,6 +129,12 @@ const transactionModalCssVariables = [
 
 const transactionModalCssFontExample = `--font-family: "Comic Sans MS", "Comic Sans", cursive;`
 
+function buildTransactionModalPreviewCss(transactionModalCss: string) {
+	const trimmed = transactionModalCss.trim()
+	if (!trimmed) return ''
+	return `[data-kid-transaction-modal-preview] {\n${trimmed}\n}`
+}
+
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
 	| {
@@ -1265,42 +1271,68 @@ export function SettingsRoute(handle: Handle) {
 										Close
 									</button>
 								</header>
-								<div css={{ display: 'grid', gap: spacing.xs }}>
-									<strong css={{ color: colors.text }}>
-										Supported CSS variables
-									</strong>
-									<ul
+								<section css={{ display: 'grid', gap: spacing.sm }}>
+									<strong css={{ color: colors.text }}>Live preview</strong>
+									<p css={{ margin: 0, color: colors.textMuted }}>
+										Updates in real time as you type.
+									</p>
+									{transactionModalCssDraft.trim() ? (
+										<style>
+											{buildTransactionModalPreviewCss(
+												transactionModalCssDraft,
+											)}
+										</style>
+									) : null}
+									<section
+										data-kid-transaction-modal-preview
 										css={{
-											margin: 0,
-											paddingLeft: spacing.lg,
-											color: colors.textMuted,
+											width: 'min(30rem, 100%)',
 											display: 'grid',
-											gap: 2,
+											gap: spacing.md,
+											padding: spacing.md,
+											fontFamily: 'var(--font-family)',
+											borderRadius: radius.xl,
+											border: `3px solid ${colors.border}`,
+											backgroundColor: colors.surface,
+											boxShadow: shadows.lg,
 										}}
 									>
-										{transactionModalCssVariables.map((cssVariable) => (
-											<li key={cssVariable}>
-												<code>{cssVariable}</code>
-											</li>
-										))}
-									</ul>
-								</div>
-								<div css={{ display: 'grid', gap: spacing.xs }}>
-									<strong css={{ color: colors.text }}>Font example</strong>
-									<pre
-										css={{
-											margin: 0,
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `2px solid ${colors.border}`,
-											backgroundColor: colors.primarySoftest,
-											color: colors.text,
-											overflowX: 'auto',
-										}}
-									>
-										{transactionModalCssFontExample}
-									</pre>
-								</div>
+										<header
+											css={{ display: 'flex', justifyContent: 'space-between' }}
+										>
+											<div>
+												<h3 css={{ margin: 0, color: colors.text }}>
+													{editingKidTransactionModalCss.kidName}
+												</h3>
+												<p css={{ margin: 0, color: colors.textMuted }}>
+													Spending · $12.50
+												</p>
+											</div>
+											<span css={{ color: colors.textMuted }}>Close</span>
+										</header>
+										<label css={{ display: 'grid', gap: spacing.xs }}>
+											<span css={{ color: colors.text }}>Amount</span>
+											<input type="text" value="5.00" readOnly css={inputCss} />
+										</label>
+										<div
+											css={{
+												display: 'grid',
+												gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+												gap: spacing.xs,
+											}}
+										>
+											<button type="button" css={buttonCss}>
+												$1.00
+											</button>
+											<button type="button" css={buttonCss}>
+												$5.00
+											</button>
+											<button type="button" css={buttonCss}>
+												$10.00
+											</button>
+										</div>
+									</section>
+								</section>
 								<label css={{ display: 'grid', gap: spacing.xs }}>
 									<span css={{ color: colors.text }}>
 										Custom CSS declarations
@@ -1318,16 +1350,58 @@ export function SettingsRoute(handle: Handle) {
 												handle.update()
 											},
 										}}
-										rows={10}
+										rows={6}
 										css={{
 											...inputCss,
 											fontFamily:
 												'ui-monospace, SFMono-Regular, Menlo, monospace',
 											resize: 'vertical',
-											minHeight: '12rem',
+											minHeight: '8rem',
 										}}
 									/>
 								</label>
+								<section css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>
+										Supported CSS variables
+									</strong>
+									<div
+										css={{
+											display: 'flex',
+											flexWrap: 'wrap',
+											gap: spacing.xs,
+										}}
+									>
+										{transactionModalCssVariables.map((cssVariable) => (
+											<code
+												key={cssVariable}
+												css={{
+													padding: `${spacing.xs} ${spacing.sm}`,
+													border: `1px solid ${colors.border}`,
+													borderRadius: radius.full,
+													backgroundColor: colors.primarySoftest,
+												}}
+											>
+												{cssVariable}
+											</code>
+										))}
+									</div>
+								</section>
+								<div css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>Font example</strong>
+									<pre
+										css={{
+											margin: 0,
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `2px solid ${colors.border}`,
+											backgroundColor: colors.primarySoftest,
+											color: colors.text,
+											overflowX: 'auto',
+										}}
+									>
+										{transactionModalCssFontExample}
+									</pre>
+								</div>
 								{transactionModalCssSaveError ? (
 									<p css={{ margin: 0, color: colors.error }}>
 										{transactionModalCssSaveError}
