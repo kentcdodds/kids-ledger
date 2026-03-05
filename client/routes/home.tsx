@@ -5,6 +5,7 @@ import {
 	type KidAccount,
 	type KidSummary,
 } from '#client/ledger-api.ts'
+import { launchConfetti } from '#client/confetti.ts'
 import { formatCents, parseAmountToCents } from '#client/money.ts'
 import {
 	colors,
@@ -35,6 +36,8 @@ const accountGradients = {
 	night: 'linear-gradient(135deg, #3f4b66, #69758f)',
 } as Record<string, string>
 
+const modalCloseAnimationDurationMs = 220
+
 function getAccountBackground(colorToken: string) {
 	return accountGradients[colorToken] ?? accountGradients.orchid
 }
@@ -57,13 +60,23 @@ export function HomeRoute(handle: Handle) {
 	let quickAmounts: Array<number> = []
 	let transactionState: TransactionState | null = null
 	let transactionModalOpener: HTMLButtonElement | null = null
+	let transactionModalClosing = false
+	let closeModalTimeoutId: number | null = null
+
+	function clearCloseModalTimeout() {
+		if (closeModalTimeoutId === null) return
+		window.clearTimeout(closeModalTimeoutId)
+		closeModalTimeoutId = null
+	}
 
 	function openTransactionModal(
 		kid: KidSummary,
 		account: KidAccount,
 		opener: HTMLButtonElement,
 	) {
+		clearCloseModalTimeout()
 		transactionModalOpener = opener
+		transactionModalClosing = false
 		transactionState = {
 			kid,
 			account,
@@ -83,15 +96,22 @@ export function HomeRoute(handle: Handle) {
 	}
 
 	function closeTransactionModal() {
+		if (!transactionState || transactionModalClosing) return
 		const opener = transactionModalOpener
 		transactionModalOpener = null
-		transactionState = null
+		transactionModalClosing = true
 		handle.update()
-		if (opener?.isConnected) {
-			handle.queueTask(() => {
-				opener.focus()
-			})
-		}
+		closeModalTimeoutId = window.setTimeout(() => {
+			transactionState = null
+			transactionModalClosing = false
+			closeModalTimeoutId = null
+			handle.update()
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
+			}
+		}, modalCloseAnimationDurationMs)
 	}
 
 	function handleTransactionModalKeydown(event: KeyboardEvent) {
@@ -167,29 +187,30 @@ export function HomeRoute(handle: Handle) {
 			handle.update()
 			return
 		}
+		const accountId = transactionState.account.id
+		const note = transactionState.note
+		const signedAmount = direction === 'remove' ? -Math.abs(cents) : cents
 		transactionState.status = 'saving'
 		transactionState.error = null
 		handle.update()
+		closeTransactionModal()
 		try {
-			const signedAmount = direction === 'remove' ? -Math.abs(cents) : cents
 			const result = await createTransaction({
-				accountId: transactionState.account.id,
+				accountId,
 				amountCents: signedAmount,
-				note: transactionState.note,
+				note,
 			})
-			if (transactionState) {
-				transactionState.warning = result.result.warning
-				transactionState.amount = ''
-				transactionState.note = ''
-				transactionState.status = 'idle'
+			if (direction === 'add') {
+				launchConfetti()
+			}
+			if (result.result.warning) {
+				window.alert(result.result.warning)
 			}
 			await refreshDashboard()
 		} catch (error) {
-			if (!transactionState) return
-			transactionState.status = 'idle'
-			transactionState.error =
-				error instanceof Error ? error.message : 'Could not save transaction.'
-			handle.update()
+			window.alert(
+				error instanceof Error ? error.message : 'Could not save transaction.',
+			)
 		}
 	}
 
@@ -344,6 +365,10 @@ export function HomeRoute(handle: Handle) {
 						placeItems: 'center',
 						padding: spacing.md,
 						zIndex: 1000,
+						pointerEvents: transactionModalClosing ? 'none' : 'auto',
+						animation: transactionModalClosing
+							? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+							: 'modal-backdrop-in 180ms ease-out forwards',
 					}}
 				>
 					<section
@@ -361,8 +386,9 @@ export function HomeRoute(handle: Handle) {
 							border: `3px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.lg,
-							animation:
-								'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+							animation: transactionModalClosing
+								? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+								: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
 						}}
 					>
 						<header css={{ display: 'flex', justifyContent: 'space-between' }}>
