@@ -26,6 +26,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 		envName: process.env.CLOUDFLARE_ENV ?? 'production',
 		persistTo: undefined,
 	}
+	let hasCustomUsername = false
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index]
@@ -39,6 +40,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 			}
 			case '--username': {
 				options.username = argv[index + 1] ?? ''
+				hasCustomUsername = true
 				index += 1
 				break
 			}
@@ -88,6 +90,9 @@ function parseArgs(argv: Array<string>): CliOptions {
 	}
 	if (!options.local && !options.remote) {
 		options.local = true
+	}
+	if (!hasCustomUsername) {
+		options.username = options.email.trim().toLowerCase()
 	}
 	if (!options.email) {
 		fail('Missing required --email <email> value.')
