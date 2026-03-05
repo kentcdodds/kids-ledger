@@ -133,14 +133,21 @@ export function App(handle: Handle) {
 			}
 
 			// Move in pointer direction (relative to viewport center).
-			const driftSpeed = 10 / 1000
+			const driftSpeed = 12 / 1000
 			const directionMagnitude = Math.hypot(currentMouseDirX, currentMouseDirY)
 			const normalizedDirX =
 				directionMagnitude > 0.001 ? currentMouseDirX / directionMagnitude : 0
 			const normalizedDirY =
 				directionMagnitude > 0.001 ? currentMouseDirY / directionMagnitude : 0
-			driftX = wrapDriftOffset(driftX + delta * driftSpeed * normalizedDirX, 60)
-			driftY = wrapDriftOffset(driftY + delta * driftSpeed * normalizedDirY, 60)
+			const speedScale = clamp(directionMagnitude, 0, 1) ** 1.8
+			driftX = wrapDriftOffset(
+				driftX + delta * driftSpeed * speedScale * normalizedDirX,
+				60,
+			)
+			driftY = wrapDriftOffset(
+				driftY + delta * driftSpeed * speedScale * normalizedDirY,
+				60,
+			)
 
 			// Smooth interpolation keeps movement subtle and fluid.
 			currentMouseDirX += (targetMouseDirX - currentMouseDirX) * 0.08
