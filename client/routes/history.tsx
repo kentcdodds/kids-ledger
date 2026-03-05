@@ -7,6 +7,7 @@ import {
 import { listenToRouterNavigation, navigate } from '#client/client-router.tsx'
 import { formatCents } from '#client/money.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
+import { getAccountSurfaceBackground } from '#client/styles/account-colors.ts'
 import { colors, mq, radius, shadows, spacing } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 
@@ -332,7 +333,9 @@ export function HistoryRoute(handle: Handle) {
 							padding: spacing.md,
 							borderRadius: radius.lg,
 							border: `2px solid ${colors.border}`,
-							backgroundColor: colors.surface,
+							backgroundColor: getAccountSurfaceBackground(
+								transaction.colorToken,
+							),
 							boxShadow: shadows.sm,
 							opacity: showPendingRefresh ? 0.6 : 1,
 							transition: 'opacity 120ms ease',
@@ -346,7 +349,8 @@ export function HistoryRoute(handle: Handle) {
 							}}
 						>
 							<strong>
-								{transaction.kidName} · {transaction.accountName}
+								{transaction.kidEmoji} {transaction.kidName} ·{' '}
+								{transaction.accountName}
 							</strong>
 							<strong
 								css={{

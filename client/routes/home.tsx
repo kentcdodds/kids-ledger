@@ -7,6 +7,7 @@ import {
 } from '#client/ledger-api.ts'
 import { launchConfetti } from '#client/confetti.ts'
 import { formatCents, parseAmountToCents } from '#client/money.ts'
+import { getAccountGradientBackground } from '#client/styles/account-colors.ts'
 import {
 	colors,
 	radius,
@@ -27,20 +28,7 @@ type TransactionState = {
 	warning: string | null
 }
 
-const accountGradients = {
-	orchid: 'linear-gradient(135deg, #9541ff, #d26dff)',
-	ocean: 'linear-gradient(135deg, #326dff, #42c6ff)',
-	meadow: 'linear-gradient(135deg, #1aa867, #52d878)',
-	flame: 'linear-gradient(135deg, #ff6a3c, #ff4d8f)',
-	sun: 'linear-gradient(135deg, #f7b500, #fdd835)',
-	night: 'linear-gradient(135deg, #3f4b66, #69758f)',
-} as Record<string, string>
-
 const modalCloseAnimationDurationMs = 220
-
-function getAccountBackground(colorToken: string) {
-	return accountGradients[colorToken] ?? accountGradients.orchid
-}
 
 function getFocusableElements(container: HTMLElement) {
 	const selector =
@@ -321,7 +309,7 @@ export function HomeRoute(handle: Handle) {
 									padding: spacing.md,
 									borderRadius: radius.lg,
 									border: 'none',
-									background: getAccountBackground(account.colorToken),
+									background: getAccountGradientBackground(account.colorToken),
 									color: '#ffffff',
 									cursor: 'pointer',
 									boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,

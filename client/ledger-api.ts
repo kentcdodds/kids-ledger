@@ -32,8 +32,10 @@ export type LedgerTransaction = {
 	householdId: number
 	kidId: number
 	kidName: string
+	kidEmoji: string
 	accountId: number
 	accountName: string
+	colorToken: string
 	amountCents: number
 	note: string
 	createdAt: string
