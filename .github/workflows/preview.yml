@@ -147,10 +147,9 @@ jobs:
       - name: 🌱 Seed preview test data
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
           WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
-        run: >
-          bun run seed:test-data -- --remote --env preview --config
-          "$WRANGLER_CONFIG"
+        run: bun tools/seed-test-data.ts --remote --config "$WRANGLER_CONFIG"
 
       - name: 🧪 Deploy preview mock Workers
         id: deploy_mocks

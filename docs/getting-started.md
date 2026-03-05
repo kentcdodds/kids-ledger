@@ -120,14 +120,14 @@ Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.
 
 See `docs/agents/setup.md` for local dev commands and verification steps.
 
-If you want realistic local sample data, run:
+To create a deterministic local test login, run:
 
 ```
 bun run migrate:local
-bun run seed:test-data -- --local
+bun tools/seed-test-data.ts --local
 ```
 
-Seeded test credentials:
+Default test credentials:
 
 - Email/username: `kody@kcd.dev`
 - Password: `kodylovesyou`
