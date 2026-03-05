@@ -4,6 +4,10 @@ import {
 	createLedgerServiceForAgent,
 	successContent,
 } from '#mcp/tools/ledger-tool-helpers.ts'
+import {
+	transactionModalCssCreateFieldDescription,
+	transactionModalCssUpdateFieldDescription,
+} from '#shared/transaction-modal-css.ts'
 
 export async function registerLedgerTools(agent: MCP) {
 	agent.server.registerTool(
@@ -30,11 +34,15 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_create_kid',
 		{
 			title: 'Create Kid',
-			description: 'Create a kid profile.',
+			description:
+				'Create a kid profile with optional transaction modal CSS customization.',
 			inputSchema: {
 				name: z.string().min(1),
 				emoji: z.string().min(1).default('🧒'),
-				transactionModalCss: z.string().optional(),
+				transactionModalCss: z
+					.string()
+					.optional()
+					.describe(transactionModalCssCreateFieldDescription),
 			},
 		},
 		async ({
@@ -64,7 +72,10 @@ export async function registerLedgerTools(agent: MCP) {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
 				emoji: z.string().min(1),
-				transactionModalCss: z.string().optional(),
+				transactionModalCss: z
+					.string()
+					.optional()
+					.describe(transactionModalCssUpdateFieldDescription),
 			},
 		},
 		async ({

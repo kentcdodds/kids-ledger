@@ -31,6 +31,7 @@ import {
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
+import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
 
 const defaultKidEmojis = [
 	'🧒',
@@ -130,22 +131,6 @@ function PaintbrushIcon(_handle: Handle) {
 		</svg>
 	)
 }
-
-const transactionModalCssVariables = [
-	'--color-primary',
-	'--color-primary-hover',
-	'--color-primary-active',
-	'--color-on-primary',
-	'--color-primary-text',
-	'--color-surface',
-	'--color-text',
-	'--color-text-muted',
-	'--color-border',
-	'--font-family',
-	'--font-size-sm',
-	'--font-size-base',
-	'--font-size-lg',
-] as const
 
 const transactionModalCssFontExample = `--font-family: "Comic Sans MS", "Comic Sans", cursive;`
 const transactionModalCssGoogleFontExample = `@import url("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap");
