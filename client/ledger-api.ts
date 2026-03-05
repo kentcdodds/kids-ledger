@@ -149,7 +149,11 @@ export async function fetchTransactions(query: URLSearchParams) {
 	} satisfies LedgerTransactionsPage
 }
 
-export async function createKid(input: { name: string; emoji: string }) {
+export async function createKid(input: {
+	name: string
+	emoji: string
+	transactionModalCss?: string
+}) {
 	return postJson<{ ok: true; kidId: number }>('/ledger/kids/create', input)
 }
 

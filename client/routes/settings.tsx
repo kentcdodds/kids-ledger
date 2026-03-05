@@ -89,6 +89,16 @@ function moveItem<T>(items: Array<T>, from: number, to: number) {
 	return nextItems
 }
 
+function getFocusableElements(container: HTMLElement) {
+	const selector =
+		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+	const candidates = Array.from(container.querySelectorAll(selector))
+	return candidates.filter(
+		(element): element is HTMLElement =>
+			element instanceof HTMLElement && element.tabIndex >= 0,
+	)
+}
+
 type ReorderDirection = 'up' | 'down'
 
 function TrashIcon(_handle: Handle) {
@@ -174,6 +184,7 @@ export function SettingsRoute(handle: Handle) {
 	let newAccountColorsByKidId: Record<number, string> = {}
 	let editingKidTransactionModalCss: { kidId: number; kidName: string } | null =
 		null
+	let transactionModalCssOpener: HTMLElement | null = null
 	let transactionModalCssDraft = ''
 	let transactionModalCssSaveError: string | null = null
 	let transactionModalCssSaving = false
@@ -316,6 +327,13 @@ export function SettingsRoute(handle: Handle) {
 	function openTransactionModalCssEditor(kid: KidSummary) {
 		clearCloseTransactionModalCssTimeout()
 		removeTransactionModalPreviewStyles()
+		if (typeof document === 'undefined') {
+			transactionModalCssOpener = null
+		} else {
+			const activeElement = document.activeElement
+			transactionModalCssOpener =
+				activeElement instanceof HTMLElement ? activeElement : null
+		}
 		editingKidTransactionModalCss = { kidId: kid.id, kidName: kid.name }
 		transactionModalCssDraft = kid.transactionModalCss
 		transactionModalCssSaveError = null
@@ -339,6 +357,8 @@ export function SettingsRoute(handle: Handle) {
 			transactionModalCssClosing
 		)
 			return
+		const opener = transactionModalCssOpener
+		transactionModalCssOpener = null
 		transactionModalCssClosing = true
 		handle.update()
 		closeTransactionModalCssTimeoutId = window.setTimeout(() => {
@@ -349,7 +369,50 @@ export function SettingsRoute(handle: Handle) {
 			closeTransactionModalCssTimeoutId = null
 			removeTransactionModalPreviewStyles()
 			handle.update()
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
+			}
 		}, modalCloseAnimationDurationMs)
+	}
+
+	function handleTransactionModalCssKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault()
+			closeTransactionModalCssEditor()
+			return
+		}
+
+		if (event.key !== 'Tab') return
+		if (!(event.currentTarget instanceof HTMLElement)) return
+
+		const focusableElements = getFocusableElements(event.currentTarget)
+		if (focusableElements.length === 0) {
+			event.preventDefault()
+			return
+		}
+
+		const activeElement = document.activeElement
+		const firstFocusableElement = focusableElements[0]
+		const lastFocusableElement = focusableElements[focusableElements.length - 1]
+		if (!firstFocusableElement || !lastFocusableElement) return
+		const activeInModal = focusableElements.includes(
+			activeElement as HTMLElement,
+		)
+
+		if (event.shiftKey) {
+			if (activeElement === firstFocusableElement || !activeInModal) {
+				event.preventDefault()
+				lastFocusableElement.focus()
+			}
+			return
+		}
+
+		if (activeElement === lastFocusableElement || !activeInModal) {
+			event.preventDefault()
+			firstFocusableElement.focus()
+		}
 	}
 
 	async function saveTransactionModalCss() {
@@ -369,13 +432,20 @@ export function SettingsRoute(handle: Handle) {
 				transactionModalCss: transactionModalCssDraft,
 			})
 			clearCloseTransactionModalCssTimeout()
+			const opener = transactionModalCssOpener
 			editingKidTransactionModalCss = null
 			transactionModalCssDraft = ''
 			transactionModalCssClosing = false
+			transactionModalCssOpener = null
 			removeTransactionModalPreviewStyles()
 			await refreshSettings()
 			if (state.status === 'ready') {
 				notify(`Saved transaction modal CSS for ${kid.name}.`)
+			}
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
 			}
 		} catch (error) {
 			transactionModalCssSaveError =
@@ -1289,14 +1359,7 @@ export function SettingsRoute(handle: Handle) {
 								role="dialog"
 								aria-modal="true"
 								aria-labelledby="kid-transaction-modal-css-title"
-								on={{
-									keydown: (event) => {
-										if (event.key === 'Escape') {
-											event.preventDefault()
-											closeTransactionModalCssEditor()
-										}
-									},
-								}}
+								on={{ keydown: handleTransactionModalCssKeydown }}
 								css={{
 									width: 'min(42rem, 100%)',
 									maxHeight: '85dvh',

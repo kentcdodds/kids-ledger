@@ -2,6 +2,7 @@ function isLikelyCssStylesheet(cssText: string) {
 	let inSingleQuote = false
 	let inDoubleQuote = false
 	let inComment = false
+	let hasStatementText = false
 
 	for (let index = 0; index < cssText.length; index += 1) {
 		const char = cssText[index]
@@ -53,7 +54,19 @@ function isLikelyCssStylesheet(cssText: string) {
 			continue
 		}
 
-		if (char === '{' || char === '@') return true
+		if (char === ';' || char === '}') {
+			hasStatementText = false
+			continue
+		}
+
+		if (char === '{') return true
+
+		if (!hasStatementText) {
+			if (char === '@') return true
+			if (char?.trim()) {
+				hasStatementText = true
+			}
+		}
 	}
 
 	return false

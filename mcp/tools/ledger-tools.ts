@@ -55,7 +55,11 @@ export async function registerLedgerTools(agent: MCP) {
 			transactionModalCss?: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			const created = await service.createKid({ name, emoji, transactionModalCss })
+			const created = await service.createKid({
+				name,
+				emoji,
+				transactionModalCss,
+			})
 			return {
 				...successContent('Kid created', `Created kid with id ${created.id}.`),
 				structuredContent: created,

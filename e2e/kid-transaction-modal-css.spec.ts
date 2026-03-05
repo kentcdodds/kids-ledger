@@ -9,6 +9,9 @@ test('kid transaction modal custom css applies only while open', async ({
 
 	await login()
 	await page.goto('/settings')
+	const initialBodyBackgroundImage = await page.evaluate(() =>
+		window.getComputedStyle(document.body).backgroundImage.toLowerCase(),
+	)
 
 	await page.getByPlaceholder('Kid name').fill(kidName)
 	await page.getByRole('button', { name: 'Add' }).first().click()
@@ -19,9 +22,7 @@ test('kid transaction modal custom css applies only while open', async ({
 	await kidCard.getByPlaceholder('New account name').fill(accountName)
 	await kidCard.getByRole('button', { name: 'Add account' }).click()
 
-	await kidCard
-		.getByTitle('Customize transaction modal')
-		.click()
+	await kidCard.getByTitle('Customize transaction modal').click()
 
 	const customizationDialog = page.getByRole('dialog')
 	await expect(customizationDialog).toBeVisible()
@@ -83,5 +84,5 @@ test('kid transaction modal custom css applies only while open', async ({
 	const bodyBackgroundImageAfterClose = await page.evaluate(() =>
 		window.getComputedStyle(document.body).backgroundImage.toLowerCase(),
 	)
-	expect(bodyBackgroundImageAfterClose).not.toBe('none')
+	expect(bodyBackgroundImageAfterClose).toBe(initialBodyBackgroundImage)
 })

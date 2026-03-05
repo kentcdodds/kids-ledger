@@ -678,9 +678,8 @@ test(
 				transactionModalCss: '--color-primary: #7c3aed;',
 			},
 		})
-		const createdStructured = (createdResult as CallToolResult).structuredContent as
-			| { id?: unknown }
-			| undefined
+		const createdStructured = (createdResult as CallToolResult)
+			.structuredContent as { id?: unknown } | undefined
 		const kidId = Number(createdStructured?.id)
 		expect(Number.isInteger(kidId)).toBe(true)
 
