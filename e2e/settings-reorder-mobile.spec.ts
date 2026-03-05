@@ -31,6 +31,12 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 	const kidABeforeY = (await kidANameInput.boundingBox())?.y ?? Infinity
 	const kidBBeforeY = (await kidBNameInput.boundingBox())?.y ?? Infinity
 	expect(kidABeforeY).toBeLessThan(kidBBeforeY)
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameA} up` }),
+	).toBeDisabled()
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameB} down` }),
+	).toBeDisabled()
 
 	await page.getByRole('button', { name: `Move ${kidNameB} up` }).click()
 
@@ -43,6 +49,30 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 			),
 		)
 		.toEqual([kidNameB, kidNameA])
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameB} up` }),
+	).toBeDisabled()
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameA} down` }),
+	).toBeDisabled()
+
+	await page.getByRole('button', { name: `Move ${kidNameB} down` }).click()
+
+	await expect
+		.poll(async () =>
+			page.evaluate(() =>
+				Array.from(
+					document.querySelectorAll<HTMLInputElement>('input[data-kid-name]'),
+				).map((input) => input.value),
+			),
+		)
+		.toEqual([kidNameA, kidNameB])
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameA} up` }),
+	).toBeDisabled()
+	await expect(
+		page.getByRole('button', { name: `Move ${kidNameB} down` }),
+	).toBeDisabled()
 
 	const kidBCard = page
 		.locator('article')
@@ -69,6 +99,12 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 	const accountABeforeY = (await accountAInput.boundingBox())?.y ?? Infinity
 	const accountBBeforeY = (await accountBInput.boundingBox())?.y ?? Infinity
 	expect(accountABeforeY).toBeLessThan(accountBBeforeY)
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameA} up` }),
+	).toBeDisabled()
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameB} down` }),
+	).toBeDisabled()
 
 	await kidBCard
 		.getByRole('button', { name: `Move ${accountNameB} up` })
@@ -83,4 +119,30 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 			),
 		)
 		.toEqual([accountNameB, accountNameA])
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameB} up` }),
+	).toBeDisabled()
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameA} down` }),
+	).toBeDisabled()
+
+	await kidBCard
+		.getByRole('button', { name: `Move ${accountNameB} down` })
+		.click()
+
+	await expect
+		.poll(async () =>
+			kidBCard.evaluate((card) =>
+				Array.from(
+					card.querySelectorAll<HTMLInputElement>('input[data-account-name]'),
+				).map((input) => input.value),
+			),
+		)
+		.toEqual([accountNameA, accountNameB])
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameA} up` }),
+	).toBeDisabled()
+	await expect(
+		kidBCard.getByRole('button', { name: `Move ${accountNameB} down` }),
+	).toBeDisabled()
 })

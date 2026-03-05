@@ -173,9 +173,14 @@ export function SettingsRoute(handle: Handle) {
 		const from = ids.indexOf(draggedKidId)
 		const to = ids.indexOf(targetKidId)
 		if (from < 0 || to < 0) return
-		await reorderKids(moveItem(ids, from, to))
-		draggedKidId = null
-		await refreshSettings()
+		try {
+			await reorderKids(moveItem(ids, from, to))
+			await refreshSettings()
+		} catch (error) {
+			notify(error instanceof Error ? error.message : 'Could not reorder kid.')
+		} finally {
+			draggedKidId = null
+		}
 	}
 
 	async function handleKidMove(kidId: number, delta: -1 | 1) {
@@ -185,8 +190,12 @@ export function SettingsRoute(handle: Handle) {
 		if (from < 0) return
 		const to = from + delta
 		if (to < 0 || to >= ids.length) return
-		await reorderKids(moveItem(ids, from, to))
-		await refreshSettings()
+		try {
+			await reorderKids(moveItem(ids, from, to))
+			await refreshSettings()
+		} catch (error) {
+			notify(error instanceof Error ? error.message : 'Could not reorder kid.')
+		}
 	}
 
 	async function handleAccountReorderDrop(
@@ -201,9 +210,16 @@ export function SettingsRoute(handle: Handle) {
 		const from = accountIds.indexOf(draggedAccount.accountId)
 		const to = accountIds.indexOf(targetAccountId)
 		if (from < 0 || to < 0) return
-		await reorderAccounts(kidId, moveItem(accountIds, from, to))
-		draggedAccount = null
-		await refreshSettings()
+		try {
+			await reorderAccounts(kidId, moveItem(accountIds, from, to))
+			await refreshSettings()
+		} catch (error) {
+			notify(
+				error instanceof Error ? error.message : 'Could not reorder account.',
+			)
+		} finally {
+			draggedAccount = null
+		}
 	}
 
 	async function handleAccountMove(
@@ -219,8 +235,14 @@ export function SettingsRoute(handle: Handle) {
 		if (from < 0) return
 		const to = from + delta
 		if (to < 0 || to >= accountIds.length) return
-		await reorderAccounts(kidId, moveItem(accountIds, from, to))
-		await refreshSettings()
+		try {
+			await reorderAccounts(kidId, moveItem(accountIds, from, to))
+			await refreshSettings()
+		} catch (error) {
+			notify(
+				error instanceof Error ? error.message : 'Could not reorder account.',
+			)
+		}
 	}
 
 	return () => (
@@ -228,7 +250,7 @@ export function SettingsRoute(handle: Handle) {
 			<header css={{ display: 'grid', gap: spacing.xs }}>
 				<h1 css={{ margin: 0, color: colors.text }}>Household Settings</h1>
 				<p css={{ margin: 0, color: colors.textMuted }}>
-					Manage kids and accounts. Drag on desktop or use arrows on mobile.
+					Manage kids and accounts. Drag or use arrow buttons to reorder.
 				</p>
 			</header>
 
@@ -1037,12 +1059,9 @@ const archivedRowActionsCss = {
 }
 
 const reorderControlsCss = {
-	display: 'none',
+	display: 'inline-flex',
 	gap: spacing.xs,
 	alignItems: 'center',
-	[mq.mobile]: {
-		display: 'inline-flex',
-	},
 }
 
 const sortArchiveRowCss = {
