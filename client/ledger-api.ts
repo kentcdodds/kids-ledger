@@ -39,6 +39,20 @@ export type LedgerTransaction = {
 	createdAt: string
 }
 
+export type LedgerTransactionsPage = {
+	transactions: Array<LedgerTransaction>
+	page: number
+	pageSize: number
+	totalCount: number
+	totalPages: number
+	hasPreviousPage: boolean
+	hasNextPage: boolean
+	startCursor: string | null
+	endCursor: string | null
+	middleCursor: string | null
+	endPageCursor: string | null
+}
+
 async function parseApiResponse<T>(response: Response): Promise<T> {
 	const payload = await response.json().catch(() => null)
 	if (!response.ok || !payload) {
@@ -106,8 +120,30 @@ export async function fetchTransactions(query: URLSearchParams) {
 	const payload = await getJson<{
 		ok: true
 		transactions: Array<LedgerTransaction>
+		page: number
+		pageSize: number
+		totalCount: number
+		totalPages: number
+		hasPreviousPage: boolean
+		hasNextPage: boolean
+		startCursor: string | null
+		endCursor: string | null
+		middleCursor: string | null
+		endPageCursor: string | null
 	}>(`/ledger/history?${query.toString()}`)
-	return payload.transactions
+	return {
+		transactions: payload.transactions,
+		page: payload.page,
+		pageSize: payload.pageSize,
+		totalCount: payload.totalCount,
+		totalPages: payload.totalPages,
+		hasPreviousPage: payload.hasPreviousPage,
+		hasNextPage: payload.hasNextPage,
+		startCursor: payload.startCursor,
+		endCursor: payload.endCursor,
+		middleCursor: payload.middleCursor,
+		endPageCursor: payload.endPageCursor,
+	} satisfies LedgerTransactionsPage
 }
 
 export async function createKid(input: { name: string; emoji: string }) {

@@ -1,6 +1,7 @@
 import { invariant } from '@epic-web/invariant'
 
 const defaultQuickAmounts = [25, 50, 100, 500, 1000, 2000] as const
+const maxTransactionsPageSize = 50
 
 export type LedgerAccount = {
 	id: number
@@ -322,19 +323,46 @@ export class LedgerService {
 		type?: 'add' | 'remove'
 		from?: string
 		to?: string
+		minAmountCents?: number
+		maxAmountCents?: number
+		after?: string
+		before?: string
+		page?: number
 		limit?: number
 		offset?: number
 	}) {
 		const household = await this.#ensureHousehold()
-		const params: Array<unknown> = [household.id]
+		const filterParams: Array<unknown> = [household.id]
 		const whereClauses = ['t.household_id = ?']
+		const minAmountCents =
+			typeof input.minAmountCents === 'number' &&
+			Number.isFinite(input.minAmountCents)
+				? Math.max(Math.floor(input.minAmountCents), 0)
+				: undefined
+		const maxAmountCents =
+			typeof input.maxAmountCents === 'number' &&
+			Number.isFinite(input.maxAmountCents)
+				? Math.max(Math.floor(input.maxAmountCents), 0)
+				: undefined
+		const rangeMin =
+			typeof minAmountCents === 'number' &&
+			typeof maxAmountCents === 'number' &&
+			minAmountCents > maxAmountCents
+				? maxAmountCents
+				: minAmountCents
+		const rangeMax =
+			typeof minAmountCents === 'number' &&
+			typeof maxAmountCents === 'number' &&
+			minAmountCents > maxAmountCents
+				? minAmountCents
+				: maxAmountCents
 		if (input.kidId) {
 			whereClauses.push('t.kid_id = ?')
-			params.push(input.kidId)
+			filterParams.push(input.kidId)
 		}
 		if (input.accountId) {
 			whereClauses.push('t.account_id = ?')
-			params.push(input.accountId)
+			filterParams.push(input.accountId)
 		}
 		if (input.type === 'add') {
 			whereClauses.push('t.amount_cents > 0')
@@ -343,17 +371,107 @@ export class LedgerService {
 			whereClauses.push('t.amount_cents < 0')
 		}
 		if (input.from) {
-			whereClauses.push('t.created_at >= ?')
-			params.push(input.from)
+			if (isDateOnlyValue(input.from)) {
+				whereClauses.push('DATE(t.created_at) >= ?')
+				filterParams.push(input.from)
+			} else {
+				whereClauses.push('t.created_at >= ?')
+				filterParams.push(input.from)
+			}
 		}
 		if (input.to) {
-			whereClauses.push('t.created_at <= ?')
-			params.push(input.to)
+			if (isDateOnlyValue(input.to)) {
+				whereClauses.push('DATE(t.created_at) <= ?')
+				filterParams.push(input.to)
+			} else {
+				whereClauses.push('t.created_at <= ?')
+				filterParams.push(input.to)
+			}
+		}
+		if (typeof rangeMin === 'number') {
+			whereClauses.push('ABS(t.amount_cents) >= ?')
+			filterParams.push(rangeMin)
+		}
+		if (typeof rangeMax === 'number') {
+			whereClauses.push('ABS(t.amount_cents) <= ?')
+			filterParams.push(rangeMax)
 		}
 
-		const limit = Math.min(Math.max(input.limit ?? 50, 1), 200)
-		const offset = Math.max(input.offset ?? 0, 0)
-		params.push(limit, offset)
+		const pageSize = Math.min(
+			Math.max(input.limit ?? maxTransactionsPageSize, 1),
+			maxTransactionsPageSize,
+		)
+		const countRow = await this.#first(
+			`SELECT COUNT(*) AS total_count
+			 FROM transactions t
+			 WHERE ${whereClauses.join(' AND ')}`,
+			filterParams,
+		)
+		const totalCount = Math.max(getNumber(countRow?.total_count ?? 0), 0)
+		const totalPages = Math.max(Math.ceil(totalCount / pageSize), 1)
+		const afterCursor = parseTransactionCursor(input.after)
+		const beforeCursor = parseTransactionCursor(input.before)
+		const queryWhereClauses = [...whereClauses]
+		const queryParams = [...filterParams]
+		let orderBy = 't.created_at DESC, t.id DESC'
+		let usesAfterCursor = false
+		let usesBeforeCursor = false
+		if (beforeCursor) {
+			queryWhereClauses.push(
+				'(t.created_at > ? OR (t.created_at = ? AND t.id > ?))',
+			)
+			queryParams.push(
+				beforeCursor.createdAt,
+				beforeCursor.createdAt,
+				beforeCursor.id,
+			)
+			orderBy = 't.created_at ASC, t.id ASC'
+			usesBeforeCursor = true
+		} else if (afterCursor) {
+			queryWhereClauses.push(
+				'(t.created_at < ? OR (t.created_at = ? AND t.id < ?))',
+			)
+			queryParams.push(
+				afterCursor.createdAt,
+				afterCursor.createdAt,
+				afterCursor.id,
+			)
+			usesAfterCursor = true
+		} else if (input.offset !== undefined || input.page !== undefined) {
+			const requestedPage = Math.max(input.page ?? 1, 1)
+			const fallbackOffset = Math.max(input.offset ?? 0, 0)
+			const rawOffset =
+				input.offset === undefined
+					? (requestedPage - 1) * pageSize
+					: fallbackOffset
+			const maxOffset = Math.max((totalPages - 1) * pageSize, 0)
+			const clampedOffset = Math.min(rawOffset, maxOffset)
+			const legacyAnchorOffset = Math.max(clampedOffset - 1, 0)
+			const legacyAnchor = await this.#first(
+				`SELECT t.created_at, t.id
+				 FROM transactions t
+				 WHERE ${whereClauses.join(' AND ')}
+				 ORDER BY t.created_at DESC, t.id DESC
+				 LIMIT 1 OFFSET ?`,
+				[...filterParams, legacyAnchorOffset],
+			)
+			if (legacyAnchor) {
+				const legacyCursor = {
+					createdAt: getString(legacyAnchor.created_at),
+					id: getNumber(legacyAnchor.id),
+				}
+				queryWhereClauses.push(
+					'(t.created_at < ? OR (t.created_at = ? AND t.id < ?))',
+				)
+				queryParams.push(
+					legacyCursor.createdAt,
+					legacyCursor.createdAt,
+					legacyCursor.id,
+				)
+				usesAfterCursor = clampedOffset > 0
+			}
+		}
+		queryParams.push(pageSize + 1)
 
 		const rows = await this.#all(
 			`SELECT
@@ -369,23 +487,120 @@ export class LedgerService {
 			 FROM transactions t
 			 INNER JOIN kids k ON k.id = t.kid_id
 			 INNER JOIN accounts a ON a.id = t.account_id
-			 WHERE ${whereClauses.join(' AND ')}
-			 ORDER BY t.created_at DESC, t.id DESC
-			 LIMIT ? OFFSET ?`,
-			params,
+			 WHERE ${queryWhereClauses.join(' AND ')}
+			 ORDER BY ${orderBy}
+			 LIMIT ?`,
+			queryParams,
 		)
 
-		return rows.map((row) => ({
-			id: getNumber(row.id),
-			householdId: getNumber(row.household_id),
-			kidId: getNumber(row.kid_id),
-			kidName: getString(row.kid_name),
-			accountId: getNumber(row.account_id),
-			accountName: getString(row.account_name),
-			amountCents: getNumber(row.amount_cents),
-			note: getString(row.note),
+		const hasExtraRow = rows.length > pageSize
+		const trimmedRows = hasExtraRow ? rows.slice(0, pageSize) : rows
+		const pageRows = usesBeforeCursor ? [...trimmedRows].reverse() : trimmedRows
+		let hasPreviousPage = false
+		let hasNextPage = false
+		if (usesBeforeCursor) {
+			hasPreviousPage = hasExtraRow
+			hasNextPage = totalCount > 0
+		} else if (usesAfterCursor) {
+			hasPreviousPage = totalCount > 0
+			hasNextPage = hasExtraRow
+		} else {
+			hasPreviousPage = false
+			hasNextPage = hasExtraRow
+		}
+		if (pageRows.length === 0) {
+			hasPreviousPage = false
+			hasNextPage = false
+		}
+		const startRow = pageRows[0] ?? null
+		const endRow = pageRows[pageRows.length - 1] ?? null
+		const startCursor = startRow
+			? encodeTransactionCursor({
+					createdAt: getString(startRow.created_at),
+					id: getNumber(startRow.id),
+				})
+			: null
+		const endCursor = endRow
+			? encodeTransactionCursor({
+					createdAt: getString(endRow.created_at),
+					id: getNumber(endRow.id),
+				})
+			: null
+		let page = 1
+		if (startRow) {
+			const newerCountRow = await this.#first(
+				`SELECT COUNT(*) AS newer_count
+				 FROM transactions t
+				 WHERE ${whereClauses.join(' AND ')}
+				 AND (t.created_at > ? OR (t.created_at = ? AND t.id > ?))`,
+				[
+					...filterParams,
+					getString(startRow.created_at),
+					getString(startRow.created_at),
+					getNumber(startRow.id),
+				],
+			)
+			const newerCount = Math.max(getNumber(newerCountRow?.newer_count ?? 0), 0)
+			page = Math.floor(newerCount / pageSize) + 1
+		}
+		const middlePage = Math.max(Math.ceil(totalPages / 2), 1)
+		const middlePageAnchorOffset = (middlePage - 1) * pageSize - 1
+		const endPageAnchorOffset = (totalPages - 1) * pageSize - 1
+		const middleCursor = await this.#cursorAtOffset(
+			whereClauses,
+			filterParams,
+			middlePageAnchorOffset,
+		)
+		const endPageCursor = await this.#cursorAtOffset(
+			whereClauses,
+			filterParams,
+			endPageAnchorOffset,
+		)
+
+		return {
+			page,
+			pageSize,
+			totalCount,
+			totalPages,
+			hasPreviousPage,
+			hasNextPage,
+			startCursor,
+			endCursor,
+			middleCursor,
+			endPageCursor,
+			transactions: pageRows.map((row) => ({
+				id: getNumber(row.id),
+				householdId: getNumber(row.household_id),
+				kidId: getNumber(row.kid_id),
+				kidName: getString(row.kid_name),
+				accountId: getNumber(row.account_id),
+				accountName: getString(row.account_name),
+				amountCents: getNumber(row.amount_cents),
+				note: getString(row.note),
+				createdAt: getString(row.created_at),
+			})) satisfies Array<LedgerTransaction>,
+		}
+	}
+
+	async #cursorAtOffset(
+		whereClauses: Array<string>,
+		params: Array<unknown>,
+		offset: number,
+	) {
+		if (offset < 0) return null
+		const row = await this.#first(
+			`SELECT t.created_at, t.id
+			 FROM transactions t
+			 WHERE ${whereClauses.join(' AND ')}
+			 ORDER BY t.created_at DESC, t.id DESC
+			 LIMIT 1 OFFSET ?`,
+			[...params, offset],
+		)
+		if (!row) return null
+		return encodeTransactionCursor({
 			createdAt: getString(row.created_at),
-		})) satisfies Array<LedgerTransaction>
+			id: getNumber(row.id),
+		})
 	}
 
 	async listQuickAmounts() {
@@ -741,4 +956,21 @@ function getString(value: unknown) {
 
 function getBoolean(value: unknown) {
 	return getNumber(value) === 1
+}
+
+function encodeTransactionCursor(cursor: { createdAt: string; id: number }) {
+	return `${cursor.createdAt}|${cursor.id}`
+}
+
+function parseTransactionCursor(rawCursor: string | undefined) {
+	if (!rawCursor) return null
+	const [createdAt, idRaw] = rawCursor.split('|')
+	if (!createdAt || !idRaw) return null
+	const id = Number(idRaw)
+	if (!Number.isInteger(id) || id < 1) return null
+	return { createdAt, id }
+}
+
+function isDateOnlyValue(value: string) {
+	return /^\d{4}-\d{2}-\d{2}$/.test(value)
 }

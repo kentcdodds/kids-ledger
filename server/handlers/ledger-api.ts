@@ -65,6 +65,22 @@ function getNumberQueryParam(url: URL, key: string) {
 	return Number.isFinite(value) ? value : undefined
 }
 
+function getPositiveIntQueryParam(url: URL, key: string) {
+	const value = getNumberQueryParam(url, key)
+	if (value === undefined) return undefined
+	const normalized = Math.floor(value)
+	if (normalized < 1) return undefined
+	return normalized
+}
+
+function getMoneyCentsQueryParam(url: URL, key: string) {
+	const rawValue = url.searchParams.get(key)
+	if (!rawValue) return undefined
+	const value = Number(rawValue)
+	if (!Number.isFinite(value)) return undefined
+	return Math.max(Math.round(value * 100), 0)
+}
+
 function getOptionalIsoString(url: URL, key: string) {
 	const value = url.searchParams.get(key)
 	if (!value) return undefined
@@ -120,16 +136,21 @@ export function createLedgerHistoryHandler(appEnv: AppEnv) {
 		async action({ request, url }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
-			const transactions = await access.service.listTransactions({
+			const result = await access.service.listTransactions({
 				kidId: getNumberQueryParam(url, 'kidId'),
 				accountId: getNumberQueryParam(url, 'accountId'),
 				type: getTransactionType(url),
 				from: getOptionalIsoString(url, 'from'),
 				to: getOptionalIsoString(url, 'to'),
-				limit: getNumberQueryParam(url, 'limit'),
+				minAmountCents: getMoneyCentsQueryParam(url, 'minAmount'),
+				maxAmountCents: getMoneyCentsQueryParam(url, 'maxAmount'),
+				after: getOptionalIsoString(url, 'after'),
+				before: getOptionalIsoString(url, 'before'),
+				page: getPositiveIntQueryParam(url, 'page'),
+				limit: getPositiveIntQueryParam(url, 'limit'),
 				offset: getNumberQueryParam(url, 'offset'),
 			})
-			return jsonResponse({ ok: true, transactions })
+			return jsonResponse({ ok: true, ...result })
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerHistory.method,

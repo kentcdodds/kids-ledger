@@ -273,7 +273,10 @@ export async function registerLedgerTools(agent: MCP) {
 				type: z.enum(['add', 'remove']).optional(),
 				from: z.string().optional(),
 				to: z.string().optional(),
-				limit: z.number().int().positive().max(200).optional(),
+				minAmountCents: z.number().int().min(0).optional(),
+				maxAmountCents: z.number().int().min(0).optional(),
+				page: z.number().int().positive().optional(),
+				limit: z.number().int().positive().max(50).optional(),
 				offset: z.number().int().min(0).optional(),
 			},
 		},
@@ -283,6 +286,9 @@ export async function registerLedgerTools(agent: MCP) {
 			type,
 			from,
 			to,
+			minAmountCents,
+			maxAmountCents,
+			page,
 			limit,
 			offset,
 		}: {
@@ -291,25 +297,31 @@ export async function registerLedgerTools(agent: MCP) {
 			type?: 'add' | 'remove'
 			from?: string
 			to?: string
+			minAmountCents?: number
+			maxAmountCents?: number
+			page?: number
 			limit?: number
 			offset?: number
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			const transactions = await service.listTransactions({
+			const result = await service.listTransactions({
 				kidId,
 				accountId,
 				type,
 				from,
 				to,
+				minAmountCents,
+				maxAmountCents,
+				page,
 				limit,
 				offset,
 			})
 			return {
 				...successContent(
 					'Transactions loaded',
-					`Loaded ${transactions.length} rows.`,
+					`Loaded ${result.transactions.length} rows.`,
 				),
-				structuredContent: { transactions },
+				structuredContent: result,
 			}
 		},
 	)
