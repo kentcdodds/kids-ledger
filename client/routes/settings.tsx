@@ -126,6 +126,7 @@ type SettingsState =
 export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
 	let isRefreshing = false
+	let isReordering = false
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
@@ -255,12 +256,14 @@ export function SettingsRoute(handle: Handle) {
 	}
 
 	async function handleKidMove(kidId: number, delta: -1 | 1) {
-		if (state.status !== 'ready') return
+		if (state.status !== 'ready' || isReordering) return
 		const ids = state.kids.map((kid) => kid.id)
 		const from = ids.indexOf(kidId)
 		if (from < 0) return
 		const to = from + delta
 		if (to < 0 || to >= ids.length) return
+		isReordering = true
+		handle.update()
 		try {
 			await reorderKids(moveItem(ids, from, to))
 			await refreshSettings()
@@ -271,6 +274,9 @@ export function SettingsRoute(handle: Handle) {
 			})
 		} catch (error) {
 			notify(error instanceof Error ? error.message : 'Could not reorder kid.')
+		} finally {
+			isReordering = false
+			handle.update()
 		}
 	}
 
@@ -279,7 +285,7 @@ export function SettingsRoute(handle: Handle) {
 		accountId: number,
 		delta: -1 | 1,
 	) {
-		if (state.status !== 'ready') return
+		if (state.status !== 'ready' || isReordering) return
 		const kid = state.kids.find((entry) => entry.id === kidId)
 		if (!kid) return
 		const accountIds = kid.accounts.map((account) => account.id)
@@ -287,6 +293,8 @@ export function SettingsRoute(handle: Handle) {
 		if (from < 0) return
 		const to = from + delta
 		if (to < 0 || to >= accountIds.length) return
+		isReordering = true
+		handle.update()
 		try {
 			await reorderAccounts(kidId, moveItem(accountIds, from, to))
 			await refreshSettings()
@@ -300,6 +308,9 @@ export function SettingsRoute(handle: Handle) {
 			notify(
 				error instanceof Error ? error.message : 'Could not reorder account.',
 			)
+		} finally {
+			isReordering = false
+			handle.update()
 		}
 	}
 
@@ -427,7 +438,7 @@ export function SettingsRoute(handle: Handle) {
 											data-reorder-kid-id={kid.id}
 											data-reorder-direction="up"
 											aria-label={`Move ${kid.name} up`}
-											disabled={kidIndex === 0}
+											disabled={kidIndex === 0 || isReordering}
 											on={{
 												click: () => void handleKidMove(kid.id, -1),
 											}}
@@ -441,7 +452,9 @@ export function SettingsRoute(handle: Handle) {
 											data-reorder-kid-id={kid.id}
 											data-reorder-direction="down"
 											aria-label={`Move ${kid.name} down`}
-											disabled={kidIndex === state.kids.length - 1}
+											disabled={
+												kidIndex === state.kids.length - 1 || isReordering
+											}
 											on={{
 												click: () => void handleKidMove(kid.id, 1),
 											}}
@@ -571,7 +584,7 @@ export function SettingsRoute(handle: Handle) {
 													data-reorder-account-id={account.id}
 													data-reorder-direction="up"
 													aria-label={`Move ${account.name} up`}
-													disabled={index === 0}
+													disabled={index === 0 || isReordering}
 													on={{
 														click: () =>
 															void handleAccountMove(kid.id, account.id, -1),
@@ -587,7 +600,9 @@ export function SettingsRoute(handle: Handle) {
 													data-reorder-account-id={account.id}
 													data-reorder-direction="down"
 													aria-label={`Move ${account.name} down`}
-													disabled={index === kid.accounts.length - 1}
+													disabled={
+														index === kid.accounts.length - 1 || isReordering
+													}
 													on={{
 														click: () =>
 															void handleAccountMove(kid.id, account.id, 1),
@@ -645,12 +660,12 @@ export function SettingsRoute(handle: Handle) {
 														border: '2px solid transparent',
 														boxShadow: 'none',
 														fontWeight: 'bold',
-													color: '#ffffff',
+														color: '#ffffff',
 														padding: spacing.xs,
 														'&:focus': {
 															...inputCss['&:focus'],
 															backgroundColor: colors.surface,
-														color: colors.text,
+															color: colors.text,
 														},
 													}}
 												/>

@@ -77,6 +77,21 @@ const disabledPaginationControlCss = {
 	transform: 'none',
 }
 
+function getTransactionTextColors(colorToken: string) {
+	if (colorToken === 'sun') {
+		return {
+			text: colors.text,
+			negative: colors.error,
+			muted: colors.textMuted,
+		}
+	}
+	return {
+		text: '#ffffff',
+		negative: '#fee2e2',
+		muted: 'rgba(255, 255, 255, 0.9)',
+	}
+}
+
 export function HistoryRoute(handle: Handle) {
 	let query = getInitialQuery()
 	if (!query.get('limit')) {
@@ -324,53 +339,58 @@ export function HistoryRoute(handle: Handle) {
 					</p>
 				) : null}
 
-				{state.transactions.map((transaction) => (
-					<article
-						key={transaction.id}
-						css={{
-							display: 'grid',
-							gap: spacing.xs,
-							padding: spacing.md,
-							borderRadius: radius.lg,
-							border: `2px solid ${colors.border}`,
-							background: getAccountGradientBackground(
-								transaction.colorToken,
-							),
-							boxShadow: shadows.sm,
-							color: '#ffffff',
-							opacity: showPendingRefresh ? 0.6 : 1,
-							transition: 'opacity 120ms ease',
-						}}
-					>
-						<div
+				{state.transactions.map((transaction) => {
+					const textColors = getTransactionTextColors(transaction.colorToken)
+					return (
+						<article
+							key={transaction.id}
 							css={{
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
+								display: 'grid',
+								gap: spacing.xs,
+								padding: spacing.md,
+								borderRadius: radius.lg,
+								border: `2px solid ${colors.border}`,
+								background: getAccountGradientBackground(
+									transaction.colorToken,
+								),
+								boxShadow: shadows.sm,
+								color: textColors.text,
+								opacity: showPendingRefresh ? 0.6 : 1,
+								transition: 'opacity 120ms ease',
 							}}
 						>
-							<strong>
-								{transaction.kidEmoji} {transaction.kidName} ·{' '}
-								{transaction.accountName}
-							</strong>
-							<strong
+							<div
 								css={{
-									color:
-										transaction.amountCents < 0 ? '#fee2e2' : '#ffffff',
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
 								}}
 							>
-								{transaction.amountCents < 0 ? '-' : '+'}
-								{formatCents(Math.abs(transaction.amountCents))}
-							</strong>
-						</div>
-						{transaction.note ? (
-							<p css={{ margin: 0 }}>{transaction.note}</p>
-						) : null}
-						<time css={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-							{new Date(transaction.createdAt).toLocaleString()}
-						</time>
-					</article>
-				))}
+								<strong>
+									{transaction.kidEmoji} {transaction.kidName} ·{' '}
+									{transaction.accountName}
+								</strong>
+								<strong
+									css={{
+										color:
+											transaction.amountCents < 0
+												? textColors.negative
+												: textColors.text,
+									}}
+								>
+									{transaction.amountCents < 0 ? '-' : '+'}
+									{formatCents(Math.abs(transaction.amountCents))}
+								</strong>
+							</div>
+							{transaction.note ? (
+								<p css={{ margin: 0 }}>{transaction.note}</p>
+							) : null}
+							<time css={{ color: textColors.muted }}>
+								{new Date(transaction.createdAt).toLocaleString()}
+							</time>
+						</article>
+					)
+				})}
 				{state.status !== 'error' &&
 				(state.status === 'ready' || state.transactions.length > 0) ? (
 					<div
