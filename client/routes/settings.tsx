@@ -32,6 +32,7 @@ import {
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
+import { getFocusableElements } from '#client/dom-utils.ts'
 
 const defaultKidEmojis = [
 	'🧒',
@@ -87,16 +88,6 @@ function moveItem<T>(items: Array<T>, from: number, to: number) {
 	const nextItems = [...items]
 	nextItems.splice(to, 0, nextItems.splice(from, 1)[0]!)
 	return nextItems
-}
-
-function getFocusableElements(container: HTMLElement) {
-	const selector =
-		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-	const candidates = Array.from(container.querySelectorAll(selector))
-	return candidates.filter(
-		(element): element is HTMLElement =>
-			element instanceof HTMLElement && element.tabIndex >= 0,
-	)
 }
 
 type ReorderDirection = 'up' | 'down'

@@ -75,6 +75,7 @@ function isLikelyCssStylesheet(cssText: string) {
 export function buildTransactionModalCss(transactionModalCss: string) {
 	const trimmed = transactionModalCss.trim()
 	if (!trimmed) return ''
-	if (isLikelyCssStylesheet(trimmed)) return trimmed
-	return `:root {\n${trimmed}\n}`
+	const sanitized = trimmed.replace(/<\/style/gi, '<\\/style')
+	if (isLikelyCssStylesheet(sanitized)) return sanitized
+	return `:root {\n${sanitized}\n}`
 }

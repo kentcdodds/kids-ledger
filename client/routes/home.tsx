@@ -18,6 +18,7 @@ import {
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
+import { getFocusableElements } from '#client/dom-utils.ts'
 
 type TransactionState = {
 	kid: KidSummary
@@ -30,16 +31,6 @@ type TransactionState = {
 }
 
 const modalCloseAnimationDurationMs = 220
-
-function getFocusableElements(container: HTMLElement) {
-	const selector =
-		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-	const candidates = Array.from(container.querySelectorAll(selector))
-	return candidates.filter(
-		(element): element is HTMLElement =>
-			element instanceof HTMLElement && element.tabIndex >= 0,
-	)
-}
 
 export function HomeRoute(handle: Handle) {
 	let status: 'loading' | 'ready' | 'error' = 'loading'
