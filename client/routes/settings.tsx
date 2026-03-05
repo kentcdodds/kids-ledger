@@ -34,6 +34,22 @@ const accountColors = [
 	'night',
 ] as const
 
+const accountRowBackgrounds: Record<(typeof accountColors)[number], string> = {
+	orchid: 'color-mix(in srgb, #9541ff 14%, var(--color-surface))',
+	ocean: 'color-mix(in srgb, #326dff 14%, var(--color-surface))',
+	meadow: 'color-mix(in srgb, #1aa867 14%, var(--color-surface))',
+	flame: 'color-mix(in srgb, #ff6a3c 14%, var(--color-surface))',
+	sun: 'color-mix(in srgb, #f7b500 14%, var(--color-surface))',
+	night: 'color-mix(in srgb, #3f4b66 16%, var(--color-surface))',
+}
+
+function getAccountRowBackground(colorToken: string) {
+	return (
+		accountRowBackgrounds[colorToken as (typeof accountColors)[number]] ??
+		accountRowBackgrounds.orchid
+	)
+}
+
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
 	| {
@@ -61,13 +77,19 @@ type SettingsState =
 
 export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
+	let isRefreshing = false
 	let newKidName = ''
 	let newKidEmoji = '🧒'
+	let newAccountColorsByKidId: Record<number, string> = {}
 	let draggedKidId: number | null = null
 	let draggedAccount: { kidId: number; accountId: number } | null = null
 
 	async function refreshSettings() {
-		state = { status: 'loading', message: '', kids: state.kids }
+		const hadReadyData = state.status === 'ready'
+		isRefreshing = hadReadyData
+		if (!hadReadyData) {
+			state = { status: 'loading', message: '', kids: state.kids }
+		}
 		handle.update()
 		try {
 			const payload = await fetchSettings()
@@ -79,13 +101,19 @@ export function SettingsRoute(handle: Handle) {
 				quickAmounts: payload.settings.quickAmounts,
 			}
 		} catch (error) {
-			state = {
-				status: 'error',
-				message:
-					error instanceof Error ? error.message : 'Failed to load settings.',
-				kids: [],
+			const errorMessage =
+				error instanceof Error ? error.message : 'Failed to load settings.'
+			if (state.status === 'ready') {
+				state.message = errorMessage
+			} else {
+				state = {
+					status: 'error',
+					message: errorMessage,
+					kids: [],
+				}
 			}
 		}
+		isRefreshing = false
 		handle.update()
 	}
 
@@ -97,6 +125,26 @@ export function SettingsRoute(handle: Handle) {
 		if (state.status !== 'ready') return
 		state.message = message
 		handle.update()
+	}
+
+	function updateLocalAccount(
+		accountId: number,
+		updates: { name?: string; colorToken?: string },
+	) {
+		if (state.status !== 'ready') return
+		for (const kid of state.kids) {
+			const account = kid.accounts.find((entry) => entry.id === accountId)
+			if (!account) continue
+			if (updates.name !== undefined) account.name = updates.name
+			if (updates.colorToken !== undefined)
+				account.colorToken = updates.colorToken
+			handle.update()
+			return
+		}
+	}
+
+	function getCreateAccountColor(kidId: number) {
+		return newAccountColorsByKidId[kidId] ?? 'orchid'
 	}
 
 	async function handleCreateKid() {
@@ -155,6 +203,9 @@ export function SettingsRoute(handle: Handle) {
 			) : null}
 			{state.status === 'error' ? (
 				<p css={{ color: colors.error }}>{state.message}</p>
+			) : null}
+			{isRefreshing ? (
+				<p css={{ margin: 0, color: colors.textMuted }}>Saving changes...</p>
 			) : null}
 
 			{state.status === 'ready' ? (
@@ -281,7 +332,8 @@ export function SettingsRoute(handle: Handle) {
 										maxLength={2}
 										on={{
 											blur: async (e) => {
-												const emoji = (e.currentTarget as HTMLInputElement).value || '🧒'
+												const emoji =
+													(e.currentTarget as HTMLInputElement).value || '🧒'
 												const nameInput = document.querySelector(
 													`input[data-kid-name="${kid.id}"]`,
 												) as HTMLInputElement
@@ -291,7 +343,7 @@ export function SettingsRoute(handle: Handle) {
 													emoji,
 												})
 												await refreshSettings()
-											}
+											},
 										}}
 										css={{
 											...inputCss,
@@ -306,7 +358,9 @@ export function SettingsRoute(handle: Handle) {
 										data-kid-name={kid.id}
 										on={{
 											blur: async (e) => {
-												const name = (e.currentTarget as HTMLInputElement).value || kid.name
+												const name =
+													(e.currentTarget as HTMLInputElement).value ||
+													kid.name
 												const emojiInput = document.querySelector(
 													`input[data-kid-emoji="${kid.id}"]`,
 												) as HTMLInputElement
@@ -316,7 +370,7 @@ export function SettingsRoute(handle: Handle) {
 													emoji: emojiInput?.value || kid.emoji,
 												})
 												await refreshSettings()
-											}
+											},
 										}}
 										css={{
 											...inputCss,
@@ -344,9 +398,12 @@ export function SettingsRoute(handle: Handle) {
 									css={{
 										display: 'flex',
 										flexDirection: 'column',
-										backgroundColor: colors.primarySoftest,
+										backgroundColor: colors.surface,
 										borderRadius: radius.lg,
-										border: kid.accounts.length > 0 ? `2px solid ${colors.border}` : 'none',
+										border:
+											kid.accounts.length > 0
+												? `2px solid ${colors.border}`
+												: 'none',
 										overflow: 'hidden',
 									}}
 								>
@@ -372,6 +429,9 @@ export function SettingsRoute(handle: Handle) {
 												gap: spacing.xs,
 												alignItems: 'center',
 												padding: spacing.md,
+												backgroundColor: getAccountRowBackground(
+													account.colorToken,
+												),
 												borderBottom:
 													index < kid.accounts.length - 1
 														? `1px solid ${colors.border}`
@@ -406,22 +466,37 @@ export function SettingsRoute(handle: Handle) {
 													data-account-name={account.id}
 													on={{
 														blur: async (e) => {
-															const name = (e.currentTarget as HTMLInputElement).value || account.name
+															const name =
+																(e.currentTarget as HTMLInputElement).value ||
+																account.name
 															const colorSelect = document.querySelector(
 																`select[data-account-color="${account.id}"]`,
 															) as HTMLSelectElement
+															const colorToken =
+																colorSelect?.value || account.colorToken
+															updateLocalAccount(account.id, {
+																name,
+																colorToken,
+															})
 															await updateAccount({
 																accountId: account.id,
 																name,
-																colorToken: colorSelect?.value || account.colorToken,
+																colorToken,
 															})
 															await refreshSettings()
-														}
+														},
 													}}
 													css={{
 														...inputCss,
+														backgroundColor: 'transparent',
+														border: '2px solid transparent',
+														boxShadow: 'none',
 														fontWeight: 'bold',
 														padding: spacing.xs,
+														'&:focus': {
+															...inputCss['&:focus'],
+															backgroundColor: colors.surface,
+														}
 													}}
 												/>
 												<span
@@ -434,24 +509,31 @@ export function SettingsRoute(handle: Handle) {
 												</span>
 											</div>
 											<select
-												defaultValue={account.colorToken}
+												value={account.colorToken}
 												aria-label={`${account.name} color`}
 												data-account-color={account.id}
 												on={{
 													change: async (e) => {
-														const colorToken = (e.currentTarget as HTMLSelectElement).value
+														const colorToken = (
+															e.currentTarget as HTMLSelectElement
+														).value
 														const nameInput = document.querySelector(
 															`input[data-account-name="${account.id}"]`,
 														) as HTMLInputElement
+														const name = nameInput?.value || account.name
+														updateLocalAccount(account.id, { name, colorToken })
 														await updateAccount({
 															accountId: account.id,
-															name: nameInput?.value || account.name,
+															name,
 															colorToken,
 														})
 														await refreshSettings()
-													}
+													},
 												}}
-												css={inputCss}
+												css={{
+													...inputCss,
+													backgroundColor: colors.surface,
+												}}
 											>
 												{accountColors.map((color) => (
 													<option key={color} value={color}>
@@ -482,7 +564,9 @@ export function SettingsRoute(handle: Handle) {
 										padding: spacing.md,
 										border: `2px dashed ${colors.border}`,
 										borderRadius: radius.lg,
-										backgroundColor: colors.surface,
+										backgroundColor: getAccountRowBackground(
+											getCreateAccountColor(kid.id),
+										),
 										[mq.mobile]: {
 											gridTemplateColumns: '1fr',
 										},
@@ -495,7 +579,18 @@ export function SettingsRoute(handle: Handle) {
 									/>
 									<select
 										data-create-account-color={kid.id}
-										defaultValue="orchid"
+										value={getCreateAccountColor(kid.id)}
+										on={{
+											change: (event) => {
+												if (
+													!(event.currentTarget instanceof HTMLSelectElement)
+												)
+													return
+												newAccountColorsByKidId[kid.id] =
+													event.currentTarget.value
+												handle.update()
+											},
+										}}
 										css={inputCss}
 									>
 										{accountColors.map((color) => (
@@ -525,7 +620,7 @@ export function SettingsRoute(handle: Handle) {
 												await createAccount({
 													kidId: kid.id,
 													name: accountName,
-													colorToken: colorSelect.value,
+													colorToken: getCreateAccountColor(kid.id),
 												})
 												nameInput.value = ''
 												await refreshSettings()
@@ -552,7 +647,7 @@ export function SettingsRoute(handle: Handle) {
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.text }}>Quick amounts</h2>
-						
+
 						<div css={{ display: 'flex', flexWrap: 'wrap', gap: spacing.sm }}>
 							{state.quickAmounts.map((amount) => (
 								<div
@@ -609,11 +704,10 @@ export function SettingsRoute(handle: Handle) {
 									event.preventDefault()
 									if (state.status !== 'ready') return
 									if (!(event.currentTarget instanceof HTMLFormElement)) return
-									const input = event.currentTarget.elements.namedItem(
-										'newAmount',
-									)
+									const input =
+										event.currentTarget.elements.namedItem('newAmount')
 									if (!(input instanceof HTMLInputElement)) return
-									
+
 									const val = Number(input.value)
 									if (Number.isFinite(val) && val > 0) {
 										const cents = Math.round(val * 100)
@@ -661,19 +755,29 @@ export function SettingsRoute(handle: Handle) {
 						}}
 					>
 						<h2 css={{ margin: 0, color: colors.error }}>Danger Zone</h2>
-						
+
 						<div css={{ display: 'grid', gap: spacing.sm }}>
-							<h3 css={{ margin: 0, color: colors.text, fontSize: typography.fontSize.lg }}>Archive management</h3>
+							<h3
+								css={{
+									margin: 0,
+									color: colors.text,
+									fontSize: typography.fontSize.lg,
+								}}
+							>
+								Archive management
+							</h3>
 							{state.archived.kids.length === 0 &&
 							state.archived.accounts.length === 0 ? (
-								<div css={{ 
-									display: 'flex', 
-									flexDirection: 'column', 
-									alignItems: 'center', 
-									gap: spacing.sm,
-									padding: spacing.xl,
-									color: colors.textMuted 
-								}}>
+								<div
+									css={{
+										display: 'flex',
+										flexDirection: 'column',
+										alignItems: 'center',
+										gap: spacing.sm,
+										padding: spacing.xl,
+										color: colors.textMuted,
+									}}
+								>
 									<span css={{ fontSize: '2rem' }}>📭</span>
 									<p css={{ margin: 0 }}>No archived records.</p>
 								</div>
@@ -718,16 +822,39 @@ export function SettingsRoute(handle: Handle) {
 							))}
 						</div>
 
-						<div css={{ display: 'grid', gap: spacing.sm, paddingTop: spacing.md, borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)` }}>
-							<h3 css={{ margin: 0, color: colors.text, fontSize: typography.fontSize.lg }}>Data export</h3>
-							<a href="/ledger/export/json" css={{ color: colors.error, fontWeight: typography.fontWeight.bold }}>
+						<div
+							css={{
+								display: 'grid',
+								gap: spacing.sm,
+								paddingTop: spacing.md,
+								borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)`,
+							}}
+						>
+							<h3
+								css={{
+									margin: 0,
+									color: colors.text,
+									fontSize: typography.fontSize.lg,
+								}}
+							>
+								Data export
+							</h3>
+							<a
+								href="/ledger/export/json"
+								css={{
+									color: colors.error,
+									fontWeight: typography.fontWeight.bold,
+								}}
+							>
 								Download JSON backup
 							</a>
 						</div>
 					</section>
 
 					{state.message ? (
-						<p css={{ margin: 0, color: colors.textMuted, textAlign: 'center' }}>
+						<p
+							css={{ margin: 0, color: colors.textMuted, textAlign: 'center' }}
+						>
 							{state.message}
 						</p>
 					) : null}
