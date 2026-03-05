@@ -30,6 +30,7 @@ import {
 	mq,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 
 const defaultKidEmojis = [
 	'🧒',
@@ -133,17 +134,6 @@ const transactionModalCssGoogleFontExample = `@import url("https://fonts.googlea
 :root {
 	--font-family: "MedievalSharp", cursive;
 }`
-
-function buildTransactionModalPreviewCss(transactionModalCss: string) {
-	const trimmed = transactionModalCss.trim()
-	if (!trimmed) return ''
-	if (isLikelyCssStylesheet(trimmed)) return trimmed
-	return `:root {\n${trimmed}\n}`
-}
-
-function isLikelyCssStylesheet(cssText: string) {
-	return cssText.includes('{') || cssText.includes('@')
-}
 
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
@@ -1289,9 +1279,7 @@ export function SettingsRoute(handle: Handle) {
 									</p>
 									{transactionModalCssDraft.trim() ? (
 										<style>
-											{buildTransactionModalPreviewCss(
-												transactionModalCssDraft,
-											)}
+											{buildTransactionModalCss(transactionModalCssDraft)}
 										</style>
 									) : null}
 									<section

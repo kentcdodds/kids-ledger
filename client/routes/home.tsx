@@ -17,6 +17,7 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 
 type TransactionState = {
 	kid: KidSummary
@@ -371,7 +372,7 @@ export function HomeRoute(handle: Handle) {
 					{!transactionModalClosing &&
 					transactionState.kid.transactionModalCss.trim() ? (
 						<style data-kid-transaction-modal-css>
-							{buildTransactionModalCustomCss(
+							{buildTransactionModalCss(
 								transactionState.kid.transactionModalCss,
 							)}
 						</style>
@@ -588,17 +589,6 @@ function modalButtonCss(
 			boxShadow: `0 0 0 0 ${activeShadow}`,
 		},
 	}
-}
-
-function buildTransactionModalCustomCss(transactionModalCss: string) {
-	const trimmed = transactionModalCss.trim()
-	if (!trimmed) return ''
-	if (isLikelyCssStylesheet(trimmed)) return trimmed
-	return `:root {\n${trimmed}\n}`
-}
-
-function isLikelyCssStylesheet(cssText: string) {
-	return cssText.includes('{') || cssText.includes('@')
 }
 
 function LoggedOutHome() {
