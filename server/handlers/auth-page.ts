@@ -1,13 +1,7 @@
 import { readAuthSession } from '#server/auth-session.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-
-function normalizeRedirectTo(value: string | null) {
-	if (!value) return null
-	if (!value.startsWith('/')) return null
-	if (value.startsWith('//')) return null
-	return value
-}
+import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
 
 export function createAuthPageHandler() {
 	return {
@@ -16,7 +10,7 @@ export function createAuthPageHandler() {
 			const url = new URL(request.url)
 			const session = await readAuthSession(request)
 			if (session) {
-				const redirectTo = normalizeRedirectTo(
+				const redirectTo = normalizeRedirectTarget(
 					url.searchParams.get('redirectTo'),
 				)
 				const redirectTarget = redirectTo ?? '/account'

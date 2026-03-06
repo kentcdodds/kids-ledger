@@ -1,12 +1,7 @@
+import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
+
 type RedirectToLoginOptions = {
 	redirectTo?: string
-}
-
-function normalizeRedirectTo(value: string | null) {
-	if (!value) return null
-	if (!value.startsWith('/')) return null
-	if (value.startsWith('//')) return null
-	return value
 }
 
 export function redirectToLogin(
@@ -15,7 +10,7 @@ export function redirectToLogin(
 ) {
 	const requestUrl = new URL(request.url)
 	const target =
-		normalizeRedirectTo(options.redirectTo ?? null) ??
+		normalizeRedirectTarget(options.redirectTo ?? null) ??
 		`${requestUrl.pathname}${requestUrl.search}`
 	const loginUrl = new URL('/login', requestUrl)
 

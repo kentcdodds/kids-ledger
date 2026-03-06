@@ -1,25 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from './playwright-utils.ts'
+import { createKidWithAccount, expect, test } from './playwright-utils.ts'
 
 test('transaction modal is keyboard accessible and passes axe', async ({
 	page,
 	login,
 }) => {
-	const kidName = `Kid-${crypto.randomUUID().slice(0, 6)}`
-	const accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`
 	await login()
-	await page.goto('/settings')
-	await page.getByPlaceholder('Kid name').fill(kidName)
-	await page.getByRole('button', { name: 'Add' }).first().click()
-
-	const kidNameInput = page.getByRole('textbox', { name: `${kidName} name` })
-	await expect(kidNameInput).toBeVisible()
-	const kidCard = page.locator('article').filter({ has: kidNameInput }).first()
-	await kidCard.getByPlaceholder('New account name').fill(accountName)
-	await kidCard.getByRole('button', { name: 'Add account' }).click()
-	await expect(
-		kidCard.getByRole('textbox', { name: `${accountName} name` }),
-	).toHaveValue(accountName)
+	const { accountName } = await createKidWithAccount(page)
 
 	await page.goto('/')
 	const accountButton = page.getByRole('button', {

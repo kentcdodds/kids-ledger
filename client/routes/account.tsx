@@ -1,4 +1,5 @@
 import { type Handle } from 'remix/component'
+import { requireSessionOrRedirect } from '#client/session.ts'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { buttonCss } from '#client/styles/form-controls.ts'
 
@@ -11,24 +12,9 @@ export function AccountRoute(handle: Handle) {
 
 	async function loadAccount(signal: AbortSignal) {
 		try {
-			const response = await fetch('/session', {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-				signal,
-			})
-			if (signal.aborted) return
-			const payload = await response.json().catch(() => null)
-			const sessionEmail =
-				response.ok &&
-				payload?.ok &&
-				typeof payload?.session?.email === 'string'
-					? payload.session.email.trim()
-					: ''
-			if (!sessionEmail) {
-				window.location.assign('/login')
-				return
-			}
-			email = sessionEmail
+			const session = await requireSessionOrRedirect(signal)
+			if (signal.aborted || !session) return
+			email = session.email
 			status = 'ready'
 			message = null
 			handle.update()

@@ -1,26 +1,16 @@
-import { expect, test } from './playwright-utils.ts'
+import { createKidWithAccount, expect, test } from './playwright-utils.ts'
 
 test('kid emoji background appears while transaction and custom CSS modals are open', async ({
 	page,
 	login,
 }) => {
-	const kidName = `Kid-${crypto.randomUUID().slice(0, 6)}`
 	const kidEmoji = '🦖'
-	const accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`
 	const encodedKidEmoji = encodeURIComponent(kidEmoji).toLowerCase()
 
 	await login()
-	await page.goto('/settings')
-
-	await page.getByRole('textbox', { name: 'Kid emoji' }).fill(kidEmoji)
-	await page.getByPlaceholder('Kid name').fill(kidName)
-	await page.getByRole('button', { name: 'Add' }).first().click()
-
-	const kidNameInput = page.getByRole('textbox', { name: `${kidName} name` })
-	await expect(kidNameInput).toBeVisible()
-	const kidCard = page.locator('article').filter({ has: kidNameInput }).first()
-	await kidCard.getByPlaceholder('New account name').fill(accountName)
-	await kidCard.getByRole('button', { name: 'Add account' }).click()
+	const { accountName, kidCard } = await createKidWithAccount(page, {
+		kidEmoji,
+	})
 
 	await kidCard.getByTitle('Customize transaction modal').click()
 	const customizationDialog = page.getByRole('dialog')
@@ -80,23 +70,11 @@ test('kid transaction modal custom css applies only while open', async ({
 	page,
 	login,
 }) => {
-	const kidName = `Kid-${crypto.randomUUID().slice(0, 6)}`
-	const accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`
-
 	await login()
-	await page.goto('/settings')
+	const { accountName, kidCard } = await createKidWithAccount(page)
 	const initialBodyBackgroundImage = await page.evaluate(() =>
 		window.getComputedStyle(document.body).backgroundImage.toLowerCase(),
 	)
-
-	await page.getByPlaceholder('Kid name').fill(kidName)
-	await page.getByRole('button', { name: 'Add' }).first().click()
-
-	const kidNameInput = page.getByRole('textbox', { name: `${kidName} name` })
-	await expect(kidNameInput).toBeVisible()
-	const kidCard = page.locator('article').filter({ has: kidNameInput }).first()
-	await kidCard.getByPlaceholder('New account name').fill(accountName)
-	await kidCard.getByRole('button', { name: 'Add account' }).click()
 
 	await kidCard.getByTitle('Customize transaction modal').click()
 

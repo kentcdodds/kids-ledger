@@ -1,4 +1,5 @@
 import { type Handle } from 'remix/component'
+import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -63,15 +64,30 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				headers: { Accept: 'application/json' },
 				credentials: 'include',
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = await parseJsonOrNull<{
+				ok?: boolean
+				error?: string
+				client?: OAuthAuthorizeInfo['client']
+				scopes?: OAuthAuthorizeInfo['scopes']
+			}>(response)
 			if (!response.ok || !payload?.ok) {
-				const errorText =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to load authorization details.'
+				const errorText = getErrorMessage(
+					payload,
+					'Unable to load authorization details.',
+				)
 				info = null
 				status = 'error'
 				message = { type: 'error', text: errorText }
+				handle.update()
+				return
+			}
+			if (!payload.client || !Array.isArray(payload.scopes)) {
+				info = null
+				status = 'error'
+				message = {
+					type: 'error',
+					text: 'Unable to load authorization details.',
+				}
 				handle.update()
 				return
 			}
@@ -141,12 +157,15 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				credentials: 'include',
 				body,
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = await parseJsonOrNull<{
+				error?: string
+				redirectTo?: string
+			}>(response)
 			if (!response.ok) {
-				const errorText =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to complete authorization.'
+				const errorText = getErrorMessage(
+					payload,
+					'Unable to complete authorization.',
+				)
 				setMessage({ type: 'error', text: errorText })
 				submitting = false
 				handle.update()
