@@ -91,7 +91,7 @@ per mock service named `<app-name>-pr-<number>-mock-<service>`. The same
 `CLOUDFLARE_API_TOKEN` must be able to create/update and delete those Workers.
 
 Preview deploys also seed the preview D1 database automatically via
-`bun run seed:test-data -- --remote --env preview --config <generated-config>`,
+`CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config <generated-config>`,
 including a test account:
 
 - `kody@kcd.dev` / `kodylovesyou`

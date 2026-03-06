@@ -18,8 +18,9 @@ Quick notes for getting a local kids-ledger environment running.
 - `bun run dev` (starts mock API servers automatically and sets
   `RESEND_API_BASE_URL` to the local mock Worker).
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
-- Seed local D1 test data (after migrations):
-  `bun run seed:test-data -- --local`
+- Seed or refresh the local test login:
+  - `bun run migrate:local`
+  - `bun tools/seed-test-data.ts --local`
   - test login: `kody@kcd.dev` / `kodylovesyou`
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
@@ -31,9 +32,39 @@ Quick notes for getting a local kids-ledger environment running.
 
 - `bun run validate` runs format check, lint, build, typecheck, Playwright
   tests, and MCP E2E tests.
+- `bun run format` applies formatter updates.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
+
+## Seed test account
+
+Use this script to ensure a known login exists in any environment:
+
+- Local D1 (default): `bun tools/seed-test-data.ts`
+- Local D1 with custom persisted state:
+  `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
+- Remote D1:
+  `CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config <wrangler-config-path>`
+- Default credentials:
+  - email: `kody@kcd.dev`
+  - password: `kodylovesyou`
+- Override credentials when needed:
+  `bun tools/seed-test-data.ts --email <email> --password <password> --username <username>`
+- When updating auth schema or user model columns, update
+  `tools/seed-test-data.ts` so this script remains valid for local and preview
+  verification.
+
+### Reset, re-migrate, then seed
+
+For a full local reset before seeding:
+
+1. Drop app tables:
+   - `bun ./wrangler-env.ts d1 execute APP_DB --local --env production --command "PRAGMA foreign_keys=OFF; DROP TABLE IF EXISTS transactions; DROP TABLE IF EXISTS accounts; DROP TABLE IF EXISTS kids; DROP TABLE IF EXISTS households; DROP TABLE IF EXISTS quick_amount_presets; DROP TABLE IF EXISTS password_resets; DROP TABLE IF EXISTS mock_resend_messages; DROP TABLE IF EXISTS users; PRAGMA foreign_keys=ON;"`
+2. Re-apply migrations:
+   - `bun run migrate:local`
+3. Seed test account:
+   - `bun tools/seed-test-data.ts --local`
 
 ## Ledger-specific smoke checks
 
@@ -57,7 +88,7 @@ each PR preview is isolated:
 - KV namespace (OAuth state): `<preview-worker-name>-oauth-kv`
 
 After preview migrations complete, the workflow seeds the preview D1 database
-with deterministic test ledger data and a test login account:
+with a shared test login account:
 
 - username/email: `kody@kcd.dev`
 - password: `kodylovesyou`
@@ -86,6 +117,7 @@ that workflow.
 If you ever need to do the same operations manually, use:
 
 - `bun tools/ci/preview-resources.ts ensure --worker-name <name> --out-config <path>`
+- `CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config <path>`
 - `bun tools/ci/preview-resources.ts cleanup --worker-name <name>`
 - `bun tools/ci/production-resources.ts ensure --out-config <path>`
 
