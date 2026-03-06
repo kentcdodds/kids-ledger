@@ -79,8 +79,6 @@
 	/* Background dot motion */
 	--drift-x: 0px;
 	--drift-y: 0px;
-	--mouse-dir-x: 0;
-	--mouse-dir-y: 0;
 	--mouse-shift-x: 0px;
 	--mouse-shift-y: 0px;
 }

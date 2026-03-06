@@ -129,8 +129,6 @@ export function App(handle: Handle) {
 
 			document.body.style.setProperty('--drift-x', `${driftX}px`)
 			document.body.style.setProperty('--drift-y', `${driftY}px`)
-			document.body.style.setProperty('--mouse-dir-x', `${mouseDirX}`)
-			document.body.style.setProperty('--mouse-dir-y', `${mouseDirY}`)
 			document.body.style.setProperty('--mouse-shift-x', `${mouseDirX * 10}px`)
 			document.body.style.setProperty('--mouse-shift-y', `${mouseDirY * 10}px`)
 		}
@@ -181,8 +179,6 @@ export function App(handle: Handle) {
 		}
 
 		const clearPointerTarget = () => {
-			document.body.style.setProperty('--mouse-dir-x', '0')
-			document.body.style.setProperty('--mouse-dir-y', '0')
 			document.body.style.setProperty('--mouse-shift-x', '0px')
 			document.body.style.setProperty('--mouse-shift-y', '0px')
 		}
