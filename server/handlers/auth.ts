@@ -1,9 +1,11 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { enum_, object, parseSafe, string } from 'remix/data-schema'
+import { enum_, object, string } from 'remix/data-schema'
 import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
-import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
+import { createPasswordHash } from '#server/password-hash.ts'
+import { parseJsonBody } from '#server/request-parsing.ts'
+import { verifyUserCredentials } from '#server/verify-user-credentials.ts'
 import { type routes } from '#server/routes.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, usersTable } from '#worker/db.ts'
@@ -23,28 +25,20 @@ const authRequestSchema = object({
 	mode: enum_(authModes),
 })
 
-const dummyPasswordHash =
-	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
-
 export function createAuthHandler(appEnv: AppEnv) {
 	const db = createDb(appEnv.APP_DB)
 
 	return {
 		middleware: [],
 		async action({ request, url }) {
-			let body: unknown
-
-			try {
-				body = await request.json()
-			} catch {
+			const parsedBody = await parseJsonBody(request, authRequestSchema)
+			if (!parsedBody.ok && parsedBody.error === 'invalid_json') {
 				return Response.json(
 					{ error: 'Invalid JSON payload.' },
 					{ status: 400 },
 				)
 			}
-
-			const parsedBody = parseSafe(authRequestSchema, body)
-			if (!parsedBody.success) {
+			if (!parsedBody.ok) {
 				return Response.json(
 					{ error: 'Invalid request body.' },
 					{ status: 400 },
@@ -164,19 +158,12 @@ export function createAuthHandler(appEnv: AppEnv) {
 				)
 			}
 
-			const userRecord = await db.findOne(usersTable, {
-				where: { email: normalizedEmail },
-			})
-			let passwordValid = false
-			if (userRecord) {
-				passwordValid = await verifyPassword(
-					normalizedPassword,
-					userRecord.password_hash,
-				)
-			} else {
-				await verifyPassword(normalizedPassword, dummyPasswordHash)
-			}
-			if (!userRecord || !passwordValid) {
+			const credentials = await verifyUserCredentials(
+				db,
+				normalizedEmail,
+				normalizedPassword,
+			)
+			if (!credentials.ok) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'login',
@@ -194,7 +181,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 
 			const cookie = await createAuthCookie(
 				{
-					id: String(userRecord.id),
+					id: String(credentials.userId),
 					email: normalizedEmail,
 				},
 				url.protocol === 'https:',

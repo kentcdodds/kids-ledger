@@ -1,5 +1,12 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { array, number, object, optional, string } from 'remix/data-schema'
+import {
+	array,
+	number,
+	object,
+	optional,
+	string,
+	type Schema,
+} from 'remix/data-schema'
 import {
 	jsonResponse,
 	parseJsonBody,
@@ -7,6 +14,7 @@ import {
 } from '#server/ledger/ledger-request.ts'
 import { type routes } from '#server/routes.ts'
 import { type AppEnv } from '#types/env-schema.ts'
+import { type LedgerService } from '#server/ledger/ledger-service.ts'
 
 const createKidSchema = object({
 	name: string(),
@@ -95,6 +103,31 @@ function getTransactionType(url: URL) {
 	return undefined
 }
 
+function createLedgerMutationHandler<Input, Result = void>(
+	appEnv: AppEnv,
+	setup: {
+		schema: Schema<unknown, Input>
+		run: (service: LedgerService, input: Input) => Promise<Result>
+		status?: number
+		mapResponse?: (result: Result) => Record<string, unknown>
+	},
+) {
+	return {
+		middleware: [],
+		async action({ request }: { request: Request }) {
+			const access = await readLedgerService(request, appEnv)
+			if (!access.ok) return access.response
+			const parsedBody = await parseJsonBody(request, setup.schema)
+			if (!parsedBody.ok) return parsedBody.response
+			const result = await setup.run(access.service, parsedBody.value)
+			return jsonResponse(
+				{ ok: true, ...(setup.mapResponse?.(result) ?? {}) },
+				setup.status,
+			)
+		},
+	}
+}
+
 export function createLedgerDashboardHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
@@ -161,239 +194,149 @@ export function createLedgerHistoryHandler(appEnv: AppEnv) {
 }
 
 export function createKidCreateHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, createKidSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			const created = await access.service.createKid(parsedBody.value)
-			return jsonResponse({ ok: true, kidId: created.id }, 201)
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: createKidSchema,
+		run: (service, input) => service.createKid(input),
+		status: 201,
+		mapResponse: (created) => ({ kidId: created.id }),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsCreate.method,
 		typeof routes.apiKidsCreate.pattern
 	>
 }
 
 export function createKidUpdateHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, updateKidSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.updateKid(parsedBody.value)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: updateKidSchema,
+		run: (service, input) => service.updateKid(input),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsUpdate.method,
 		typeof routes.apiKidsUpdate.pattern
 	>
 }
 
 export function createKidReorderHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, reorderKidsSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.reorderKids(parsedBody.value.kidIds)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: reorderKidsSchema,
+		run: (service, input) => service.reorderKids(input.kidIds),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsReorder.method,
 		typeof routes.apiKidsReorder.pattern
 	>
 }
 
 export function createKidArchiveHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, kidIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.archiveKid(parsedBody.value.kidId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: kidIdSchema,
+		run: (service, input) => service.archiveKid(input.kidId),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsArchive.method,
 		typeof routes.apiKidsArchive.pattern
 	>
 }
 
 export function createKidUnarchiveHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, kidIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.unarchiveKid(parsedBody.value.kidId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: kidIdSchema,
+		run: (service, input) => service.unarchiveKid(input.kidId),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsUnarchive.method,
 		typeof routes.apiKidsUnarchive.pattern
 	>
 }
 
 export function createKidDeleteHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, kidIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.deleteKidPermanently(parsedBody.value.kidId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: kidIdSchema,
+		run: (service, input) => service.deleteKidPermanently(input.kidId),
+	}) satisfies BuildAction<
 		typeof routes.apiKidsDelete.method,
 		typeof routes.apiKidsDelete.pattern
 	>
 }
 
 export function createAccountCreateHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, createAccountSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			const created = await access.service.createAccount(parsedBody.value)
-			return jsonResponse({ ok: true, accountId: created.id }, 201)
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: createAccountSchema,
+		run: (service, input) => service.createAccount(input),
+		status: 201,
+		mapResponse: (created) => ({ accountId: created.id }),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsCreate.method,
 		typeof routes.apiAccountsCreate.pattern
 	>
 }
 
 export function createAccountUpdateHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, updateAccountSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.updateAccount(parsedBody.value)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: updateAccountSchema,
+		run: (service, input) => service.updateAccount(input),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsUpdate.method,
 		typeof routes.apiAccountsUpdate.pattern
 	>
 }
 
 export function createAccountReorderHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, reorderAccountsSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.reorderAccounts(parsedBody.value)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: reorderAccountsSchema,
+		run: (service, input) => service.reorderAccounts(input),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsReorder.method,
 		typeof routes.apiAccountsReorder.pattern
 	>
 }
 
 export function createAccountArchiveHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, accountIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.archiveAccount(parsedBody.value.accountId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: accountIdSchema,
+		run: (service, input) => service.archiveAccount(input.accountId),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsArchive.method,
 		typeof routes.apiAccountsArchive.pattern
 	>
 }
 
 export function createAccountUnarchiveHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, accountIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.unarchiveAccount(parsedBody.value.accountId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: accountIdSchema,
+		run: (service, input) => service.unarchiveAccount(input.accountId),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsUnarchive.method,
 		typeof routes.apiAccountsUnarchive.pattern
 	>
 }
 
 export function createAccountDeleteHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, accountIdSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.deleteAccountPermanently(parsedBody.value.accountId)
-			return jsonResponse({ ok: true })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: accountIdSchema,
+		run: (service, input) => service.deleteAccountPermanently(input.accountId),
+	}) satisfies BuildAction<
 		typeof routes.apiAccountsDelete.method,
 		typeof routes.apiAccountsDelete.pattern
 	>
 }
 
 export function createTransactionCreateHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, createTransactionSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			const result = await access.service.addTransaction(parsedBody.value)
-			return jsonResponse({ ok: true, result })
-		},
-	} satisfies BuildAction<
+	return createLedgerMutationHandler(appEnv, {
+		schema: createTransactionSchema,
+		run: (service, input) => service.addTransaction(input),
+		mapResponse: (result) => ({ result }),
+	}) satisfies BuildAction<
 		typeof routes.apiTransactionsCreate.method,
 		typeof routes.apiTransactionsCreate.pattern
 	>
 }
 
 export function createQuickAmountsSetHandler(appEnv: AppEnv) {
-	return {
-		middleware: [],
-		async action({ request }) {
-			const access = await readLedgerService(request, appEnv)
-			if (!access.ok) return access.response
-			const parsedBody = await parseJsonBody(request, setQuickAmountsSchema)
-			if (!parsedBody.ok) return parsedBody.response
-			await access.service.setQuickAmounts(parsedBody.value.amounts)
-			const quickAmounts = await access.service.listQuickAmounts()
-			return jsonResponse({ ok: true, quickAmounts })
+	return createLedgerMutationHandler(appEnv, {
+		schema: setQuickAmountsSchema,
+		run: async (service, input) => {
+			await service.setQuickAmounts(input.amounts)
+			return service.listQuickAmounts()
 		},
-	} satisfies BuildAction<
+		mapResponse: (quickAmounts) => ({ quickAmounts }),
+	}) satisfies BuildAction<
 		typeof routes.apiQuickAmountsSet.method,
 		typeof routes.apiQuickAmountsSet.pattern
 	>

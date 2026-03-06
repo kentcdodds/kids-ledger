@@ -1,5 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { object, parseSafe, string } from 'remix/data-schema'
+import { object, string } from 'remix/data-schema'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, passwordResetsTable, usersTable } from '#worker/db.ts'
 import { logAuditEvent, getRequestIp } from '#server/audit-log.ts'
@@ -7,6 +7,7 @@ import { sendResendEmail } from '#server/email/resend.ts'
 import { toHex } from '#server/hex.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
+import { parseJsonBody } from '#server/request-parsing.ts'
 import { type routes } from '#server/routes.ts'
 
 const resetTokenBytes = 32
@@ -74,22 +75,19 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
 		async action({ request, url }) {
-			let body: unknown
-			try {
-				body = await request.json()
-			} catch {
+			const parsed = await parseJsonBody(request, resetRequestSchema)
+			if (!parsed.ok && parsed.error === 'invalid_json') {
 				return Response.json(
 					{ error: 'Invalid JSON payload.' },
 					{ status: 400 },
 				)
 			}
-			const parsed = parseSafe(resetRequestSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
-			const normalizedEmail = parsed.success
+			const normalizedEmail = parsed.ok
 				? normalizeEmail(parsed.value.email)
 				: ''
 
-			if (!parsed.success || !normalizedEmail) {
+			if (!parsed.ok || !normalizedEmail) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'password_reset_request',
@@ -193,21 +191,18 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
 		async action({ request, url }) {
-			let body: unknown
-			try {
-				body = await request.json()
-			} catch {
+			const parsed = await parseJsonBody(request, resetConfirmSchema)
+			if (!parsed.ok && parsed.error === 'invalid_json') {
 				return Response.json(
 					{ error: 'Invalid JSON payload.' },
 					{ status: 400 },
 				)
 			}
-			const parsed = parseSafe(resetConfirmSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
-			const token = parsed.success ? parsed.value.token.trim() : ''
-			const password = parsed.success ? parsed.value.password : ''
+			const token = parsed.ok ? parsed.value.token.trim() : ''
+			const password = parsed.ok ? parsed.value.password : ''
 
-			if (!parsed.success || !token || !password) {
+			if (!parsed.ok || !token || !password) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'password_reset_confirm',

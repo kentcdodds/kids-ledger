@@ -1,4 +1,5 @@
 import { type Handle } from 'remix/component'
+import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
 	colors,
 	radius,
@@ -47,12 +48,15 @@ export function ResetPasswordRoute(handle: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = await parseJsonOrNull<{
+				error?: string
+				message?: string
+			}>(response)
 			if (!response.ok) {
-				const errorMessage =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to request a reset.'
+				const errorMessage = getErrorMessage(
+					payload,
+					'Unable to request a reset.',
+				)
 				setState('error', errorMessage)
 				return
 			}
@@ -83,12 +87,12 @@ export function ResetPasswordRoute(handle: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ token, password }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = await parseJsonOrNull<{ error?: string }>(response)
 			if (!response.ok) {
-				const errorMessage =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to reset password.'
+				const errorMessage = getErrorMessage(
+					payload,
+					'Unable to reset password.',
+				)
 				setState('error', errorMessage)
 				return
 			}

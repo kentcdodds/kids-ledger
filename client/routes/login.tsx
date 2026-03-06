@@ -1,7 +1,9 @@
 import { type Handle } from 'remix/component'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
+import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
+import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
 import {
 	colors,
 	radius,
@@ -25,13 +27,6 @@ function getSearchParams() {
 		: new URLSearchParams(window.location.search)
 }
 
-function normalizeRedirectTo(value: string | null) {
-	if (!value) return null
-	if (!value.startsWith('/')) return null
-	if (value.startsWith('//')) return null
-	return value
-}
-
 function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	const path = mode === 'signup' ? '/signup' : '/login'
 	return buildAuthLink(path, redirectTo)
@@ -43,7 +38,9 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	let message: string | null = null
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
-	const redirectTo = normalizeRedirectTo(getSearchParams().get('redirectTo'))
+	const redirectTo = normalizeRedirectTarget(
+		getSearchParams().get('redirectTo'),
+	)
 	const redirectTarget = redirectTo ?? '/account'
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
@@ -99,13 +96,10 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 				credentials: 'include',
 				body: JSON.stringify({ email, password, mode }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = await parseJsonOrNull<{ error?: string }>(response)
 
 			if (!response.ok) {
-				const errorMessage =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to authenticate.'
+				const errorMessage = getErrorMessage(payload, 'Unable to authenticate.')
 				setState('error', errorMessage)
 				return
 			}

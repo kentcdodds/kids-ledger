@@ -1,4 +1,9 @@
-import { expect, test } from './playwright-utils.ts'
+import {
+	addAccountToKidCard,
+	createKid,
+	expect,
+	test,
+} from './playwright-utils.ts'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -14,17 +19,8 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 	await login()
 	await page.goto('/settings')
 
-	await page.getByPlaceholder('Kid name').fill(kidNameA)
-	await page.getByRole('button', { name: 'Add' }).first().click()
-	await expect(
-		page.getByRole('textbox', { name: `${kidNameA} name` }),
-	).toBeVisible()
-
-	await page.getByPlaceholder('Kid name').fill(kidNameB)
-	await page.getByRole('button', { name: 'Add' }).first().click()
-	await expect(
-		page.getByRole('textbox', { name: `${kidNameB} name` }),
-	).toBeVisible()
+	await createKid(page, { kidName: kidNameA })
+	await createKid(page, { kidName: kidNameB })
 
 	const kidANameInput = page.getByRole('textbox', { name: `${kidNameA} name` })
 	const kidBNameInput = page.getByRole('textbox', { name: `${kidNameB} name` })
@@ -78,17 +74,8 @@ test('settings supports button-based kid and account reordering on mobile', asyn
 		.locator('article')
 		.filter({ has: page.getByRole('textbox', { name: `${kidNameB} name` }) })
 		.first()
-	await kidBCard.getByPlaceholder('New account name').fill(accountNameA)
-	await kidBCard.getByRole('button', { name: 'Add account' }).click()
-	await expect(
-		kidBCard.getByRole('textbox', { name: `${accountNameA} name` }),
-	).toBeVisible()
-
-	await kidBCard.getByPlaceholder('New account name').fill(accountNameB)
-	await kidBCard.getByRole('button', { name: 'Add account' }).click()
-	await expect(
-		kidBCard.getByRole('textbox', { name: `${accountNameB} name` }),
-	).toBeVisible()
+	await addAccountToKidCard(kidBCard, accountNameA)
+	await addAccountToKidCard(kidBCard, accountNameB)
 
 	const accountAInput = kidBCard.getByRole('textbox', {
 		name: `${accountNameA} name`,

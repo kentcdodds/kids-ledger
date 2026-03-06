@@ -1,6 +1,7 @@
-import { parseSafe, type Schema } from 'remix/data-schema'
+import { type Schema } from 'remix/data-schema'
 import { readAuthSession } from '#server/auth-session.ts'
 import { createLedgerService } from '#server/ledger/ledger-service.ts'
+import { parseJsonBody as parseJsonRequestBody } from '#server/request-parsing.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 
 export async function readLedgerService(request: Request, appEnv: AppEnv) {
@@ -28,17 +29,14 @@ export async function parseJsonBody<Output>(
 	request: Request,
 	schema: Schema<unknown, Output>,
 ) {
-	let body: unknown
-	try {
-		body = await request.json()
-	} catch {
+	const parsed = await parseJsonRequestBody(request, schema)
+	if (!parsed.ok && parsed.error === 'invalid_json') {
 		return {
 			ok: false as const,
 			response: jsonResponse({ error: 'Invalid JSON payload.' }, 400),
 		}
 	}
-	const parsed = parseSafe(schema, body)
-	if (!parsed.success) {
+	if (!parsed.ok) {
 		return {
 			ok: false as const,
 			response: jsonResponse({ error: 'Invalid request body.' }, 400),

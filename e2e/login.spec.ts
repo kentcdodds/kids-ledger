@@ -1,26 +1,16 @@
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import {
+	ensureUserExists,
+	expect,
+	loginViaUi,
+	test,
+} from './playwright-utils.ts'
 
 const testUser = { email: 'user@example.com', password: 'password123' }
 
-async function ensureUserExists(request: APIRequestContext) {
-	const response = await request.post('/auth', {
-		data: { ...testUser, mode: 'signup' },
-		headers: { 'Content-Type': 'application/json' },
-	})
-	if (response.ok() || response.status() === 409) {
-		return
-	}
-	throw new Error(`Failed to seed user (${response.status()}).`)
-}
-
 test('logs in with email and password', async ({ page }) => {
-	await ensureUserExists(page.request)
+	await ensureUserExists(page.request, testUser)
 	await page.context().clearCookies()
-	await page.goto('/login')
-
-	await page.getByLabel('Email').fill(testUser.email)
-	await page.getByLabel('Password').fill(testUser.password)
-	await page.getByRole('button', { name: 'Sign in' }).click()
+	await loginViaUi(page, testUser)
 
 	await expect(page).toHaveURL(/\/account$/)
 	await expect(

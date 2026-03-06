@@ -1,3 +1,5 @@
+import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
+
 export type KidAccount = {
 	id: number
 	kidId: number
@@ -57,12 +59,10 @@ export type LedgerTransactionsPage = {
 }
 
 async function parseApiResponse<T>(response: Response): Promise<T> {
-	const payload = await response.json().catch(() => null)
+	const payload = await parseJsonOrNull(response)
 	if (!response.ok || !payload) {
 		throw new Error(
-			typeof payload?.error === 'string'
-				? payload.error
-				: `Request failed (${response.status})`,
+			getErrorMessage(payload, `Request failed (${response.status})`),
 		)
 	}
 	return payload as T
