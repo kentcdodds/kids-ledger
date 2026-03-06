@@ -16,6 +16,10 @@ import {
 	updateKid,
 	type KidSummary,
 } from '#client/ledger-api.ts'
+import {
+	clearKidModalBackground,
+	setKidModalBackground,
+} from '#client/kid-modal-background.ts'
 import { formatCents } from '#client/money.ts'
 import {
 	accountColorTokens,
@@ -173,8 +177,11 @@ export function SettingsRoute(handle: Handle) {
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
-	let editingKidTransactionModalCss: { kidId: number; kidName: string } | null =
-		null
+	let editingKidTransactionModalCss: {
+		kidId: number
+		kidName: string
+		kidEmoji: string
+	} | null = null
 	let transactionModalCssOpener: HTMLElement | null = null
 	let transactionModalCssDraft = ''
 	let transactionModalCssSaveError: string | null = null
@@ -237,6 +244,7 @@ export function SettingsRoute(handle: Handle) {
 		return () => {
 			clearCloseTransactionModalCssTimeout()
 			removeTransactionModalPreviewStyles()
+			clearKidModalBackground()
 		}
 	})
 
@@ -318,6 +326,7 @@ export function SettingsRoute(handle: Handle) {
 	function openTransactionModalCssEditor(kid: KidSummary) {
 		clearCloseTransactionModalCssTimeout()
 		removeTransactionModalPreviewStyles()
+		setKidModalBackground(kid.emoji)
 		if (typeof document === 'undefined') {
 			transactionModalCssOpener = null
 		} else {
@@ -325,7 +334,11 @@ export function SettingsRoute(handle: Handle) {
 			transactionModalCssOpener =
 				activeElement instanceof HTMLElement ? activeElement : null
 		}
-		editingKidTransactionModalCss = { kidId: kid.id, kidName: kid.name }
+		editingKidTransactionModalCss = {
+			kidId: kid.id,
+			kidName: kid.name,
+			kidEmoji: kid.emoji,
+		}
 		transactionModalCssDraft = kid.transactionModalCss
 		transactionModalCssSaveError = null
 		transactionModalCssSaving = false
@@ -359,6 +372,7 @@ export function SettingsRoute(handle: Handle) {
 			transactionModalCssClosing = false
 			closeTransactionModalCssTimeoutId = null
 			removeTransactionModalPreviewStyles()
+			clearKidModalBackground()
 			handle.update()
 			if (opener?.isConnected) {
 				handle.queueTask(() => {
@@ -395,6 +409,7 @@ export function SettingsRoute(handle: Handle) {
 			transactionModalCssClosing = false
 			transactionModalCssOpener = null
 			removeTransactionModalPreviewStyles()
+			clearKidModalBackground()
 			await refreshSettings()
 			if (state.status === 'ready') {
 				notify(`Saved transaction modal CSS for ${kid.name}.`)
@@ -1397,6 +1412,7 @@ export function SettingsRoute(handle: Handle) {
 										>
 											<div>
 												<h3 css={{ margin: 0, color: colors.text }}>
+													{editingKidTransactionModalCss.kidEmoji}{' '}
 													{editingKidTransactionModalCss.kidName}
 												</h3>
 												<p css={{ margin: 0, color: colors.textMuted }}>

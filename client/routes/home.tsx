@@ -6,6 +6,10 @@ import {
 	type KidSummary,
 } from '#client/ledger-api.ts'
 import { launchConfetti } from '#client/confetti.ts'
+import {
+	clearKidModalBackground,
+	setKidModalBackground,
+} from '#client/kid-modal-background.ts'
 import { formatCents, parseAmountToCents } from '#client/money.ts'
 import { getAccountGradientBackground } from '#client/styles/account-colors.ts'
 import {
@@ -66,6 +70,7 @@ export function HomeRoute(handle: Handle) {
 	) {
 		clearCloseModalTimeout()
 		removeTransactionModalStyles()
+		setKidModalBackground(kid.emoji)
 		transactionModalOpener = opener
 		transactionModalClosing = false
 		transactionState = {
@@ -97,6 +102,7 @@ export function HomeRoute(handle: Handle) {
 			transactionModalClosing = false
 			closeModalTimeoutId = null
 			removeTransactionModalStyles()
+			clearKidModalBackground()
 			handle.update()
 			if (opener?.isConnected) {
 				handle.queueTask(() => {
@@ -137,6 +143,7 @@ export function HomeRoute(handle: Handle) {
 		return () => {
 			clearCloseModalTimeout()
 			removeTransactionModalStyles()
+			clearKidModalBackground()
 		}
 	})
 

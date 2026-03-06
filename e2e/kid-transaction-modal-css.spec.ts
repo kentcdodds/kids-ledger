@@ -1,5 +1,81 @@
 import { expect, test } from './playwright-utils.ts'
 
+test('kid emoji background appears while transaction and custom CSS modals are open', async ({
+	page,
+	login,
+}) => {
+	const kidName = `Kid-${crypto.randomUUID().slice(0, 6)}`
+	const kidEmoji = '🦖'
+	const accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`
+	const encodedKidEmoji = encodeURIComponent(kidEmoji).toLowerCase()
+
+	await login()
+	await page.goto('/settings')
+
+	await page.getByRole('textbox', { name: 'Kid emoji' }).fill(kidEmoji)
+	await page.getByPlaceholder('Kid name').fill(kidName)
+	await page.getByRole('button', { name: 'Add' }).first().click()
+
+	const kidNameInput = page.getByRole('textbox', { name: `${kidName} name` })
+	await expect(kidNameInput).toBeVisible()
+	const kidCard = page.locator('article').filter({ has: kidNameInput }).first()
+	await kidCard.getByPlaceholder('New account name').fill(accountName)
+	await kidCard.getByRole('button', { name: 'Add account' }).click()
+
+	await kidCard.getByTitle('Customize transaction modal').click()
+	const customizationDialog = page.getByRole('dialog')
+	await expect(customizationDialog).toBeVisible()
+
+	const customCssModalBackground = await page.evaluate(() => ({
+		backgroundImage: document.body.style
+			.getPropertyValue('--kid-modal-background-image')
+			.toLowerCase(),
+		isOpen: document.body.dataset.kidModalOpen,
+	}))
+	expect(customCssModalBackground.isOpen).toBe('true')
+	expect(customCssModalBackground.backgroundImage).toContain(encodedKidEmoji)
+
+	await customizationDialog.getByRole('button', { name: 'Close' }).click()
+	await expect(customizationDialog).toBeHidden()
+	await expect
+		.poll(async () =>
+			page.evaluate(() => ({
+				backgroundImage: document.body.style.getPropertyValue(
+					'--kid-modal-background-image',
+				),
+				isOpen: document.body.dataset.kidModalOpen ?? '',
+			})),
+		)
+		.toEqual({ backgroundImage: '', isOpen: '' })
+
+	await page.goto('/')
+	await page.getByRole('button', { name: new RegExp(accountName) }).click()
+	const transactionDialog = page.getByRole('dialog')
+	await expect(transactionDialog).toBeVisible()
+
+	const transactionModalBackground = await page.evaluate(() => ({
+		backgroundImage: document.body.style
+			.getPropertyValue('--kid-modal-background-image')
+			.toLowerCase(),
+		isOpen: document.body.dataset.kidModalOpen,
+	}))
+	expect(transactionModalBackground.isOpen).toBe('true')
+	expect(transactionModalBackground.backgroundImage).toContain(encodedKidEmoji)
+
+	await transactionDialog.getByRole('button', { name: 'Close' }).click()
+	await expect(transactionDialog).toBeHidden()
+	await expect
+		.poll(async () =>
+			page.evaluate(() => ({
+				backgroundImage: document.body.style.getPropertyValue(
+					'--kid-modal-background-image',
+				),
+				isOpen: document.body.dataset.kidModalOpen ?? '',
+			})),
+		)
+		.toEqual({ backgroundImage: '', isOpen: '' })
+})
+
 test('kid transaction modal custom css applies only while open', async ({
 	page,
 	login,

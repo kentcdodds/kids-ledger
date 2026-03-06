@@ -168,6 +168,12 @@ body {
 	will-change: background-position;
 }
 
+body[data-kid-modal-open='true'] {
+	background-image: var(--kid-modal-background-image);
+	background-size: 36px 36px;
+	background-position: var(--drift-x) var(--drift-y);
+}
+
 #root {
 	min-height: 100vh;
 }

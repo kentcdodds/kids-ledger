@@ -74,8 +74,10 @@ After `bun run dev` is running and you are logged in:
 - `/settings` should allow creating kids/accounts and managing archive/delete.
 - `/settings` kid cards should allow saving per-kid transaction modal CSS
   declarations/rules (including optional `@import` font rules), show a live
-  in-modal preview while editing, and `/` should apply saved CSS to the page
-  only while that kid's transaction modal is open.
+  in-modal preview while editing, show the kid's emoji as the drifting page
+  background while either the custom CSS editor or transaction modal is open,
+  and `/` should apply saved CSS to the page only while that kid's transaction
+  modal is open.
 - `/history` should show recent-first transactions and URL-synced filters.
 - `/ledger/export/json` should download a JSON backup while authenticated.
 
