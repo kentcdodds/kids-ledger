@@ -1,7 +1,7 @@
 import { verifyPassword } from '#server/password-hash.ts'
 import { usersTable, type AppDatabase } from '#worker/db.ts'
 
-export const dummyPasswordHash =
+const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 
 type VerifyUserCredentialsResult = { ok: false } | { ok: true; userId: number }
