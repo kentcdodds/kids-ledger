@@ -8,6 +8,7 @@ export type SessionStatus = 'idle' | 'loading' | 'ready'
 
 export async function fetchSessionInfo(
 	signal?: AbortSignal,
+	options?: { throwOnError?: boolean },
 ): Promise<SessionInfo | null> {
 	try {
 		const response = await fetch('/session', {
@@ -25,7 +26,11 @@ export async function fetchSessionInfo(
 				? payload.session.email.trim()
 				: ''
 		return email ? { email } : null
-	} catch {
+	} catch (error) {
+		if (signal?.aborted) return null
+		if (options?.throwOnError) {
+			throw error
+		}
 		return null
 	}
 }
@@ -34,7 +39,7 @@ export async function requireSessionOrRedirect(
 	signal?: AbortSignal,
 	redirectTo = '/login',
 ): Promise<SessionInfo | null> {
-	const session = await fetchSessionInfo(signal)
+	const session = await fetchSessionInfo(signal, { throwOnError: true })
 	if (signal?.aborted || session || typeof window === 'undefined') {
 		return session
 	}
