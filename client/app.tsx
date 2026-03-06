@@ -91,15 +91,10 @@ export function App(handle: Handle) {
 
 	let driftX = 0
 	let driftY = 0
-	let targetMouseDirX = 0
-	let targetMouseDirY = 0
-	let currentMouseDirX = 0
-	let currentMouseDirY = 0
 	let isCoarsePointer = false
 	let showTiltEnableButton = false
 	let isRequestingTiltPermission = false
 	let requestTiltPermission: null | (() => void) = null
-	let lastTime = typeof performance !== 'undefined' ? performance.now() : 0
 
 	function wrapDriftOffset(value: number, tileSize: number) {
 		return ((value % tileSize) + tileSize) % tileSize
@@ -113,46 +108,42 @@ export function App(handle: Handle) {
 	handle.queueTask(() => {
 		if (typeof window === 'undefined') return
 
-		let animationFrameId: number
 		let hasOrientationListener = false
+		let fallbackMotionIntervalId: number | null = null
 
-		function updateDrift(time: number) {
-			const delta = time - lastTime
-			lastTime = time
-
-			if (isCoarsePointer && !hasOrientationListener) {
-				// Fallback for mobile when orientation is unavailable/denied.
-				targetMouseDirX = Math.sin(time / 2800) * 0.25
-				targetMouseDirY = -1
-			}
-
-			// Move in pointer direction (relative to viewport center).
-			const driftSpeed = 12 / 1000
-			const directionMagnitude = Math.hypot(currentMouseDirX, currentMouseDirY)
+		function updateDotCssVars(mouseDirX: number, mouseDirY: number) {
+			const directionMagnitude = Math.hypot(mouseDirX, mouseDirY)
 			const normalizedDirX =
-				directionMagnitude > 0.001 ? currentMouseDirX / directionMagnitude : 0
+				directionMagnitude > 0.001 ? mouseDirX / directionMagnitude : 0
 			const normalizedDirY =
-				directionMagnitude > 0.001 ? currentMouseDirY / directionMagnitude : 0
+				directionMagnitude > 0.001 ? mouseDirY / directionMagnitude : 0
 			const speedScale = clamp(directionMagnitude, 0, 1) ** 1.8
-			driftX = wrapDriftOffset(
-				driftX + delta * driftSpeed * speedScale * normalizedDirX,
-				60,
-			)
-			driftY = wrapDriftOffset(
-				driftY + delta * driftSpeed * speedScale * normalizedDirY,
-				60,
-			)
+			const driftStep = 0.6 * speedScale
 
-			// Smooth interpolation keeps movement subtle and fluid.
-			currentMouseDirX += (targetMouseDirX - currentMouseDirX) * 0.08
-			currentMouseDirY += (targetMouseDirY - currentMouseDirY) * 0.08
+			driftX = wrapDriftOffset(driftX + driftStep * normalizedDirX, 60)
+			driftY = wrapDriftOffset(driftY + driftStep * normalizedDirY, 60)
 
 			document.body.style.setProperty('--drift-x', `${driftX}px`)
 			document.body.style.setProperty('--drift-y', `${driftY}px`)
-			document.body.style.setProperty('--mouse-dir-x', `${currentMouseDirX}`)
-			document.body.style.setProperty('--mouse-dir-y', `${currentMouseDirY}`)
+			document.body.style.setProperty('--mouse-dir-x', `${mouseDirX}`)
+			document.body.style.setProperty('--mouse-dir-y', `${mouseDirY}`)
+			document.body.style.setProperty('--mouse-shift-x', `${mouseDirX * 10}px`)
+			document.body.style.setProperty('--mouse-shift-y', `${mouseDirY * 10}px`)
+		}
 
-			animationFrameId = requestAnimationFrame(updateDrift)
+		function startFallbackMotion() {
+			if (fallbackMotionIntervalId !== null) return
+			// Keep subtle ambient drift for coarse pointers when tilt isn't active.
+			fallbackMotionIntervalId = window.setInterval(() => {
+				const time = performance.now()
+				updateDotCssVars(Math.sin(time / 2800) * 0.25, -1)
+			}, 220)
+		}
+
+		function stopFallbackMotion() {
+			if (fallbackMotionIntervalId === null) return
+			window.clearInterval(fallbackMotionIntervalId)
+			fallbackMotionIntervalId = null
 		}
 
 		const updatePointerTarget = (event: PointerEvent) => {
@@ -161,20 +152,22 @@ export function App(handle: Handle) {
 			const centerY = window.innerHeight / 2
 			const relativeX = (event.clientX - centerX) / centerX
 			const relativeY = (event.clientY - centerY) / centerY
-			targetMouseDirX = Math.max(-1, Math.min(1, relativeX))
-			targetMouseDirY = Math.max(-1, Math.min(1, relativeY))
+			updateDotCssVars(
+				Math.max(-1, Math.min(1, relativeX)),
+				Math.max(-1, Math.min(1, relativeY)),
+			)
 		}
 
 		function updateOrientationTarget(event: DeviceOrientationEvent) {
 			if (event.beta === null || event.gamma === null) return
 			const nextX = clamp(event.gamma / 35, -1, 1)
 			const nextY = clamp(event.beta / 35, -1, 1)
-			targetMouseDirX = nextX
-			targetMouseDirY = nextY
+			updateDotCssVars(nextX, nextY)
 		}
 
 		function startOrientationMotion() {
 			if (hasOrientationListener) return
+			stopFallbackMotion()
 			window.addEventListener(
 				'deviceorientation',
 				updateOrientationTarget,
@@ -184,8 +177,10 @@ export function App(handle: Handle) {
 		}
 
 		const clearPointerTarget = () => {
-			targetMouseDirX = 0
-			targetMouseDirY = 0
+			document.body.style.setProperty('--mouse-dir-x', '0')
+			document.body.style.setProperty('--mouse-dir-y', '0')
+			document.body.style.setProperty('--mouse-shift-x', '0px')
+			document.body.style.setProperty('--mouse-shift-y', '0px')
 		}
 
 		isCoarsePointer =
@@ -193,6 +188,7 @@ export function App(handle: Handle) {
 			navigator.maxTouchPoints > 0
 
 		if (isCoarsePointer) {
+			startFallbackMotion()
 			const OrientationEventWithPermission =
 				DeviceOrientationEvent as typeof DeviceOrientationEvent & {
 					requestPermission?: () => Promise<'granted' | 'denied'>
@@ -230,10 +226,8 @@ export function App(handle: Handle) {
 			window.addEventListener('blur', clearPointerTarget)
 		}
 
-		animationFrameId = requestAnimationFrame(updateDrift)
-
 		return () => {
-			cancelAnimationFrame(animationFrameId)
+			stopFallbackMotion()
 			if (hasOrientationListener) {
 				window.removeEventListener(
 					'deviceorientation',

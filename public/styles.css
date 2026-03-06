@@ -81,6 +81,8 @@
 	--drift-y: 0px;
 	--mouse-dir-x: 0;
 	--mouse-dir-y: 0;
+	--mouse-shift-x: 0px;
+	--mouse-shift-y: 0px;
 }
 
 /* Tablet responsive overrides */
@@ -164,14 +166,17 @@ body {
 	background-color: var(--color-background);
 	background-image: radial-gradient(var(--color-border) 2px, transparent 2px);
 	background-size: 30px 30px;
-	background-position: var(--drift-x) var(--drift-y);
+	background-position: calc(var(--drift-x) + var(--mouse-shift-x))
+		calc(var(--drift-y) + var(--mouse-shift-y));
+	transition: background-position 220ms linear;
 	will-change: background-position;
 }
 
 body[data-kid-modal-open='true'] {
 	background-image: var(--kid-modal-background-image);
 	background-size: 36px 36px;
-	background-position: var(--drift-x) var(--drift-y);
+	background-position: calc(var(--drift-x) + var(--mouse-shift-x))
+		calc(var(--drift-y) + var(--mouse-shift-y));
 }
 
 #root {
