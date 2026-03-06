@@ -17,6 +17,8 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
+import { handleModalKeydown } from '#client/dom-utils.ts'
 
 type TransactionState = {
 	kid: KidSummary
@@ -30,16 +32,6 @@ type TransactionState = {
 
 const modalCloseAnimationDurationMs = 220
 
-function getFocusableElements(container: HTMLElement) {
-	const selector =
-		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-	const candidates = Array.from(container.querySelectorAll(selector))
-	return candidates.filter(
-		(element): element is HTMLElement =>
-			element instanceof HTMLElement && element.tabIndex >= 0,
-	)
-}
-
 export function HomeRoute(handle: Handle) {
 	let status: 'loading' | 'ready' | 'error' = 'loading'
 	let errorMessage = ''
@@ -51,6 +43,15 @@ export function HomeRoute(handle: Handle) {
 	let transactionModalOpener: HTMLButtonElement | null = null
 	let transactionModalClosing = false
 	let closeModalTimeoutId: number | null = null
+
+	function removeTransactionModalStyles() {
+		if (typeof document === 'undefined') return
+		for (const element of document.querySelectorAll(
+			'style[data-kid-transaction-modal-css]',
+		)) {
+			element.remove()
+		}
+	}
 
 	function clearCloseModalTimeout() {
 		if (closeModalTimeoutId === null) return
@@ -64,6 +65,7 @@ export function HomeRoute(handle: Handle) {
 		opener: HTMLButtonElement,
 	) {
 		clearCloseModalTimeout()
+		removeTransactionModalStyles()
 		transactionModalOpener = opener
 		transactionModalClosing = false
 		transactionState = {
@@ -94,6 +96,7 @@ export function HomeRoute(handle: Handle) {
 			transactionState = null
 			transactionModalClosing = false
 			closeModalTimeoutId = null
+			removeTransactionModalStyles()
 			handle.update()
 			if (opener?.isConnected) {
 				handle.queueTask(() => {
@@ -104,41 +107,7 @@ export function HomeRoute(handle: Handle) {
 	}
 
 	function handleTransactionModalKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			event.preventDefault()
-			closeTransactionModal()
-			return
-		}
-
-		if (event.key !== 'Tab') return
-		if (!(event.currentTarget instanceof HTMLElement)) return
-
-		const focusableElements = getFocusableElements(event.currentTarget)
-		if (focusableElements.length === 0) {
-			event.preventDefault()
-			return
-		}
-
-		const activeElement = document.activeElement
-		const firstFocusableElement = focusableElements[0]
-		const lastFocusableElement = focusableElements[focusableElements.length - 1]
-		if (!firstFocusableElement || !lastFocusableElement) return
-		const activeInModal = focusableElements.includes(
-			activeElement as HTMLElement,
-		)
-
-		if (event.shiftKey) {
-			if (activeElement === firstFocusableElement || !activeInModal) {
-				event.preventDefault()
-				lastFocusableElement.focus()
-			}
-			return
-		}
-
-		if (activeElement === lastFocusableElement || !activeInModal) {
-			event.preventDefault()
-			firstFocusableElement.focus()
-		}
+		handleModalKeydown(event, closeTransactionModal)
 	}
 
 	async function refreshDashboard() {
@@ -163,6 +132,12 @@ export function HomeRoute(handle: Handle) {
 
 	handle.queueTask(async () => {
 		await refreshDashboard()
+	})
+	handle.queueTask(() => {
+		return () => {
+			clearCloseModalTimeout()
+			removeTransactionModalStyles()
+		}
 	})
 
 	function setTransactionAmountFromQuick(cents: number) {
@@ -368,17 +343,26 @@ export function HomeRoute(handle: Handle) {
 							: 'modal-backdrop-in 180ms ease-out forwards',
 					}}
 				>
+					{transactionState.kid.transactionModalCss.trim() ? (
+						<style data-kid-transaction-modal-css>
+							{buildTransactionModalCss(
+								transactionState.kid.transactionModalCss,
+							)}
+						</style>
+					) : null}
 					<section
 						role="dialog"
 						aria-modal="true"
 						aria-labelledby="transaction-modal-title"
 						aria-describedby="transaction-modal-description"
+						data-kid-transaction-modal
 						on={{ keydown: handleTransactionModalKeydown }}
 						css={{
 							width: 'min(30rem, 100%)',
 							display: 'grid',
 							gap: spacing.md,
 							padding: spacing.lg,
+							fontFamily: typography.fontFamily,
 							borderRadius: radius.xl,
 							border: `3px solid ${colors.border}`,
 							backgroundColor: colors.surface,

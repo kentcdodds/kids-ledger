@@ -11,12 +11,14 @@ import { type AppEnv } from '#types/env-schema.ts'
 const createKidSchema = object({
 	name: string(),
 	emoji: string(),
+	transactionModalCss: optional(string()),
 })
 
 const updateKidSchema = object({
 	kidId: number(),
 	name: string(),
 	emoji: string(),
+	transactionModalCss: optional(string()),
 })
 
 const reorderKidsSchema = object({

@@ -4,6 +4,10 @@ import {
 	createLedgerServiceForAgent,
 	successContent,
 } from '#mcp/tools/ledger-tool-helpers.ts'
+import {
+	transactionModalCssCreateFieldDescription,
+	transactionModalCssUpdateFieldDescription,
+} from '#shared/transaction-modal-css.ts'
 
 export async function registerLedgerTools(agent: MCP) {
 	agent.server.registerTool(
@@ -30,15 +34,32 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_create_kid',
 		{
 			title: 'Create Kid',
-			description: 'Create a kid profile.',
+			description:
+				'Create a kid profile with optional transaction modal CSS customization.',
 			inputSchema: {
 				name: z.string().min(1),
 				emoji: z.string().min(1).default('🧒'),
+				transactionModalCss: z
+					.string()
+					.optional()
+					.describe(transactionModalCssCreateFieldDescription),
 			},
 		},
-		async ({ name, emoji }: { name: string; emoji: string }) => {
+		async ({
+			name,
+			emoji,
+			transactionModalCss,
+		}: {
+			name: string
+			emoji: string
+			transactionModalCss?: string
+		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			const created = await service.createKid({ name, emoji })
+			const created = await service.createKid({
+				name,
+				emoji,
+				transactionModalCss,
+			})
 			return {
 				...successContent('Kid created', `Created kid with id ${created.id}.`),
 				structuredContent: created,
@@ -50,24 +71,30 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_update_kid',
 		{
 			title: 'Update Kid',
-			description: 'Update a kid name or emoji.',
+			description: 'Update a kid name, emoji, or transaction modal CSS.',
 			inputSchema: {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
 				emoji: z.string().min(1),
+				transactionModalCss: z
+					.string()
+					.optional()
+					.describe(transactionModalCssUpdateFieldDescription),
 			},
 		},
 		async ({
 			kidId,
 			name,
 			emoji,
+			transactionModalCss,
 		}: {
 			kidId: number
 			name: string
 			emoji: string
+			transactionModalCss?: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			await service.updateKid({ kidId, name, emoji })
+			await service.updateKid({ kidId, name, emoji, transactionModalCss })
 			return successContent('Kid updated', `Updated kid ${kidId}.`)
 		},
 	)

@@ -30,6 +30,9 @@ import {
 	mq,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
+import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
+import { handleModalKeydown } from '#client/dom-utils.ts'
 
 const defaultKidEmojis = [
 	'🧒',
@@ -111,6 +114,33 @@ function TrashIcon(_handle: Handle) {
 	)
 }
 
+function SettingsIcon(_handle: Handle) {
+	return () => (
+		<svg
+			viewBox="0 0 24 24"
+			width="18"
+			height="18"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"
+		>
+			<circle cx="12" cy="12" r="3" />
+			<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+		</svg>
+	)
+}
+
+const transactionModalCssFontExample = `--font-family: "Comic Sans MS", "Comic Sans", cursive;`
+const transactionModalCssGoogleFontExample = `@import url("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap");
+
+:root {
+	--font-family: "MedievalSharp", cursive;
+}`
+const modalCloseAnimationDurationMs = 220
+
 type SettingsState =
 	| { status: 'loading' | 'error'; message: string; kids: Array<KidSummary> }
 	| {
@@ -143,6 +173,29 @@ export function SettingsRoute(handle: Handle) {
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
+	let editingKidTransactionModalCss: { kidId: number; kidName: string } | null =
+		null
+	let transactionModalCssOpener: HTMLElement | null = null
+	let transactionModalCssDraft = ''
+	let transactionModalCssSaveError: string | null = null
+	let transactionModalCssSaving = false
+	let transactionModalCssClosing = false
+	let closeTransactionModalCssTimeoutId: number | null = null
+
+	function removeTransactionModalPreviewStyles() {
+		if (typeof document === 'undefined') return
+		for (const element of document.querySelectorAll(
+			'style[data-kid-transaction-modal-preview-css]',
+		)) {
+			element.remove()
+		}
+	}
+
+	function clearCloseTransactionModalCssTimeout() {
+		if (closeTransactionModalCssTimeoutId === null) return
+		window.clearTimeout(closeTransactionModalCssTimeoutId)
+		closeTransactionModalCssTimeoutId = null
+	}
 
 	async function refreshSettings() {
 		const hadReadyData = state.status === 'ready'
@@ -179,6 +232,12 @@ export function SettingsRoute(handle: Handle) {
 
 	handle.queueTask(async () => {
 		await refreshSettings()
+	})
+	handle.queueTask(() => {
+		return () => {
+			clearCloseTransactionModalCssTimeout()
+			removeTransactionModalPreviewStyles()
+		}
 	})
 
 	function notify(message: string) {
@@ -254,6 +313,105 @@ export function SettingsRoute(handle: Handle) {
 			window.requestAnimationFrame(tryFocus)
 		}
 		window.requestAnimationFrame(tryFocus)
+	}
+
+	function openTransactionModalCssEditor(kid: KidSummary) {
+		clearCloseTransactionModalCssTimeout()
+		removeTransactionModalPreviewStyles()
+		if (typeof document === 'undefined') {
+			transactionModalCssOpener = null
+		} else {
+			const activeElement = document.activeElement
+			transactionModalCssOpener =
+				activeElement instanceof HTMLElement ? activeElement : null
+		}
+		editingKidTransactionModalCss = { kidId: kid.id, kidName: kid.name }
+		transactionModalCssDraft = kid.transactionModalCss
+		transactionModalCssSaveError = null
+		transactionModalCssSaving = false
+		transactionModalCssClosing = false
+		handle.update()
+		handle.queueTask(() => {
+			const cssInput = document.getElementById(
+				'kid-transaction-modal-css-input',
+			)
+			if (cssInput instanceof HTMLTextAreaElement) {
+				cssInput.focus()
+			}
+		})
+	}
+
+	function closeTransactionModalCssEditor() {
+		if (
+			transactionModalCssSaving ||
+			!editingKidTransactionModalCss ||
+			transactionModalCssClosing
+		)
+			return
+		const opener = transactionModalCssOpener
+		transactionModalCssOpener = null
+		transactionModalCssClosing = true
+		handle.update()
+		closeTransactionModalCssTimeoutId = window.setTimeout(() => {
+			editingKidTransactionModalCss = null
+			transactionModalCssDraft = ''
+			transactionModalCssSaveError = null
+			transactionModalCssClosing = false
+			closeTransactionModalCssTimeoutId = null
+			removeTransactionModalPreviewStyles()
+			handle.update()
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
+			}
+		}, modalCloseAnimationDurationMs)
+	}
+
+	function handleTransactionModalCssKeydown(event: KeyboardEvent) {
+		handleModalKeydown(event, closeTransactionModalCssEditor)
+	}
+
+	async function saveTransactionModalCss() {
+		if (state.status !== 'ready') return
+		if (!editingKidTransactionModalCss || transactionModalCssSaving) return
+		const { kidId } = editingKidTransactionModalCss
+		const kid = state.kids.find((entry) => entry.id === kidId)
+		if (!kid) return
+		transactionModalCssSaving = true
+		transactionModalCssSaveError = null
+		handle.update()
+		try {
+			await updateKid({
+				kidId: kid.id,
+				name: kid.name,
+				emoji: kid.emoji,
+				transactionModalCss: transactionModalCssDraft,
+			})
+			clearCloseTransactionModalCssTimeout()
+			const opener = transactionModalCssOpener
+			editingKidTransactionModalCss = null
+			transactionModalCssDraft = ''
+			transactionModalCssClosing = false
+			transactionModalCssOpener = null
+			removeTransactionModalPreviewStyles()
+			await refreshSettings()
+			if (state.status === 'ready') {
+				notify(`Saved transaction modal CSS for ${kid.name}.`)
+			}
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
+			}
+		} catch (error) {
+			transactionModalCssSaveError =
+				error instanceof Error
+					? error.message
+					: 'Could not save transaction modal CSS.'
+		}
+		transactionModalCssSaving = false
+		handle.update()
 	}
 
 	async function handleCreateKid() {
@@ -441,6 +599,9 @@ export function SettingsRoute(handle: Handle) {
 										alignItems: 'center',
 										[mq.mobile]: {
 											gridTemplateColumns: 'auto 4rem 1fr auto',
+											'& [data-kid-actions]': {
+												gridColumn: '1 / -1',
+											},
 										},
 									}}
 								>
@@ -537,19 +698,42 @@ export function SettingsRoute(handle: Handle) {
 											fontWeight: typography.fontWeight.bold,
 										}}
 									/>
-									<button
-										type="button"
-										aria-label={`Archive ${kid.name}`}
-										on={{
-											click: async () => {
-												await archiveKid(kid.id)
-												await refreshSettings()
-											},
+									<div
+										data-kid-actions
+										css={{
+											display: 'flex',
+											gap: spacing.xs,
+											flexWrap: 'wrap',
+											justifyContent: 'flex-end',
 										}}
-										css={archiveIconButtonCss}
 									>
-										<TrashIcon />
-									</button>
+										<button
+											type="button"
+											aria-label={`Customize ${kid.name}'s transaction modal`}
+											title="Customize transaction modal"
+											on={{
+												click: () => {
+													openTransactionModalCssEditor(kid)
+												},
+											}}
+											css={transactionModalIconButtonCss}
+										>
+											<SettingsIcon />
+										</button>
+										<button
+											type="button"
+											aria-label={`Archive ${kid.name}`}
+											on={{
+												click: async () => {
+													await archiveKid(kid.id)
+													await refreshSettings()
+												},
+											}}
+											css={archiveIconButtonCss}
+										>
+											<TrashIcon />
+										</button>
+									</div>
 								</header>
 								<p css={{ margin: 0, color: colors.textMuted }}>
 									Total: {formatCents(kid.totalBalanceCents)}
@@ -1101,6 +1285,271 @@ export function SettingsRoute(handle: Handle) {
 						</div>
 					</section>
 
+					{editingKidTransactionModalCss ? (
+						<div
+							on={{
+								click: (event) => {
+									if (event.target === event.currentTarget) {
+										closeTransactionModalCssEditor()
+									}
+								},
+							}}
+							css={{
+								position: 'fixed',
+								inset: 0,
+								backgroundColor: 'rgba(0, 0, 0, 0.45)',
+								display: 'grid',
+								placeItems: 'center',
+								padding: spacing.md,
+								zIndex: 1000,
+								pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
+								animation: transactionModalCssClosing
+									? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+									: 'modal-backdrop-in 180ms ease-out forwards',
+								[mq.mobile]: {
+									padding: 0,
+									placeItems: 'stretch',
+								},
+							}}
+						>
+							<section
+								role="dialog"
+								aria-modal="true"
+								aria-labelledby="kid-transaction-modal-css-title"
+								on={{ keydown: handleTransactionModalCssKeydown }}
+								css={{
+									width: 'min(42rem, 100%)',
+									maxHeight: '85dvh',
+									overflow: 'auto',
+									display: 'grid',
+									gap: spacing.md,
+									padding: spacing.lg,
+									borderRadius: radius.xl,
+									border: `3px solid ${colors.border}`,
+									backgroundColor: colors.surface,
+									boxShadow: shadows.lg,
+									animation: transactionModalCssClosing
+										? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+										: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+									[mq.mobile]: {
+										width: '100%',
+										maxHeight: '100dvh',
+										minHeight: '100dvh',
+										borderRadius: 0,
+										border: 'none',
+										gap: spacing.sm,
+										padding: spacing.md,
+									},
+								}}
+							>
+								<header
+									css={{ display: 'flex', justifyContent: 'space-between' }}
+								>
+									<div css={{ display: 'grid', gap: spacing.xs }}>
+										<h3
+											id="kid-transaction-modal-css-title"
+											css={{ margin: 0, color: colors.text }}
+										>
+											Customize {editingKidTransactionModalCss.kidName}&apos;s
+											transaction modal
+										</h3>
+										<p css={{ margin: 0, color: colors.textMuted }}>
+											Enter declarations or full CSS rules. When this kid&apos;s
+											transaction modal is open on Home, the styles apply to the
+											whole page.
+										</p>
+									</div>
+									<button
+										type="button"
+										on={{ click: closeTransactionModalCssEditor }}
+										css={buttonCss}
+										disabled={transactionModalCssSaving}
+									>
+										Close
+									</button>
+								</header>
+								<section css={{ display: 'grid', gap: spacing.sm }}>
+									<strong css={{ color: colors.text }}>Live preview</strong>
+									<p css={{ margin: 0, color: colors.textMuted }}>
+										Updates in real time as you type.
+									</p>
+									{transactionModalCssDraft.trim() ? (
+										<style data-kid-transaction-modal-preview-css>
+											{buildTransactionModalCss(transactionModalCssDraft)}
+										</style>
+									) : null}
+									<section
+										data-kid-transaction-modal-preview
+										css={{
+											width: 'min(30rem, 100%)',
+											display: 'grid',
+											gap: spacing.md,
+											padding: spacing.md,
+											fontFamily: 'var(--font-family)',
+											borderRadius: radius.xl,
+											border: `3px solid ${colors.border}`,
+											backgroundColor: colors.surface,
+											boxShadow: shadows.lg,
+										}}
+									>
+										<header
+											css={{ display: 'flex', justifyContent: 'space-between' }}
+										>
+											<div>
+												<h3 css={{ margin: 0, color: colors.text }}>
+													{editingKidTransactionModalCss.kidName}
+												</h3>
+												<p css={{ margin: 0, color: colors.textMuted }}>
+													Spending · $12.50
+												</p>
+											</div>
+											<span css={{ color: colors.textMuted }}>Close</span>
+										</header>
+										<label css={{ display: 'grid', gap: spacing.xs }}>
+											<span css={{ color: colors.text }}>Amount</span>
+											<input type="text" value="5.00" readOnly css={inputCss} />
+										</label>
+										<div
+											css={{
+												display: 'grid',
+												gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+												gap: spacing.xs,
+											}}
+										>
+											<button type="button" css={buttonCss}>
+												$1.00
+											</button>
+											<button type="button" css={buttonCss}>
+												$5.00
+											</button>
+											<button type="button" css={buttonCss}>
+												$10.00
+											</button>
+										</div>
+									</section>
+								</section>
+								<label css={{ display: 'grid', gap: spacing.xs }}>
+									<span css={{ color: colors.text }}>
+										Custom CSS declarations
+									</span>
+									<textarea
+										id="kid-transaction-modal-css-input"
+										value={transactionModalCssDraft}
+										on={{
+											input: (event) => {
+												if (
+													!(event.currentTarget instanceof HTMLTextAreaElement)
+												)
+													return
+												transactionModalCssDraft = event.currentTarget.value
+												transactionModalCssSaveError = null
+												handle.update()
+											},
+										}}
+										rows={6}
+										css={{
+											...inputCss,
+											fontFamily:
+												'ui-monospace, SFMono-Regular, Menlo, monospace',
+											resize: 'vertical',
+											minHeight: '8rem',
+										}}
+									/>
+								</label>
+								<section css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>
+										Supported CSS variables
+									</strong>
+									<div
+										css={{
+											display: 'flex',
+											flexWrap: 'wrap',
+											gap: spacing.xs,
+										}}
+									>
+										{transactionModalCssVariables.map((cssVariable) => (
+											<code
+												key={cssVariable}
+												css={{
+													padding: `${spacing.xs} ${spacing.sm}`,
+													border: `1px solid ${colors.border}`,
+													borderRadius: radius.full,
+													backgroundColor: colors.primarySoftest,
+												}}
+											>
+												{cssVariable}
+											</code>
+										))}
+									</div>
+								</section>
+								<div css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>Font example</strong>
+									<pre
+										css={{
+											margin: 0,
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `2px solid ${colors.border}`,
+											backgroundColor: colors.primarySoftest,
+											color: colors.text,
+											overflowX: 'auto',
+										}}
+									>
+										{transactionModalCssFontExample}
+									</pre>
+								</div>
+								<div css={{ display: 'grid', gap: spacing.xs }}>
+									<strong css={{ color: colors.text }}>
+										Google Fonts example
+									</strong>
+									<pre
+										css={{
+											margin: 0,
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `2px solid ${colors.border}`,
+											backgroundColor: colors.primarySoftest,
+											color: colors.text,
+											overflowX: 'auto',
+										}}
+									>
+										{transactionModalCssGoogleFontExample}
+									</pre>
+								</div>
+								{transactionModalCssSaveError ? (
+									<p css={{ margin: 0, color: colors.error }}>
+										{transactionModalCssSaveError}
+									</p>
+								) : null}
+								<div
+									css={{
+										display: 'flex',
+										justifyContent: 'flex-end',
+										gap: spacing.sm,
+										flexWrap: 'wrap',
+									}}
+								>
+									<button
+										type="button"
+										on={{ click: closeTransactionModalCssEditor }}
+										css={buttonCss}
+										disabled={transactionModalCssSaving}
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										on={{ click: () => void saveTransactionModalCss() }}
+										css={buttonCss}
+										disabled={transactionModalCssSaving}
+									>
+										{transactionModalCssSaving ? 'Saving...' : 'Save CSS'}
+									</button>
+								</div>
+							</section>
+						</div>
+					) : null}
+
 					{state.message ? (
 						<p
 							css={{ margin: 0, color: colors.textMuted, textAlign: 'center' }}
@@ -1132,6 +1581,17 @@ const dangerButtonCss = {
 
 const archiveIconButtonCss = {
 	...dangerButtonCss,
+	minHeight: 40,
+	minWidth: 40,
+	padding: 0,
+	lineHeight: 1,
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+}
+
+const transactionModalIconButtonCss = {
+	...buttonCss,
 	minHeight: 40,
 	minWidth: 40,
 	padding: 0,

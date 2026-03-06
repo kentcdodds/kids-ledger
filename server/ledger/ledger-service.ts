@@ -18,6 +18,7 @@ export type LedgerKid = {
 	householdId: number
 	name: string
 	emoji: string
+	transactionModalCss: string
 	sortOrder: number
 	isArchived: boolean
 	totalBalanceCents: number
@@ -115,30 +116,67 @@ export class LedgerService {
 		}
 	}
 
-	async createKid(input: { name: string; emoji: string }) {
+	async createKid(input: {
+		name: string
+		emoji: string
+		transactionModalCss?: string
+	}) {
 		const household = await this.#ensureHousehold()
 		const nextSortOrder = await this.#nextSortOrder(
 			'kids',
 			'household_id',
 			household.id,
 		)
+		const transactionModalCss =
+			typeof input.transactionModalCss === 'string'
+				? input.transactionModalCss
+				: ''
 		const inserted = await this.#run(
-			`INSERT INTO kids (household_id, name, emoji, sort_order)
-			 VALUES (?, ?, ?, ?)`,
-			[household.id, input.name.trim(), input.emoji.trim(), nextSortOrder],
+			`INSERT INTO kids (household_id, name, emoji, transaction_modal_css, sort_order)
+			 VALUES (?, ?, ?, ?, ?)`,
+			[
+				household.id,
+				input.name.trim(),
+				input.emoji.trim(),
+				transactionModalCss,
+				nextSortOrder,
+			],
 		)
 		const kidId = inserted.meta?.last_row_id
 		invariant(typeof kidId === 'number', 'Could not create kid.')
 		return { id: kidId }
 	}
 
-	async updateKid(input: { kidId: number; name: string; emoji: string }) {
+	async updateKid(input: {
+		kidId: number
+		name: string
+		emoji: string
+		transactionModalCss?: string
+	}) {
 		const kid = await this.#requireKid(input.kidId)
+		const normalizedTransactionModalCss =
+			typeof input.transactionModalCss === 'string'
+				? input.transactionModalCss
+				: undefined
+		if (normalizedTransactionModalCss === undefined) {
+			await this.#run(
+				`UPDATE kids
+				 SET name = ?, emoji = ?, updated_at = CURRENT_TIMESTAMP
+				 WHERE id = ?`,
+				[input.name.trim(), input.emoji.trim(), kid.id],
+			)
+			return
+		}
 		await this.#run(
 			`UPDATE kids
-			 SET name = ?, emoji = ?, updated_at = CURRENT_TIMESTAMP
+			 SET name = ?, emoji = ?, transaction_modal_css = ?, updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
-			[input.name.trim(), input.emoji.trim(), kid.id],
+			[
+				input.name.trim(),
+				input.emoji.trim(),
+				normalizedTransactionModalCss,
+				kid.id,
+			],
 		)
 	}
 
@@ -645,7 +683,7 @@ export class LedgerService {
 	async exportLedgerData() {
 		const household = await this.#ensureHousehold()
 		const kids = await this.#all(
-			`SELECT id, name, emoji, sort_order, is_archived, archived_at, created_at, updated_at
+			`SELECT id, name, emoji, transaction_modal_css, sort_order, is_archived, archived_at, created_at, updated_at
 			 FROM kids
 			 WHERE household_id = ?
 			 ORDER BY sort_order ASC, id ASC`,
@@ -680,6 +718,7 @@ export class LedgerService {
 				id: getNumber(kid.id),
 				name: getString(kid.name),
 				emoji: getString(kid.emoji),
+				transactionModalCss: getString(kid.transaction_modal_css),
 				sortOrder: getNumber(kid.sort_order),
 				isArchived: getBoolean(kid.is_archived),
 				archivedAt: getString(kid.archived_at),
@@ -858,7 +897,7 @@ export class LedgerService {
 
 	async #listKids(householdId: number, includeArchived: boolean) {
 		const kidsRows = await this.#all(
-			`SELECT id, household_id, name, emoji, sort_order, is_archived
+			`SELECT id, household_id, name, emoji, transaction_modal_css, sort_order, is_archived
 			 FROM kids
 			 WHERE household_id = ? ${includeArchived ? '' : 'AND is_archived = 0'}
 			 ORDER BY sort_order ASC, id ASC`,
@@ -869,6 +908,7 @@ export class LedgerService {
 			householdId: getNumber(kidRow.household_id),
 			name: getString(kidRow.name),
 			emoji: getString(kidRow.emoji),
+			transactionModalCss: getString(kidRow.transaction_modal_css),
 			sortOrder: getNumber(kidRow.sort_order),
 			isArchived: getBoolean(kidRow.is_archived),
 			totalBalanceCents: 0,

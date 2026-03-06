@@ -13,6 +13,7 @@ export type KidSummary = {
 	householdId: number
 	name: string
 	emoji: string
+	transactionModalCss: string
 	sortOrder: number
 	isArchived: boolean
 	totalBalanceCents: number
@@ -148,7 +149,11 @@ export async function fetchTransactions(query: URLSearchParams) {
 	} satisfies LedgerTransactionsPage
 }
 
-export async function createKid(input: { name: string; emoji: string }) {
+export async function createKid(input: {
+	name: string
+	emoji: string
+	transactionModalCss?: string
+}) {
 	return postJson<{ ok: true; kidId: number }>('/ledger/kids/create', input)
 }
 
@@ -156,6 +161,7 @@ export async function updateKid(input: {
 	kidId: number
 	name: string
 	emoji: string
+	transactionModalCss?: string
 }) {
 	return postJson<{ ok: true }>('/ledger/kids/update', input)
 }

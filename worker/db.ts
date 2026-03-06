@@ -61,6 +61,7 @@ export const kidsTable = createTable({
 		household_id: number(),
 		name: string(),
 		emoji: string(),
+		transaction_modal_css: string(),
 		sort_order: number(),
 		is_archived: number(),
 		archived_at: string(),
