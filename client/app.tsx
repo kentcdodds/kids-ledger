@@ -96,10 +96,6 @@ export function App(handle: Handle) {
 	let isRequestingTiltPermission = false
 	let requestTiltPermission: null | (() => void) = null
 
-	function wrapDriftOffset(value: number, tileSize: number) {
-		return ((value % tileSize) + tileSize) % tileSize
-	}
-
 	function clamp(value: number, min: number, max: number) {
 		return Math.min(max, Math.max(min, value))
 	}
@@ -110,18 +106,26 @@ export function App(handle: Handle) {
 
 		let hasOrientationListener = false
 		let fallbackMotionIntervalId: number | null = null
+		let lastDriftUpdate: number | null = null
+		const driftSpeedPixelsPerSecond = 36
 
 		function updateDotCssVars(mouseDirX: number, mouseDirY: number) {
+			const now = performance.now()
+			const deltaSeconds =
+				lastDriftUpdate === null
+					? 0
+					: Math.min((now - lastDriftUpdate) / 1000, 0.25)
+			lastDriftUpdate = now
 			const directionMagnitude = Math.hypot(mouseDirX, mouseDirY)
 			const normalizedDirX =
 				directionMagnitude > 0.001 ? mouseDirX / directionMagnitude : 0
 			const normalizedDirY =
 				directionMagnitude > 0.001 ? mouseDirY / directionMagnitude : 0
 			const speedScale = clamp(directionMagnitude, 0, 1) ** 1.8
-			const driftStep = 0.6 * speedScale
+			const driftStep = driftSpeedPixelsPerSecond * speedScale * deltaSeconds
 
-			driftX = wrapDriftOffset(driftX + driftStep * normalizedDirX, 60)
-			driftY = wrapDriftOffset(driftY + driftStep * normalizedDirY, 60)
+			driftX += driftStep * normalizedDirX
+			driftY += driftStep * normalizedDirY
 
 			document.body.style.setProperty('--drift-x', `${driftX}px`)
 			document.body.style.setProperty('--drift-y', `${driftY}px`)
