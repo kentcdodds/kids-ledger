@@ -68,6 +68,10 @@ export async function createKidWithAccount(
 	return { kidName, accountName, kidCard }
 }
 
+/**
+ * Creates a kid on the settings page.
+ * Precondition: the current page is `/settings`.
+ */
 export async function createKid(page: Page, options: CreateKidOptions = {}) {
 	const kidName = options.kidName ?? `Kid-${crypto.randomUUID().slice(0, 6)}`
 	if (options.kidEmoji) {
@@ -112,21 +116,10 @@ export const test = base.extend<{
 	},
 	login: async ({ page }, use) => {
 		await use(async (options) => {
-			const credentials = {
-				email: options?.email ?? `user-${crypto.randomUUID()}@example.com`,
-				password: options?.password ?? 'password123',
-			}
-			let response = await postAuth(page.request, credentials, 'signup')
-			if (!response.ok() && response.status() !== 409) {
-				throw new Error(`Failed to seed user (${response.status()}).`)
-			}
-
-			if (response.status() === 409) {
-				response = await postAuth(page.request, credentials, 'login')
-
-				if (!response.ok()) {
-					throw new Error(`Failed to login user (${response.status()}).`)
-				}
+			const credentials = await ensureUserExists(page.request, options)
+			const response = await postAuth(page.request, credentials, 'login')
+			if (!response.ok()) {
+				throw new Error(`Failed to login user (${response.status()}).`)
 			}
 
 			const setCookieHeader = response.headers()['set-cookie']

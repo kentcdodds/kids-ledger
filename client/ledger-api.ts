@@ -60,7 +60,7 @@ export type LedgerTransactionsPage = {
 
 async function parseApiResponse<T>(response: Response): Promise<T> {
 	const payload = await parseJsonOrNull(response)
-	if (!response.ok || !payload) {
+	if (!response.ok || payload === null) {
 		throw new Error(
 			getErrorMessage(payload, `Request failed (${response.status})`),
 		)
