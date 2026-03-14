@@ -347,7 +347,7 @@ export function App(handle: Handle) {
 				</div>
 				<footer
 					css={{
-						marginTop: 'auto',
+						marginTop: isLoggedIn ? 0 : 'auto',
 						paddingTop: spacing.md,
 						paddingBottom: spacing.md,
 						borderTop: `2px solid ${colors.border}`,
