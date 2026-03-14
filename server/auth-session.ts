@@ -1,10 +1,31 @@
 import { createCookie } from '@remix-run/cookie'
 
-const sessionMaxAgeSeconds = 60 * 60 * 24 * 7
+export const authSessionMaxAgeSeconds = 60 * 60 * 24 * 7
+export const rememberedAuthSessionMaxAgeSeconds = 60 * 60 * 24 * 60
+export const rememberedAuthSessionRefreshAfterSeconds = 60 * 60 * 24 * 30
+
+const rememberedAuthSessionMaxAgeMs = rememberedAuthSessionMaxAgeSeconds * 1000
+const rememberedAuthSessionRefreshAfterMs =
+	rememberedAuthSessionRefreshAfterSeconds * 1000
 
 export type AuthSession = {
 	id: string
 	email: string
+}
+
+type RememberedAuthSession = AuthSession & {
+	rememberMe: true
+	issuedAtMs: number
+}
+
+type StoredAuthSession = AuthSession | RememberedAuthSession
+
+export type AuthSessionState = {
+	session: AuthSession | null
+	headers: Headers | null
+	rememberMe: boolean
+	refreshAtMs: number | null
+	expiresAtMs: number | null
 }
 
 let sessionCookie: ReturnType<typeof createCookie> | null = null
@@ -24,7 +45,7 @@ export function setAuthSessionSecret(secret: string) {
 		httpOnly: true,
 		sameSite: 'Lax',
 		path: '/',
-		maxAge: sessionMaxAgeSeconds,
+		maxAge: authSessionMaxAgeSeconds,
 		secrets: [secret],
 	})
 }
@@ -48,8 +69,110 @@ function isAuthSession(value: unknown): value is AuthSession {
 	)
 }
 
-export async function createAuthCookie(session: AuthSession, secure: boolean) {
-	return getSessionCookie().serialize(JSON.stringify(session), { secure })
+function isStoredAuthSession(value: unknown): value is StoredAuthSession {
+	if (!isAuthSession(value)) {
+		return false
+	}
+
+	const record = value as Record<string, unknown>
+	if (record.rememberMe === undefined && record.issuedAtMs === undefined) {
+		return true
+	}
+
+	return (
+		record.rememberMe === true &&
+		typeof record.issuedAtMs === 'number' &&
+		Number.isFinite(record.issuedAtMs) &&
+		record.issuedAtMs > 0
+	)
+}
+
+function isRememberedAuthSession(
+	session: StoredAuthSession,
+): session is RememberedAuthSession {
+	return 'rememberMe' in session && session.rememberMe === true
+}
+
+function createStoredAuthSession(
+	session: AuthSession,
+	rememberMe: boolean,
+	now: number,
+): StoredAuthSession {
+	if (!rememberMe) {
+		return session
+	}
+
+	return {
+		...session,
+		rememberMe: true,
+		issuedAtMs: now,
+	}
+}
+
+function parseStoredAuthSession(stored: string) {
+	try {
+		const parsed = JSON.parse(stored)
+		return isStoredAuthSession(parsed) ? parsed : null
+	} catch {
+		return null
+	}
+}
+
+function normalizeProto(value: string) {
+	return value.trim().replace(/^"|"$/g, '').toLowerCase()
+}
+
+function getForwardedProto(request: Request) {
+	const forwarded = request.headers.get('forwarded')
+	if (forwarded) {
+		for (const entry of forwarded.split(',')) {
+			for (const pair of entry.split(';')) {
+				const [key, rawValue] = pair.split('=')
+				if (!key || !rawValue) continue
+				if (key.trim().toLowerCase() === 'proto') {
+					return normalizeProto(rawValue)
+				}
+			}
+		}
+	}
+
+	const xForwardedProto = request.headers.get('x-forwarded-proto')
+	if (xForwardedProto) {
+		return normalizeProto(xForwardedProto.split(',')[0] ?? '')
+	}
+
+	return null
+}
+
+export function isSecureRequest(request: Request) {
+	const forwardedProto = getForwardedProto(request)
+	if (forwardedProto) {
+		return forwardedProto === 'https'
+	}
+
+	return new URL(request.url).protocol === 'https:'
+}
+
+export async function createAuthCookie(
+	session: AuthSession,
+	options: {
+		secure: boolean
+		rememberMe?: boolean
+		now?: number
+	},
+) {
+	const rememberMe = options.rememberMe === true
+	return getSessionCookie().serialize(
+		JSON.stringify(
+			createStoredAuthSession(session, rememberMe, options.now ?? Date.now()),
+		),
+		{
+			secure: options.secure,
+			maxAge: rememberMe
+				? rememberedAuthSessionMaxAgeSeconds
+				: authSessionMaxAgeSeconds,
+		},
+	)
 }
 
 export async function destroyAuthCookie(secure: boolean) {
@@ -60,21 +183,99 @@ export async function destroyAuthCookie(secure: boolean) {
 	})
 }
 
-export async function readAuthSession(request: Request) {
+export async function readAuthSessionState(
+	request: Request,
+	options?: { now?: number },
+): Promise<AuthSessionState> {
 	const cookieHeader = request.headers.get('Cookie')
-	if (!cookieHeader) return null
-
-	const stored = await getSessionCookie().parse(cookieHeader)
-	if (!stored || typeof stored !== 'string') return null
-
-	try {
-		const parsed = JSON.parse(stored)
-		if (isAuthSession(parsed)) {
-			return parsed
+	if (!cookieHeader) {
+		return {
+			session: null,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
 		}
-	} catch {
-		return null
 	}
 
-	return null
+	const stored = await getSessionCookie().parse(cookieHeader)
+	if (!stored || typeof stored !== 'string') {
+		return {
+			session: null,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
+		}
+	}
+
+	const parsed = parseStoredAuthSession(stored)
+	if (!parsed) {
+		return {
+			session: null,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
+		}
+	}
+
+	const session = {
+		id: parsed.id,
+		email: parsed.email,
+	}
+
+	if (!isRememberedAuthSession(parsed)) {
+		return {
+			session,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
+		}
+	}
+
+	const now = options?.now ?? Date.now()
+	const refreshAtMs = parsed.issuedAtMs + rememberedAuthSessionRefreshAfterMs
+	const expiresAtMs = parsed.issuedAtMs + rememberedAuthSessionMaxAgeMs
+
+	if (now >= expiresAtMs) {
+		return {
+			session: null,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
+		}
+	}
+
+	if (now < refreshAtMs) {
+		return {
+			session,
+			headers: null,
+			rememberMe: true,
+			refreshAtMs,
+			expiresAtMs,
+		}
+	}
+
+	const refreshedAtMs = now
+	const refreshedCookie = await createAuthCookie(session, {
+		secure: isSecureRequest(request),
+		rememberMe: true,
+		now: refreshedAtMs,
+	})
+
+	return {
+		session,
+		headers: new Headers({ 'Set-Cookie': refreshedCookie }),
+		rememberMe: true,
+		refreshAtMs: refreshedAtMs + rememberedAuthSessionRefreshAfterMs,
+		expiresAtMs: refreshedAtMs + rememberedAuthSessionMaxAgeMs,
+	}
+}
+
+export async function readAuthSession(request: Request) {
+	const state = await readAuthSessionState(request)
+	return state.session
 }

@@ -123,6 +123,7 @@ function createLedgerMutationHandler<Input, Result = void>(
 			return jsonResponse(
 				{ ok: true, ...(setup.mapResponse?.(result) ?? {}) },
 				setup.status,
+				access.headers ?? undefined,
 			)
 		},
 	}
@@ -135,7 +136,11 @@ export function createLedgerDashboardHandler(appEnv: AppEnv) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const dashboard = await access.service.getDashboard()
-			return jsonResponse({ ok: true, dashboard })
+			return jsonResponse(
+				{ ok: true, dashboard },
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerDashboard.method,
@@ -154,10 +159,14 @@ export function createLedgerSettingsHandler(appEnv: AppEnv) {
 				access.service.listArchived(),
 				access.service.listQuickAmounts(),
 			])
-			return jsonResponse({
-				ok: true,
-				settings: { kids, archived, quickAmounts },
-			})
+			return jsonResponse(
+				{
+					ok: true,
+					settings: { kids, archived, quickAmounts },
+				},
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerSettings.method,
@@ -185,7 +194,11 @@ export function createLedgerHistoryHandler(appEnv: AppEnv) {
 				limit: getPositiveIntQueryParam(url, 'limit'),
 				offset: getNumberQueryParam(url, 'offset'),
 			})
-			return jsonResponse({ ok: true, ...result })
+			return jsonResponse(
+				{ ok: true, ...result },
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerHistory.method,
@@ -349,7 +362,7 @@ export function createExportJsonHandler(appEnv: AppEnv) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const payload = await access.service.exportLedgerData()
-			return new Response(JSON.stringify(payload, null, 2), {
+			const response = new Response(JSON.stringify(payload, null, 2), {
 				headers: {
 					'Content-Type': 'application/json',
 					'Content-Disposition':
@@ -357,6 +370,12 @@ export function createExportJsonHandler(appEnv: AppEnv) {
 					'Cache-Control': 'no-store',
 				},
 			})
+			if (access.headers) {
+				for (const [key, value] of access.headers) {
+					response.headers.append(key, value)
+				}
+			}
+			return response
 		},
 	} satisfies BuildAction<
 		typeof routes.apiExportJson.method,

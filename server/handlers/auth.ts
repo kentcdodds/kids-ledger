@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { enum_, object, string } from 'remix/data-schema'
-import { createAuthCookie } from '#server/auth-session.ts'
+import { boolean, enum_, object, optional, string } from 'remix/data-schema'
+import { createAuthCookie, isSecureRequest } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
@@ -23,6 +23,7 @@ const authRequestSchema = object({
 	email: string(),
 	password: string(),
 	mode: enum_(authModes),
+	rememberMe: optional(boolean()),
 })
 
 export function createAuthHandler(appEnv: AppEnv) {
@@ -48,6 +49,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 			const normalizedEmail = normalizeEmail(parsedBody.value.email)
 			const normalizedPassword = parsedBody.value.password
 			const normalizedMode: AuthMode = parsedBody.value.mode
+			const rememberMe = parsedBody.value.rememberMe === true
 			const requestIp = getRequestIp(request) ?? undefined
 
 			if (!normalizedEmail || !normalizedPassword) {
@@ -138,7 +140,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 
 				const cookie = await createAuthCookie(
 					{ id: String(record.id), email: normalizedEmail },
-					url.protocol === 'https:',
+					{ secure: isSecureRequest(request) },
 				)
 				void logAuditEvent({
 					category: 'auth',
@@ -184,7 +186,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 					id: String(credentials.userId),
 					email: normalizedEmail,
 				},
-				url.protocol === 'https:',
+				{ secure: isSecureRequest(request), rememberMe },
 			)
 			void logAuditEvent({
 				category: 'auth',
