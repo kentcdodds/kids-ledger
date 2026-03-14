@@ -16,7 +16,7 @@ function getFirstGrapheme(value: string) {
 		if (firstGrapheme) return firstGrapheme
 	}
 
-	return Array.from(trimmedValue)[0]
+	return null
 }
 
 export function normalizeKidEmoji(value: string, fallback = fallbackKidEmoji) {
