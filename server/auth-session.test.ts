@@ -70,3 +70,24 @@ test('readAuthSessionState refreshes remembered sessions after 30 days', async (
 		refreshedAtMs + rememberedAuthSessionMaxAgeSeconds * 1000,
 	)
 })
+
+test('readAuthSessionState rejects expired remembered sessions', async () => {
+	const issuedAtMs = Date.UTC(2026, 0, 1)
+	const setCookieHeader = await createAuthCookie(baseSession, {
+		secure: false,
+		rememberMe: true,
+		now: issuedAtMs,
+	})
+	const expiredAtMs =
+		issuedAtMs + rememberedAuthSessionMaxAgeSeconds * 1000 + 1_000
+	const state = await readAuthSessionState(
+		createSessionRequest(toCookieHeader(setCookieHeader)),
+		{ now: expiredAtMs },
+	)
+
+	expect(state.session).toBeNull()
+	expect(state.rememberMe).toBe(false)
+	expect(state.headers).toBeNull()
+	expect(state.refreshAtMs).toBeNull()
+	expect(state.expiresAtMs).toBeNull()
+})

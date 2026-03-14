@@ -362,17 +362,20 @@ export function createExportJsonHandler(appEnv: AppEnv) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const payload = await access.service.exportLedgerData()
-			return new Response(JSON.stringify(payload, null, 2), {
+			const response = new Response(JSON.stringify(payload, null, 2), {
 				headers: {
 					'Content-Type': 'application/json',
 					'Content-Disposition':
 						'attachment; filename="kids-ledger-export.json"',
 					'Cache-Control': 'no-store',
-					...(access.headers
-						? Object.fromEntries(access.headers.entries())
-						: {}),
 				},
 			})
+			if (access.headers) {
+				for (const [key, value] of access.headers) {
+					response.headers.append(key, value)
+				}
+			}
+			return response
 		},
 	} satisfies BuildAction<
 		typeof routes.apiExportJson.method,

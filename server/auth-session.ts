@@ -239,6 +239,16 @@ export async function readAuthSessionState(
 	const refreshAtMs = parsed.issuedAtMs + rememberedAuthSessionRefreshAfterMs
 	const expiresAtMs = parsed.issuedAtMs + rememberedAuthSessionMaxAgeMs
 
+	if (now >= expiresAtMs) {
+		return {
+			session: null,
+			headers: null,
+			rememberMe: false,
+			refreshAtMs: null,
+			expiresAtMs: null,
+		}
+	}
+
 	if (now < refreshAtMs) {
 		return {
 			session,
