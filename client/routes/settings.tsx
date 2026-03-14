@@ -20,6 +20,7 @@ import {
 	clearKidModalBackground,
 	setKidModalBackground,
 } from '#client/kid-modal-background.ts'
+import { fallbackKidEmoji, normalizeKidEmoji } from '#client/emoji-utils.ts'
 import { formatCents } from '#client/money.ts'
 import {
 	accountColorTokens,
@@ -39,7 +40,7 @@ import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
 import { handleModalKeydown } from '#client/dom-utils.ts'
 
 const defaultKidEmojis = [
-	'🧒',
+	fallbackKidEmoji,
 	'👦',
 	'👧',
 	'🧑',
@@ -435,7 +436,7 @@ export function SettingsRoute(handle: Handle) {
 			notify('Kid name is required.')
 			return
 		}
-		await createKid({ name: newKidName, emoji: newKidEmoji })
+		await createKid({ name: newKidName, emoji: normalizeKidEmoji(newKidEmoji) })
 		newKidName = ''
 		newKidEmoji = getRandomDefaultKidEmoji()
 		await refreshSettings()
@@ -552,11 +553,10 @@ export function SettingsRoute(handle: Handle) {
 									input: (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
-										newKidEmoji = event.currentTarget.value || '🧒'
+										newKidEmoji = normalizeKidEmoji(event.currentTarget.value)
 										handle.update()
 									},
 								}}
-								maxLength={2}
 								aria-label="Kid emoji"
 								css={{
 									...inputCss,
@@ -656,11 +656,15 @@ export function SettingsRoute(handle: Handle) {
 										defaultValue={kid.emoji}
 										aria-label={`${kid.name} emoji`}
 										data-kid-emoji={kid.id}
-										maxLength={2}
 										on={{
+											input: (event) => {
+												const input = event.currentTarget as HTMLInputElement
+												input.value = normalizeKidEmoji(input.value)
+											},
 											blur: async (e) => {
-												const emoji =
-													(e.currentTarget as HTMLInputElement).value || '🧒'
+												const input = e.currentTarget as HTMLInputElement
+												const emoji = normalizeKidEmoji(input.value)
+												input.value = emoji
 												const nameInput = document.querySelector(
 													`input[data-kid-name="${kid.id}"]`,
 												) as HTMLInputElement
