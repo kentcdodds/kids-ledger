@@ -89,6 +89,10 @@ export function App(handle: Handle) {
 		marginRight: spacing.sm,
 	}
 
+	const routeContentShellCss = {
+		paddingBottom: spacing.xl,
+	}
+
 	let driftX = 0
 	let driftY = 0
 	let targetMouseDirX = 0
@@ -317,31 +321,33 @@ export function App(handle: Handle) {
 						</>
 					) : null}
 				</nav>
-				<Router
-					setup={{
-						routes: clientRoutes,
-						fallback: (
-							<section>
-								<h2
-									css={{
-										fontSize: typography.fontSize.lg,
-										fontWeight: typography.fontWeight.semibold,
-										marginBottom: spacing.sm,
-										color: colors.text,
-									}}
-								>
-									Not Found
-								</h2>
-								<p css={{ color: colors.textMuted }}>
-									That route does not exist.
-								</p>
-							</section>
-						),
-					}}
-				/>
+				<div css={routeContentShellCss}>
+					<Router
+						setup={{
+							routes: clientRoutes,
+							fallback: (
+								<section>
+									<h2
+										css={{
+											fontSize: typography.fontSize.lg,
+											fontWeight: typography.fontWeight.semibold,
+											marginBottom: spacing.sm,
+											color: colors.text,
+										}}
+									>
+										Not Found
+									</h2>
+									<p css={{ color: colors.textMuted }}>
+										That route does not exist.
+									</p>
+								</section>
+							),
+						}}
+					/>
+				</div>
 				<footer
 					css={{
-						marginTop: 'auto',
+						marginTop: isLoggedIn ? 0 : 'auto',
 						paddingTop: spacing.md,
 						paddingBottom: spacing.md,
 						borderTop: `2px solid ${colors.border}`,
