@@ -449,12 +449,12 @@ export function HomeRoute(handle: Handle) {
 								<button
 									type="button"
 									disabled={
-										getCurrentTotalQuickAmountCents(transactionState) === 0
+										Math.abs(transactionState.account.balanceCents) === 0
 									}
 									on={{
 										click: () =>
 											setTransactionAmountFromQuick(
-												getCurrentTotalQuickAmountCents(transactionState),
+												Math.abs(transactionState.account.balanceCents),
 											),
 									}}
 									css={{
@@ -727,8 +727,4 @@ function LoggedOutHome() {
 			</section>
 		</section>
 	)
-}
-
-function getCurrentTotalQuickAmountCents(state: TransactionState) {
-	return Math.abs(state.account.balanceCents)
 }
