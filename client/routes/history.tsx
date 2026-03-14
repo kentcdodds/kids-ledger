@@ -205,9 +205,7 @@ export function HistoryRoute(handle: Handle) {
 		const showPendingRefresh =
 			state.transactions.length > 0 && pendingRefreshDelay.isShowing()
 		return (
-			<section
-				css={{ display: 'grid', gap: spacing.lg, paddingBottom: spacing.xl }}
-			>
+			<section css={{ display: 'grid', gap: spacing.lg }}>
 				<header css={{ display: 'grid', gap: spacing.xs }}>
 					<h1 css={{ margin: 0, color: colors.text }}>Transaction History</h1>
 					<p css={{ margin: 0, color: colors.textMuted }}>
