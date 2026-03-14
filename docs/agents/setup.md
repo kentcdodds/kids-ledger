@@ -71,6 +71,9 @@ For a full local reset before seeding:
 After `bun run dev` is running and you are logged in:
 
 - `/` should render the main ledger board with family total and account cards.
+- `/` transaction modals should offer a `Current Total ($X.XX)` quick amount
+  button that mirrors the selected account balance and fills the amount field
+  with that value.
 - `/settings` should allow creating kids/accounts and managing archive/delete.
 - `/settings` kid cards should allow saving per-kid transaction modal CSS
   declarations/rules (including optional `@import` font rules), show a live

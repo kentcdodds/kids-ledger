@@ -446,6 +446,33 @@ export function HomeRoute(handle: Handle) {
 									gap: spacing.xs,
 								}}
 							>
+								<button
+									type="button"
+									disabled={
+										Math.abs(transactionState!.account.balanceCents) === 0
+									}
+									on={{
+										click: () =>
+											setTransactionAmountFromQuick(
+												Math.abs(transactionState!.account.balanceCents),
+											),
+									}}
+									css={{
+										...buttonCss,
+										backgroundColor: colors.surface,
+										color: colors.text,
+										border: `2px solid ${colors.border}`,
+										boxShadow: `0 2px 0 0 ${colors.border}`,
+										'&:active': {
+											transform: 'translateY(2px)',
+											boxShadow: `0 0 0 0 ${colors.border}`,
+										},
+									}}
+								>
+									{`Current Total (${formatCents(
+										transactionState.account.balanceCents,
+									)})`}
+								</button>
 								{quickAmounts.map((amount) => (
 									<button
 										key={amount}
