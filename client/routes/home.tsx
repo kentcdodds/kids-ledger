@@ -449,12 +449,12 @@ export function HomeRoute(handle: Handle) {
 								<button
 									type="button"
 									disabled={
-										Math.abs(transactionState.account.balanceCents) === 0
+										Math.abs(transactionState!.account.balanceCents) === 0
 									}
 									on={{
 										click: () =>
 											setTransactionAmountFromQuick(
-												Math.abs(transactionState.account.balanceCents),
+												Math.abs(transactionState!.account.balanceCents),
 											),
 									}}
 									css={{
