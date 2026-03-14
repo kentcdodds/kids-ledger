@@ -1,7 +1,10 @@
 /// <reference types="bun" />
 import { beforeAll, expect, test } from 'bun:test'
 import { RequestContext } from 'remix/fetch-router'
-import { setAuthSessionSecret } from '#server/auth-session.ts'
+import {
+	rememberedAuthSessionMaxAgeSeconds,
+	setAuthSessionSecret,
+} from '#server/auth-session.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
 import { createAuthHandler } from './auth.ts'
 
@@ -219,6 +222,30 @@ test('auth handler returns ok with a session cookie for login', async () => {
 	expect(payload).toEqual({ ok: true, mode: 'login' })
 	const setCookie = response.headers.get('Set-Cookie') ?? ''
 	expect(setCookie).toContain('kids-ledger_session=')
+})
+
+test('auth handler extends cookie lifetime when remember me is enabled', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
+	await testDb.addUser('remember@b.com', 'secret')
+	const authRequest = createAuthRequest(
+		{
+			email: 'remember@b.com',
+			password: 'secret',
+			mode: 'login',
+			rememberMe: true,
+		},
+		'http://example.com/auth',
+		handler,
+	)
+	const response = await authRequest.run()
+	expect(response.status).toBe(200)
+	const setCookie = response.headers.get('Set-Cookie') ?? ''
+	expect(setCookie).toContain('kids-ledger_session=')
+	expect(setCookie).toContain(`Max-Age=${rememberedAuthSessionMaxAgeSeconds}`)
 })
 
 test('auth handler sets Secure cookie over https', async () => {

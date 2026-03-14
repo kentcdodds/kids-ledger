@@ -51,10 +51,17 @@ export async function ensureUserExists(
 	return credentials
 }
 
-export async function loginViaUi(page: Page, credentials: UserCredentials) {
+export async function loginViaUi(
+	page: Page,
+	credentials: UserCredentials,
+	options?: { rememberMe?: boolean },
+) {
 	await page.goto('/login')
 	await page.getByLabel('Email').fill(credentials.email)
 	await page.getByLabel('Password').fill(credentials.password)
+	if (options?.rememberMe) {
+		await page.getByLabel('Remember me for 2 months').check()
+	}
 	await page.getByRole('button', { name: 'Sign in' }).click()
 }
 

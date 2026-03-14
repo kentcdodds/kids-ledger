@@ -1,18 +1,18 @@
 import { type Schema } from 'remix/data-schema'
-import { readAuthSession } from '#server/auth-session.ts'
+import { readAuthSessionState } from '#server/auth-session.ts'
 import { createLedgerService } from '#server/ledger/ledger-service.ts'
 import { parseJsonBody as parseJsonRequestBody } from '#server/request-parsing.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 
 export async function readLedgerService(request: Request, appEnv: AppEnv) {
-	const session = await readAuthSession(request)
-	if (!session) {
+	const authSession = await readAuthSessionState(request)
+	if (!authSession.session) {
 		return {
 			ok: false as const,
 			response: jsonResponse({ error: 'Unauthorized.' }, 401),
 		}
 	}
-	const userId = Number(session.id)
+	const userId = Number(authSession.session.id)
 	if (!Number.isInteger(userId) || userId <= 0) {
 		return {
 			ok: false as const,
@@ -22,6 +22,7 @@ export async function readLedgerService(request: Request, appEnv: AppEnv) {
 	return {
 		ok: true as const,
 		service: createLedgerService(appEnv.APP_DB, userId),
+		headers: authSession.headers,
 	}
 }
 
@@ -48,12 +49,17 @@ export async function parseJsonBody<Output>(
 	}
 }
 
-export function jsonResponse(payload: unknown, status = 200) {
+export function jsonResponse(
+	payload: unknown,
+	status = 200,
+	headers?: HeadersInit,
+) {
+	const responseHeaders = new Headers(headers)
+	responseHeaders.set('Content-Type', 'application/json')
+	responseHeaders.set('Cache-Control', 'no-store')
+
 	return new Response(JSON.stringify(payload), {
 		status,
-		headers: {
-			'Content-Type': 'application/json',
-			'Cache-Control': 'no-store',
-		},
+		headers: responseHeaders,
 	})
 }

@@ -123,6 +123,7 @@ function createLedgerMutationHandler<Input, Result = void>(
 			return jsonResponse(
 				{ ok: true, ...(setup.mapResponse?.(result) ?? {}) },
 				setup.status,
+				access.headers ?? undefined,
 			)
 		},
 	}
@@ -135,7 +136,11 @@ export function createLedgerDashboardHandler(appEnv: AppEnv) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const dashboard = await access.service.getDashboard()
-			return jsonResponse({ ok: true, dashboard })
+			return jsonResponse(
+				{ ok: true, dashboard },
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerDashboard.method,
@@ -154,10 +159,14 @@ export function createLedgerSettingsHandler(appEnv: AppEnv) {
 				access.service.listArchived(),
 				access.service.listQuickAmounts(),
 			])
-			return jsonResponse({
-				ok: true,
-				settings: { kids, archived, quickAmounts },
-			})
+			return jsonResponse(
+				{
+					ok: true,
+					settings: { kids, archived, quickAmounts },
+				},
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerSettings.method,
@@ -185,7 +194,11 @@ export function createLedgerHistoryHandler(appEnv: AppEnv) {
 				limit: getPositiveIntQueryParam(url, 'limit'),
 				offset: getNumberQueryParam(url, 'offset'),
 			})
-			return jsonResponse({ ok: true, ...result })
+			return jsonResponse(
+				{ ok: true, ...result },
+				200,
+				access.headers ?? undefined,
+			)
 		},
 	} satisfies BuildAction<
 		typeof routes.apiLedgerHistory.method,
@@ -355,6 +368,9 @@ export function createExportJsonHandler(appEnv: AppEnv) {
 					'Content-Disposition':
 						'attachment; filename="kids-ledger-export.json"',
 					'Cache-Control': 'no-store',
+					...(access.headers
+						? Object.fromEntries(access.headers.entries())
+						: {}),
 				},
 			})
 		},

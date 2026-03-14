@@ -81,6 +81,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		const formData = new FormData(event.currentTarget)
 		const email = String(formData.get('email') ?? '').trim()
 		const password = String(formData.get('password') ?? '')
+		const rememberMe = formData.get('rememberMe') === 'on'
 
 		if (!email || !password) {
 			setState('error', 'Email and password are required.')
@@ -94,7 +95,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email, password, mode }),
+				body: JSON.stringify({ email, password, mode, rememberMe }),
 			})
 			const payload = await parseJsonOrNull<{ error?: string }>(response)
 
@@ -205,6 +206,31 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							}}
 						/>
 					</label>
+					{!isSignup ? (
+						<label
+							css={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.sm,
+								color: colors.text,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								cursor: 'pointer',
+							}}
+						>
+							<input
+								type="checkbox"
+								name="rememberMe"
+								css={{
+									width: '1rem',
+									height: '1rem',
+									accentColor: colors.primary,
+									cursor: 'pointer',
+								}}
+							/>
+							<span>Remember me for 2 months</span>
+						</label>
+					) : null}
 					<button
 						type="submit"
 						disabled={isSubmitting}
