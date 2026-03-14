@@ -14,10 +14,12 @@ export function createAuthPageHandler() {
 					url.searchParams.get('redirectTo'),
 				)
 				const redirectTarget = redirectTo ?? '/account'
-				const response = Response.redirect(
-					new URL(redirectTarget, request.url),
-					302,
-				)
+				const response = new Response(null, {
+					status: 302,
+					headers: {
+						Location: new URL(redirectTarget, request.url).toString(),
+					},
+				})
 				if (authSession.headers) {
 					for (const [key, value] of authSession.headers) {
 						response.headers.append(key, value)
