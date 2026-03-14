@@ -87,6 +87,12 @@ function isStoredAuthSession(value: unknown): value is StoredAuthSession {
 	)
 }
 
+function isRememberedAuthSession(
+	session: StoredAuthSession,
+): session is RememberedAuthSession {
+	return 'rememberMe' in session && session.rememberMe === true
+}
+
 function createStoredAuthSession(
 	session: AuthSession,
 	rememberMe: boolean,
@@ -219,7 +225,7 @@ export async function readAuthSessionState(
 		email: parsed.email,
 	}
 
-	if (!('rememberMe' in parsed) || parsed.rememberMe !== true) {
+	if (!isRememberedAuthSession(parsed)) {
 		return {
 			session,
 			headers: null,
