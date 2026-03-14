@@ -446,6 +446,33 @@ export function HomeRoute(handle: Handle) {
 									gap: spacing.xs,
 								}}
 							>
+								<button
+									type="button"
+									disabled={
+										getCurrentTotalQuickAmountCents(transactionState) === 0
+									}
+									on={{
+										click: () =>
+											setTransactionAmountFromQuick(
+												getCurrentTotalQuickAmountCents(transactionState),
+											),
+									}}
+									css={{
+										...buttonCss,
+										backgroundColor: colors.surface,
+										color: colors.text,
+										border: `2px solid ${colors.border}`,
+										boxShadow: `0 2px 0 0 ${colors.border}`,
+										'&:active': {
+											transform: 'translateY(2px)',
+											boxShadow: `0 0 0 0 ${colors.border}`,
+										},
+									}}
+								>
+									{`Current Total (${formatCents(
+										transactionState.account.balanceCents,
+									)})`}
+								</button>
 								{quickAmounts.map((amount) => (
 									<button
 										key={amount}
@@ -700,4 +727,8 @@ function LoggedOutHome() {
 			</section>
 		</section>
 	)
+}
+
+function getCurrentTotalQuickAmountCents(state: TransactionState) {
+	return Math.abs(state.account.balanceCents)
 }
