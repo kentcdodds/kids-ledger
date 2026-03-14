@@ -1,6 +1,8 @@
 import { type Page } from '@playwright/test'
 import { expect, test } from './playwright-utils.ts'
 
+test.use({ viewport: { width: 1280, height: 360 } })
+
 async function waitForRouteToSettle(
 	page: Page,
 	path: '/' | '/history' | '/settings',
