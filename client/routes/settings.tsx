@@ -918,8 +918,9 @@ export function SettingsRoute(handle: Handle) {
 													}}
 													css={{
 														...inputCss,
-														backgroundColor: '#ffffff',
+														backgroundColor: colors.surface,
 														color: colors.text,
+														colorScheme: 'light dark',
 														[mq.mobile]: {
 															gridColumn: '2 / 4',
 															gridRow: '2',
