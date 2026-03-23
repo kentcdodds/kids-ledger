@@ -7,16 +7,45 @@ This document describes the infrastructure and secrets that kids-ledger expects.
 This project uses the following resources:
 
 - D1 database
-  - `database_name`: `<app-name>`
+  - `database_name`: `<app-name>` (from `wrangler.jsonc` `env.production`)
 - KV namespace for OAuth/session storage
   - `binding`: `OAUTH_KV`
-  - `title`: `<app-name>-oauth`
+  - `title` at create time: `<worker-name>-oauth` (63-char limit; derived from
+    the Worker `name` in `wrangler.jsonc` via
+    `tools/ci/production-resources.ts`)
 
-Production CI deploys now ensure these resources exist and create them when
-missing. The post-download script does not create Cloudflare resources and does
-not rewrite `wrangler.jsonc` resource IDs. Cloudflare deploys do not auto-create
-these resources from bindings alone, so the deploy workflow runs
-`bun tools/ci/production-resources.ts ensure` first.
+The checked-in `wrangler.jsonc` intentionally omits remote D1 (`database_id`,
+`preview_database_id`) and KV (`id`, `preview_id`) values so a fresh clone
+cannot accidentally deploy against another project’s Cloudflare account.
+
+If you forked from a project that still had remote IDs in `wrangler.jsonc`,
+remove `database_id`, `preview_database_id` on `APP_DB` and `id`, `preview_id`
+on `OAUTH_KV` before deploying so you do not target another account’s resources.
+Local dev (`bun run dev`) uses Wrangler’s local persistence and does **not**
+require you to provision D1 or KV in the Cloudflare dashboard first.
+
+Production and preview CI deploys **do** create or resolve the right D1/KV
+resources and inject real IDs into a generated Wrangler config at deploy time
+(`wrangler-production.generated.json` / `wrangler-preview.generated.json`).
+Cloudflare deploys do not auto-create those resources from bindings alone, so
+the deploy workflows run `bun tools/ci/production-resources.ts ensure` first.
+Preview deploys use per-preview Worker names and isolated D1/KV resources.
+
+### Migrating production data to a new D1/KV
+
+If you pointed production at another project’s IDs and need to move real data
+into databases owned by your account:
+
+1. **Create** the target D1 database and KV namespace (CI `ensure` on first
+   deploy, or run the same `production-resources` / `preview-resources` helpers
+   manually with `CLOUDFLARE_API_TOKEN`).
+2. **D1**: export from the old database (for example `wrangler d1 export`
+   against the old binding) and import into the new database
+   (`wrangler d1 execute`, or restore from a backup SQL dump). Re-run migrations
+   on the new database if needed so the schema matches.
+3. **KV (`OAUTH_KV`)**: mostly OAuth/session state; copying keys is possible but
+   brittle. Plan for users to sign in again after cutover unless you
+   deliberately migrate keys with a scripted copy.
 
 ## Optional Cloudflare offerings
 

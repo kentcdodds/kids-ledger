@@ -22,7 +22,6 @@ We have **three** distinct TypeScript environments, each with its own
   - `playwright.config.ts`
   - `wrangler-env.ts`
   - `cli.ts`
-  - `docs/post-download.ts`
   - `mcp/mcp-server-e2e.test.ts`
 - **Environment**: Node/Bun (scripts, configs, tests)
 

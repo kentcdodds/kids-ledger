@@ -11,6 +11,15 @@ Quick notes for getting a local kids-ledger environment running.
 
 - `bun install`
 
+## Wrangler template vs deploy
+
+The repo’s `wrangler.jsonc` lists bindings and `database_name` values but does
+not check in remote D1/KV IDs (so clones do not inherit another project’s
+resources). GitHub Actions deploys run `tools/ci/production-resources.ts` /
+`tools/ci/preview-resources.ts` to create or resolve resources and emit
+generated configs with real IDs. Local `bun run dev` does not require Cloudflare
+resource setup.
+
 ## Local development
 
 - Copy `.env.test` to `.env` before starting any work, then update secrets as

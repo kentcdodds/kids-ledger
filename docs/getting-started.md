@@ -30,10 +30,15 @@ The setup flow assumes:
 - Bun is installed (uses `bun`/`bunx`).
 - You run commands from the repo root (needs `wrangler.jsonc` and
   `package.json`).
-- You can write to files in the repository (the script updates config files and
-  replaces template `kids-ledger` tokens across text files).
-- Wrangler is optional for post-download setup. It is only needed when you
-  choose to create Cloudflare resources directly from the script.
+- You can edit files in the repository (for example renaming the app and
+  replacing template `kids-ledger` tokens across the project if you are
+  forking/customizing).
+- Wrangler is optional until you deploy or run remote Cloudflare commands. Local
+  startup does **not** require Cloudflare resource setup in the dashboard.
+
+The checked-in `wrangler.jsonc` does not bake in remote D1/KV IDs. CI deploys
+create or resolve production/preview resources and write real IDs into generated
+Wrangler configs at deploy time.
 
 See `docs/setup-manifest.md` for required resources and secrets.
 
@@ -42,20 +47,18 @@ For optional Cloudflare offerings (R2, Workers AI, AI Gateway, extra KV), see
 
 ## Preflight checks
 
-Run a quick validation of your environment and Wrangler login status:
+Optional: confirm Wrangler is available and authenticated (needed for deploy,
+not for local dev):
 
 ```
-bun ./docs/post-download.ts --check
+bunx wrangler --version
+bunx wrangler whoami
 ```
 
 ## Quick Start (local only)
 
-1. Run the guided setup script:
-
-```
-bun ./docs/post-download.ts --guided
-```
-
+1. Copy `.env.test` to `.env` and set secrets as needed (see
+   `docs/setup-manifest.md`).
 2. Start local development:
 
 ```
@@ -64,17 +67,11 @@ bun run dev
 
 ## Full Cloudflare setup (deploy)
 
-1. Run the guided setup script:
-
-```
-bun ./docs/post-download.ts --guided
-```
-
-This setup step does not create Cloudflare resources or rewrite `wrangler.jsonc`
-resource IDs. The production deploy workflow creates missing D1/KV resources
-automatically on first CI deploy. Cloudflare deploys do not auto-create those
-resources from bindings alone, so the workflow runs an explicit ensure step
-before migrations/deploy.
+1. Ensure `wrangler.jsonc` does not contain copied remote D1/KV IDs from another
+   project (see `docs/setup-manifest.md`). The production deploy workflow
+   creates missing D1/KV resources automatically on first CI deploy. Cloudflare
+   deploys do not auto-create those resources from bindings alone, so the
+   workflow runs an explicit ensure step before migrations/deploy.
 
 2. Configure GitHub Actions secrets for deploy:
 
@@ -89,32 +86,6 @@ before migrations/deploy.
 ```
 bun run deploy
 ```
-
-## Agent/CI setup
-
-Use non-interactive flags or `--defaults`. The `--defaults` flag skips prompts
-and uses defaults based on the current directory name (app/package naming), plus
-a generated cookie secret.
-
-```
-bun ./docs/post-download.ts --defaults
-```
-
-To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
-`--json`. To run preflight checks only, add `--check`.
-
-### Script flags
-
-- `--guided`: interactive, state-aware flow (optional git init/first commit
-  prompt).
-- `--check`: run preflight checks only.
-- `--defaults`: accept defaults without prompts.
-- `--dry-run`: show changes without writing or deleting the script.
-- `--json`: print a JSON summary.
-- `--app-name`
-
-Cloudflare resources are managed during deploy. The setup script does not create
-Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.
 
 ## Local development
 

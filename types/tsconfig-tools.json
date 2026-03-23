@@ -32,7 +32,6 @@
 		"../playwright.config.ts",
 		"../wrangler-env.ts",
 		"../cli.ts",
-		"../docs/post-download.ts",
 		"../mcp/mcp-server-e2e.test.ts",
 		"../server/hex.ts",
 		"../server/password-hash.ts",
