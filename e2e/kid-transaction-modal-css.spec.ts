@@ -140,3 +140,46 @@ test('kid transaction modal custom css applies only while open', async ({
 	)
 	expect(bodyBackgroundImageAfterClose).toBe(initialBodyBackgroundImage)
 })
+
+test('kid transaction modal scrolls focused notes into view on mobile', async ({
+	page,
+	login,
+}) => {
+	await page.setViewportSize({ width: 390, height: 420 })
+	await login()
+	const { accountName } = await createKidWithAccount(page)
+
+	await page.goto('/')
+	await page.getByRole('button', { name: new RegExp(accountName) }).click()
+	const transactionDialog = page.getByRole('dialog')
+	await expect(transactionDialog).toBeVisible()
+
+	const noteInput = transactionDialog.getByLabel('Note (optional)')
+	await noteInput.focus()
+
+	await expect
+		.poll(async () =>
+			transactionDialog.evaluate((element) => ({
+				clientHeight: element.clientHeight,
+				scrollHeight: element.scrollHeight,
+				scrollTop: element.scrollTop,
+			})),
+		)
+		.toMatchObject({
+			clientHeight: 420,
+			scrollTop: expect.any(Number),
+		})
+
+	const scrollMetrics = await transactionDialog.evaluate((element) => ({
+		clientHeight: element.clientHeight,
+		scrollHeight: element.scrollHeight,
+		scrollTop: element.scrollTop,
+	}))
+	expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight)
+	expect(scrollMetrics.scrollTop).toBeGreaterThan(0)
+
+	const noteInputBox = await noteInput.boundingBox()
+	expect(noteInputBox).not.toBeNull()
+	expect(noteInputBox!.y).toBeGreaterThanOrEqual(0)
+	expect(noteInputBox!.y + noteInputBox!.height).toBeLessThanOrEqual(420)
+})
