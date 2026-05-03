@@ -4,6 +4,12 @@ import path from 'node:path'
 
 type WranglerEnvName = 'preview' | 'production'
 
+type D1BindingReplacement = {
+	binding: string
+	databaseName: string
+	databaseId: string
+}
+
 export type D1DatabaseListEntry = {
 	uuid: string
 	name: string
@@ -307,6 +313,66 @@ export async function writeGeneratedWranglerConfig({
 		...kvEntry,
 		id: oauthKvId,
 		preview_id: oauthKvId,
+	}
+
+	const resolvedOut = path.resolve(outConfigPath)
+	await writeFile(
+		resolvedOut,
+		`${JSON.stringify(config, null, '\t')}\n`,
+		'utf8',
+	)
+	console.error(`Wrote generated Wrangler config: ${resolvedOut}`)
+	return resolvedOut
+}
+
+export async function writeGeneratedWranglerD1Config({
+	baseConfigPath,
+	outConfigPath,
+	envName,
+	d1Bindings,
+}: {
+	baseConfigPath: string
+	outConfigPath: string
+	envName: WranglerEnvName
+	d1Bindings: Array<D1BindingReplacement>
+}) {
+	const baseText = await readFile(baseConfigPath, 'utf8')
+	const config = parseJsonc<Record<string, unknown>>(baseText)
+
+	const env = config.env
+	if (!env || typeof env !== 'object') {
+		fail(`wrangler config "${baseConfigPath}" is missing "env".`)
+	}
+
+	const targetEnv = (env as Record<string, unknown>)[envName]
+	if (!targetEnv || typeof targetEnv !== 'object') {
+		fail(`wrangler config "${baseConfigPath}" is missing "env.${envName}".`)
+	}
+
+	const d1Databases = (targetEnv as Record<string, unknown>).d1_databases
+	if (!Array.isArray(d1Databases)) {
+		fail(
+			`wrangler config "${baseConfigPath}" is missing "env.${envName}.d1_databases".`,
+		)
+	}
+
+	for (const replacement of d1Bindings) {
+		const d1EntryIndex = d1Databases.findIndex((entry) => {
+			if (!entry || typeof entry !== 'object') return false
+			return (entry as Record<string, unknown>).binding === replacement.binding
+		})
+		if (d1EntryIndex < 0) {
+			fail(
+				`wrangler config "${baseConfigPath}" has no ${envName} D1 binding for "${replacement.binding}".`,
+			)
+		}
+
+		const d1Entry = d1Databases[d1EntryIndex] as Record<string, unknown>
+		d1Databases[d1EntryIndex] = {
+			...d1Entry,
+			database_name: replacement.databaseName,
+			database_id: replacement.databaseId,
+		}
 	}
 
 	const resolvedOut = path.resolve(outConfigPath)

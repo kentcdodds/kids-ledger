@@ -157,18 +157,15 @@ test('kid transaction modal scrolls focused notes into view on mobile', async ({
 	const noteInput = transactionDialog.getByLabel('Note (optional)')
 	await noteInput.focus()
 
+	const viewportHeight = page.viewportSize()?.height ?? 420
 	await expect
 		.poll(async () =>
 			transactionDialog.evaluate((element) => ({
-				clientHeight: element.clientHeight,
-				scrollHeight: element.scrollHeight,
-				scrollTop: element.scrollTop,
+				canScroll: element.scrollHeight > element.clientHeight,
+				hasScrolled: element.scrollTop > 0,
 			})),
 		)
-		.toMatchObject({
-			clientHeight: 420,
-			scrollTop: expect.any(Number),
-		})
+		.toEqual({ canScroll: true, hasScrolled: true })
 
 	const scrollMetrics = await transactionDialog.evaluate((element) => ({
 		clientHeight: element.clientHeight,
@@ -181,5 +178,7 @@ test('kid transaction modal scrolls focused notes into view on mobile', async ({
 	const noteInputBox = await noteInput.boundingBox()
 	expect(noteInputBox).not.toBeNull()
 	expect(noteInputBox!.y).toBeGreaterThanOrEqual(0)
-	expect(noteInputBox!.y + noteInputBox!.height).toBeLessThanOrEqual(420)
+	expect(noteInputBox!.y + noteInputBox!.height).toBeLessThanOrEqual(
+		viewportHeight,
+	)
 })
