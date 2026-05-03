@@ -239,20 +239,12 @@ export function parseJsonc<T>(source: string): T {
 	return JSON.parse(json) as T
 }
 
-export async function writeGeneratedWranglerConfig({
+async function readWranglerEnvConfig({
 	baseConfigPath,
-	outConfigPath,
 	envName,
-	d1DatabaseName,
-	d1DatabaseId,
-	oauthKvId,
 }: {
 	baseConfigPath: string
-	outConfigPath: string
 	envName: WranglerEnvName
-	d1DatabaseName: string
-	d1DatabaseId: string
-	oauthKvId: string
 }) {
 	const baseText = await readFile(baseConfigPath, 'utf8')
 	const config = parseJsonc<Record<string, unknown>>(baseText)
@@ -267,88 +259,20 @@ export async function writeGeneratedWranglerConfig({
 		fail(`wrangler config "${baseConfigPath}" is missing "env.${envName}".`)
 	}
 
-	const d1Databases = (targetEnv as Record<string, unknown>).d1_databases
-	if (!Array.isArray(d1Databases)) {
-		fail(
-			`wrangler config "${baseConfigPath}" is missing "env.${envName}.d1_databases".`,
-		)
-	}
-
-	const d1EntryIndex = d1Databases.findIndex((entry) => {
-		if (!entry || typeof entry !== 'object') return false
-		return (entry as Record<string, unknown>).binding === 'APP_DB'
-	})
-	if (d1EntryIndex < 0) {
-		fail(
-			`wrangler config "${baseConfigPath}" has no ${envName} D1 binding for "APP_DB".`,
-		)
-	}
-
-	const d1Entry = d1Databases[d1EntryIndex] as Record<string, unknown>
-	d1Databases[d1EntryIndex] = {
-		...d1Entry,
-		database_name: d1DatabaseName,
-		database_id: d1DatabaseId,
-	}
-
-	const kvNamespaces = (targetEnv as Record<string, unknown>).kv_namespaces
-	if (!Array.isArray(kvNamespaces)) {
-		fail(
-			`wrangler config "${baseConfigPath}" is missing "env.${envName}.kv_namespaces".`,
-		)
-	}
-
-	const kvEntryIndex = kvNamespaces.findIndex((entry) => {
-		if (!entry || typeof entry !== 'object') return false
-		return (entry as Record<string, unknown>).binding === 'OAUTH_KV'
-	})
-	if (kvEntryIndex < 0) {
-		fail(
-			`wrangler config "${baseConfigPath}" has no ${envName} KV binding for "OAUTH_KV".`,
-		)
-	}
-
-	const kvEntry = kvNamespaces[kvEntryIndex] as Record<string, unknown>
-	kvNamespaces[kvEntryIndex] = {
-		...kvEntry,
-		id: oauthKvId,
-		preview_id: oauthKvId,
-	}
-
-	const resolvedOut = path.resolve(outConfigPath)
-	await writeFile(
-		resolvedOut,
-		`${JSON.stringify(config, null, '\t')}\n`,
-		'utf8',
-	)
-	console.error(`Wrote generated Wrangler config: ${resolvedOut}`)
-	return resolvedOut
+	return { config, targetEnv: targetEnv as Record<string, unknown> }
 }
 
-export async function writeGeneratedWranglerD1Config({
+function replaceD1Bindings({
 	baseConfigPath,
-	outConfigPath,
 	envName,
+	targetEnv,
 	d1Bindings,
 }: {
 	baseConfigPath: string
-	outConfigPath: string
 	envName: WranglerEnvName
+	targetEnv: Record<string, unknown>
 	d1Bindings: Array<D1BindingReplacement>
 }) {
-	const baseText = await readFile(baseConfigPath, 'utf8')
-	const config = parseJsonc<Record<string, unknown>>(baseText)
-
-	const env = config.env
-	if (!env || typeof env !== 'object') {
-		fail(`wrangler config "${baseConfigPath}" is missing "env".`)
-	}
-
-	const targetEnv = (env as Record<string, unknown>)[envName]
-	if (!targetEnv || typeof targetEnv !== 'object') {
-		fail(`wrangler config "${baseConfigPath}" is missing "env.${envName}".`)
-	}
-
 	const d1Databases = (targetEnv as Record<string, unknown>).d1_databases
 	if (!Array.isArray(d1Databases)) {
 		fail(
@@ -374,7 +298,50 @@ export async function writeGeneratedWranglerD1Config({
 			database_id: replacement.databaseId,
 		}
 	}
+}
 
+function replaceKvBinding({
+	baseConfigPath,
+	envName,
+	targetEnv,
+	binding,
+	id,
+}: {
+	baseConfigPath: string
+	envName: WranglerEnvName
+	targetEnv: Record<string, unknown>
+	binding: string
+	id: string
+}) {
+	const kvNamespaces = targetEnv.kv_namespaces
+	if (!Array.isArray(kvNamespaces)) {
+		fail(
+			`wrangler config "${baseConfigPath}" is missing "env.${envName}.kv_namespaces".`,
+		)
+	}
+
+	const kvEntryIndex = kvNamespaces.findIndex((entry) => {
+		if (!entry || typeof entry !== 'object') return false
+		return (entry as Record<string, unknown>).binding === binding
+	})
+	if (kvEntryIndex < 0) {
+		fail(
+			`wrangler config "${baseConfigPath}" has no ${envName} KV binding for "${binding}".`,
+		)
+	}
+
+	const kvEntry = kvNamespaces[kvEntryIndex] as Record<string, unknown>
+	kvNamespaces[kvEntryIndex] = {
+		...kvEntry,
+		id,
+		preview_id: id,
+	}
+}
+
+async function writeWranglerConfig(
+	config: Record<string, unknown>,
+	outConfigPath: string,
+) {
 	const resolvedOut = path.resolve(outConfigPath)
 	await writeFile(
 		resolvedOut,
@@ -383,4 +350,64 @@ export async function writeGeneratedWranglerD1Config({
 	)
 	console.error(`Wrote generated Wrangler config: ${resolvedOut}`)
 	return resolvedOut
+}
+
+export async function writeGeneratedWranglerConfig({
+	baseConfigPath,
+	outConfigPath,
+	envName,
+	d1DatabaseName,
+	d1DatabaseId,
+	oauthKvId,
+}: {
+	baseConfigPath: string
+	outConfigPath: string
+	envName: WranglerEnvName
+	d1DatabaseName: string
+	d1DatabaseId: string
+	oauthKvId: string
+}) {
+	const { config, targetEnv } = await readWranglerEnvConfig({
+		baseConfigPath,
+		envName,
+	})
+	replaceD1Bindings({
+		baseConfigPath,
+		envName,
+		targetEnv,
+		d1Bindings: [
+			{
+				binding: 'APP_DB',
+				databaseName: d1DatabaseName,
+				databaseId: d1DatabaseId,
+			},
+		],
+	})
+	replaceKvBinding({
+		baseConfigPath,
+		envName,
+		targetEnv,
+		binding: 'OAUTH_KV',
+		id: oauthKvId,
+	})
+	return writeWranglerConfig(config, outConfigPath)
+}
+
+export async function writeGeneratedWranglerD1Config({
+	baseConfigPath,
+	outConfigPath,
+	envName,
+	d1Bindings,
+}: {
+	baseConfigPath: string
+	outConfigPath: string
+	envName: WranglerEnvName
+	d1Bindings: Array<D1BindingReplacement>
+}) {
+	const { config, targetEnv } = await readWranglerEnvConfig({
+		baseConfigPath,
+		envName,
+	})
+	replaceD1Bindings({ baseConfigPath, envName, targetEnv, d1Bindings })
+	return writeWranglerConfig(config, outConfigPath)
 }
