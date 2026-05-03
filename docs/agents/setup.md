@@ -100,6 +100,8 @@ each PR preview is isolated:
 
 - D1 database: `<preview-worker-name>-db`
 - KV namespace (OAuth state): `<preview-worker-name>-oauth-kv`
+- Mock Workers are deployed with generated preview Wrangler configs so their
+  `APP_DB` binding points at the same per-preview D1 database.
 
 After preview migrations complete, the workflow seeds the preview D1 database
 with a shared test login account:

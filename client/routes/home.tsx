@@ -19,6 +19,7 @@ import {
 	spacing,
 	transitions,
 	typography,
+	mq,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
@@ -348,6 +349,10 @@ export function HomeRoute(handle: Handle) {
 						animation: transactionModalClosing
 							? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
 							: 'modal-backdrop-in 180ms ease-out forwards',
+						[mq.mobile]: {
+							padding: 0,
+							placeItems: 'stretch',
+						},
 					}}
 				>
 					{transactionState.kid.transactionModalCss.trim() ? (
@@ -366,6 +371,8 @@ export function HomeRoute(handle: Handle) {
 						on={{ keydown: handleTransactionModalKeydown }}
 						css={{
 							width: 'min(30rem, 100%)',
+							maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
+							overflow: 'auto',
 							display: 'grid',
 							gap: spacing.md,
 							padding: spacing.lg,
@@ -377,6 +384,15 @@ export function HomeRoute(handle: Handle) {
 							animation: transactionModalClosing
 								? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
 								: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+							[mq.mobile]: {
+								width: '100%',
+								maxHeight: '100dvh',
+								minHeight: '100dvh',
+								borderRadius: 0,
+								border: 'none',
+								gap: spacing.sm,
+								padding: spacing.md,
+							},
 						}}
 					>
 						<header css={{ display: 'flex', justifyContent: 'space-between' }}>

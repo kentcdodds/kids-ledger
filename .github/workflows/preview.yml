@@ -156,6 +156,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+          D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
+          D1_DATABASE_ID: ${{ steps.resources.outputs.d1_database_id }}
         run: |
           set -euo pipefail
           MOCK_API_TOKEN="$(openssl rand -hex 32)"
@@ -178,10 +180,17 @@ jobs:
             service_key="$(echo "$service" | tr '[:lower:]-' '[:upper:]_')"
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             deploy_log="deploy-mock-${service}.log"
+            mock_config="$dir/wrangler-preview.generated.json"
 
-            bun tools/ci/sync-worker-secrets.ts --env "" --name "$mock_worker_name" --config "$dir/wrangler.jsonc" --set "MOCK_API_TOKEN=$MOCK_API_TOKEN"
+            bun tools/ci/write-preview-wrangler-config.ts \
+              --wrangler-config "$dir/wrangler.jsonc" \
+              --out-config "$mock_config" \
+              --d1-database-name "$D1_DATABASE_NAME" \
+              --d1-database-id "$D1_DATABASE_ID"
 
-            bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
+            bun tools/ci/sync-worker-secrets.ts --env "" --name "$mock_worker_name" --config "$mock_config" --set "MOCK_API_TOKEN=$MOCK_API_TOKEN"
+
+            bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$mock_config" 2>&1 | tee "$deploy_log"
 
             mock_url="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const worker = process.argv[2]; const escaped = worker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const workerUrlRegex = new RegExp(`https://(?:[a-zA-Z0-9-]+\\.)?${escaped}\\.[a-zA-Z0-9._-]+\\.workers\\.dev`, "g"); const matches = text.match(workerUrlRegex); process.stdout.write(matches?.at(-1) ?? "")' "$deploy_log" "$mock_worker_name")"
             if [ -z "$mock_url" ]; then
