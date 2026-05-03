@@ -180,7 +180,7 @@ jobs:
             service_key="$(echo "$service" | tr '[:lower:]-' '[:upper:]_')"
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             deploy_log="deploy-mock-${service}.log"
-            mock_config="wrangler-preview-mock-${service}.generated.json"
+            mock_config="$dir/wrangler-preview.generated.json"
 
             bun tools/ci/write-preview-wrangler-config.ts \
               --wrangler-config "$dir/wrangler.jsonc" \
