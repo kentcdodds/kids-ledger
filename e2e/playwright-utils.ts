@@ -17,12 +17,18 @@ type UserCredentials = {
 type CreateKidWithAccountOptions = {
 	kidName?: string
 	accountName?: string
+	accountApyPercent?: string
 	kidEmoji?: string
 }
 
 type CreateKidOptions = {
 	kidName?: string
 	kidEmoji?: string
+}
+
+type AddAccountOptions = {
+	accountName?: string
+	accountApyPercent?: string
 }
 
 async function postAuth(
@@ -71,7 +77,10 @@ export async function createKidWithAccount(
 ) {
 	await page.goto('/settings')
 	const { kidName, kidCard } = await createKid(page, options)
-	const accountName = await addAccountToKidCard(kidCard, options.accountName)
+	const accountName = await addAccountToKidCard(kidCard, {
+		accountName: options.accountName,
+		accountApyPercent: options.accountApyPercent,
+	})
 	return { kidName, accountName, kidCard }
 }
 
@@ -96,9 +105,18 @@ export async function createKid(page: Page, options: CreateKidOptions = {}) {
 
 export async function addAccountToKidCard(
 	kidCard: Locator,
-	accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`,
+	options: AddAccountOptions | string = {},
 ) {
+	const accountOptions =
+		typeof options === 'string' ? { accountName: options } : options
+	const accountName =
+		accountOptions.accountName ?? `Spending-${crypto.randomUUID().slice(0, 6)}`
 	await kidCard.getByPlaceholder('New account name').fill(accountName)
+	if (accountOptions.accountApyPercent !== undefined) {
+		await kidCard
+			.getByLabel('New account APY percent')
+			.fill(accountOptions.accountApyPercent)
+	}
 	await kidCard.getByRole('button', { name: 'Add account' }).click()
 	await expect(
 		kidCard.getByRole('textbox', { name: `${accountName} name` }),
