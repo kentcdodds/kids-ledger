@@ -38,6 +38,12 @@ import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
 import { handleModalKeydown } from '#client/dom-utils.ts'
+import {
+	formatApyLabel,
+	ledgerAccountTypeConfigs,
+	ledgerAccountTypes,
+	type LedgerAccountType,
+} from '#shared/ledger-interest.ts'
 
 const defaultKidEmojis = [
 	fallbackKidEmoji,
@@ -162,6 +168,7 @@ type SettingsState =
 				accounts: Array<{
 					id: number
 					name: string
+					accountType: LedgerAccountType
 					colorToken: string
 					sortOrder: number
 					kidId: number
@@ -178,6 +185,7 @@ export function SettingsRoute(handle: Handle) {
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
+	let newAccountTypesByKidId: Record<number, LedgerAccountType> = {}
 	let editingKidTransactionModalCss: {
 		kidId: number
 		kidName: string
@@ -257,13 +265,19 @@ export function SettingsRoute(handle: Handle) {
 
 	function updateLocalAccount(
 		accountId: number,
-		updates: { name?: string; colorToken?: string },
+		updates: {
+			name?: string
+			accountType?: LedgerAccountType
+			colorToken?: string
+		},
 	) {
 		if (state.status !== 'ready') return
 		for (const kid of state.kids) {
 			const account = kid.accounts.find((entry) => entry.id === accountId)
 			if (!account) continue
 			if (updates.name !== undefined) account.name = updates.name
+			if (updates.accountType !== undefined)
+				account.accountType = updates.accountType
 			if (updates.colorToken !== undefined)
 				account.colorToken = updates.colorToken
 			handle.update()
@@ -273,6 +287,10 @@ export function SettingsRoute(handle: Handle) {
 
 	function getCreateAccountColor(kidId: number) {
 		return newAccountColorsByKidId[kidId] ?? 'orchid'
+	}
+
+	function getCreateAccountType(kidId: number): LedgerAccountType {
+		return newAccountTypesByKidId[kidId] ?? 'spending'
 	}
 
 	function queueReorderFocus(options: {
@@ -777,7 +795,7 @@ export function SettingsRoute(handle: Handle) {
 												key={account.id}
 												css={{
 													display: 'grid',
-													gridTemplateColumns: 'auto 1fr auto auto',
+													gridTemplateColumns: 'auto 1fr auto auto auto',
 													rowGap: spacing.xs,
 													columnGap: spacing.sm,
 													alignItems: 'center',
@@ -852,21 +870,30 @@ export function SettingsRoute(handle: Handle) {
 																const colorSelect = document.querySelector(
 																	`select[data-account-color="${account.id}"]`,
 																) as HTMLSelectElement
+																const typeSelect = document.querySelector(
+																	`select[data-account-type="${account.id}"]`,
+																) as HTMLSelectElement
 																const colorToken =
 																	colorSelect?.value || account.colorToken
+																const accountType =
+																	(typeSelect?.value as LedgerAccountType) ||
+																	account.accountType
 																if (
 																	name === account.name &&
+																	accountType === account.accountType &&
 																	colorToken === account.colorToken
 																) {
 																	return
 																}
 																updateLocalAccount(account.id, {
 																	name,
+																	accountType,
 																	colorToken,
 																})
 																await updateAccount({
 																	accountId: account.id,
 																	name,
+																	accountType,
 																	colorToken,
 																})
 																await refreshSettings()
@@ -897,6 +924,58 @@ export function SettingsRoute(handle: Handle) {
 													</span>
 												</div>
 												<select
+													aria-label={`${account.name} type`}
+													data-account-type={account.id}
+													on={{
+														change: async (e) => {
+															const accountType = (
+																e.currentTarget as HTMLSelectElement
+															).value as LedgerAccountType
+															const nameInput = document.querySelector(
+																`input[data-account-name="${account.id}"]`,
+															) as HTMLInputElement
+															const colorSelect = document.querySelector(
+																`select[data-account-color="${account.id}"]`,
+															) as HTMLSelectElement
+															const name = nameInput?.value || account.name
+															const colorToken =
+																colorSelect?.value || account.colorToken
+															updateLocalAccount(account.id, {
+																name,
+																accountType,
+																colorToken,
+															})
+															await updateAccount({
+																accountId: account.id,
+																name,
+																accountType,
+																colorToken,
+															})
+															await refreshSettings()
+														},
+													}}
+													css={{
+														...inputCss,
+														backgroundColor: colors.surface,
+														color: colors.text,
+														colorScheme: 'light dark',
+														[mq.mobile]: {
+															gridColumn: '2 / 4',
+															gridRow: '3',
+														},
+													}}
+												>
+													{ledgerAccountTypes.map((accountType) => (
+														<option
+															key={accountType}
+															value={accountType}
+															selected={account.accountType === accountType}
+														>
+															{ledgerAccountTypeConfigs[accountType].label}
+														</option>
+													))}
+												</select>
+												<select
 													aria-label={`${account.name} color`}
 													data-account-color={account.id}
 													on={{
@@ -907,14 +986,22 @@ export function SettingsRoute(handle: Handle) {
 															const nameInput = document.querySelector(
 																`input[data-account-name="${account.id}"]`,
 															) as HTMLInputElement
+															const typeSelect = document.querySelector(
+																`select[data-account-type="${account.id}"]`,
+															) as HTMLSelectElement
 															const name = nameInput?.value || account.name
+															const accountType =
+																(typeSelect?.value as LedgerAccountType) ||
+																account.accountType
 															updateLocalAccount(account.id, {
 																name,
+																accountType,
 																colorToken,
 															})
 															await updateAccount({
 																accountId: account.id,
 																name,
+																accountType,
 																colorToken,
 															})
 															await refreshSettings()
@@ -968,7 +1055,7 @@ export function SettingsRoute(handle: Handle) {
 								<div
 									css={{
 										display: 'grid',
-										gridTemplateColumns: '1fr auto auto',
+										gridTemplateColumns: '1fr auto auto auto',
 										gap: spacing.sm,
 										padding: spacing.md,
 										border: `2px dashed ${colors.border}`,
@@ -986,6 +1073,31 @@ export function SettingsRoute(handle: Handle) {
 										placeholder="New account name"
 										css={inputCss}
 									/>
+									<select
+										aria-label="New account type"
+										data-create-account-type={kid.id}
+										value={getCreateAccountType(kid.id)}
+										on={{
+											change: (event) => {
+												if (!(event.currentTarget instanceof HTMLSelectElement))
+													return
+												newAccountTypesByKidId[kid.id] = event.currentTarget
+													.value as LedgerAccountType
+												handle.update()
+											},
+										}}
+										css={inputCss}
+									>
+										{ledgerAccountTypes.map((accountType) => (
+											<option key={accountType} value={accountType}>
+												{ledgerAccountTypeConfigs[accountType].label} (
+												{formatApyLabel(
+													ledgerAccountTypeConfigs[accountType].apyBasisPoints,
+												)}
+												)
+											</option>
+										))}
+									</select>
 									<select
 										data-create-account-color={kid.id}
 										value={getCreateAccountColor(kid.id)}
@@ -1016,9 +1128,13 @@ export function SettingsRoute(handle: Handle) {
 												const colorSelect = document.querySelector(
 													`select[data-create-account-color="${kid.id}"]`,
 												)
+												const typeSelect = document.querySelector(
+													`select[data-create-account-type="${kid.id}"]`,
+												)
 												if (
 													!(nameInput instanceof HTMLInputElement) ||
-													!(colorSelect instanceof HTMLSelectElement)
+													!(colorSelect instanceof HTMLSelectElement) ||
+													!(typeSelect instanceof HTMLSelectElement)
 												) {
 													return
 												}
@@ -1027,6 +1143,7 @@ export function SettingsRoute(handle: Handle) {
 												await createAccount({
 													kidId: kid.id,
 													name: accountName,
+													accountType: typeSelect.value as LedgerAccountType,
 													colorToken: getCreateAccountColor(kid.id),
 												})
 												nameInput.value = ''

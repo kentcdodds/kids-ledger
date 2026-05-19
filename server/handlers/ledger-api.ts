@@ -40,12 +40,14 @@ const kidIdSchema = object({
 const createAccountSchema = object({
 	kidId: number(),
 	name: string(),
+	accountType: optional(string()),
 	colorToken: string(),
 })
 
 const updateAccountSchema = object({
 	accountId: number(),
 	name: string(),
+	accountType: optional(string()),
 	colorToken: string(),
 })
 

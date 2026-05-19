@@ -1,6 +1,7 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider'
 import { MCP } from '#mcp/index.ts'
 import { handleRequest } from '#server/handler.ts'
+import { runMonthlyInterest } from '#server/ledger/monthly-interest.ts'
 import {
 	apiHandler,
 	handleAuthorizeRequest,
@@ -131,5 +132,10 @@ const oauthProvider = new OAuthProvider({
 export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		return oauthProvider.fetch(request, env, ctx)
+	},
+	async scheduled(controller: ScheduledController, env: Env) {
+		await runMonthlyInterest(env.APP_DB, {
+			runAt: new Date(controller.scheduledTime),
+		})
 	},
 } satisfies ExportedHandler<Env>

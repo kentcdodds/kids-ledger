@@ -8,6 +8,10 @@ import {
 	transactionModalCssCreateFieldDescription,
 	transactionModalCssUpdateFieldDescription,
 } from '#shared/transaction-modal-css.ts'
+import {
+	ledgerAccountTypes,
+	type LedgerAccountType,
+} from '#shared/ledger-interest.ts'
 
 export async function registerLedgerTools(agent: MCP) {
 	agent.server.registerTool(
@@ -151,20 +155,28 @@ export async function registerLedgerTools(agent: MCP) {
 			inputSchema: {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
+				accountType: z.enum(ledgerAccountTypes).optional(),
 				colorToken: z.string().min(1).default('orchid'),
 			},
 		},
 		async ({
 			kidId,
 			name,
+			accountType,
 			colorToken,
 		}: {
 			kidId: number
 			name: string
+			accountType?: LedgerAccountType
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			const created = await service.createAccount({ kidId, name, colorToken })
+			const created = await service.createAccount({
+				kidId,
+				name,
+				accountType,
+				colorToken,
+			})
 			return {
 				...successContent('Account created', `Created account ${created.id}.`),
 				structuredContent: created,
@@ -180,20 +192,23 @@ export async function registerLedgerTools(agent: MCP) {
 			inputSchema: {
 				accountId: z.number().int().positive(),
 				name: z.string().min(1),
+				accountType: z.enum(ledgerAccountTypes).optional(),
 				colorToken: z.string().min(1),
 			},
 		},
 		async ({
 			accountId,
 			name,
+			accountType,
 			colorToken,
 		}: {
 			accountId: number
 			name: string
+			accountType?: LedgerAccountType
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			await service.updateAccount({ accountId, name, colorToken })
+			await service.updateAccount({ accountId, name, accountType, colorToken })
 			return successContent('Account updated', `Updated account ${accountId}.`)
 		},
 	)

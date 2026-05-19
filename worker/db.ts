@@ -77,6 +77,7 @@ export const accountsTable = createTable({
 		id: number(),
 		kid_id: number(),
 		name: string(),
+		account_type: string(),
 		color_token: string(),
 		sort_order: number(),
 		is_archived: number(),
@@ -96,7 +97,25 @@ export const transactionsTable = createTable({
 		account_id: number(),
 		amount_cents: number(),
 		note: string(),
+		source_type: string(),
+		source_period: string(),
 		created_at: string(),
+	},
+	primaryKey: 'id',
+})
+
+export const interestAccrualsTable = createTable({
+	name: 'interest_accruals',
+	columns: {
+		id: number(),
+		account_id: number(),
+		period: string(),
+		balance_cents: number(),
+		apy_basis_points: number(),
+		amount_cents: number(),
+		transaction_id: number(),
+		created_at: string(),
+		updated_at: string(),
 	},
 	primaryKey: 'id',
 })
