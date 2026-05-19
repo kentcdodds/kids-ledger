@@ -322,12 +322,28 @@ export function SettingsRoute(handle: Handle) {
 		) {
 			return
 		}
+		const previous = {
+			name: account.name,
+			apyBasisPoints: account.apyBasisPoints,
+			colorToken: account.colorToken,
+		}
+		let saveError: string | null = null
 		updateLocalAccount(account.id, draft)
-		await updateAccount({
-			accountId: account.id,
-			...draft,
-		})
-		await refreshSettings()
+		try {
+			await updateAccount({
+				accountId: account.id,
+				...draft,
+			})
+		} catch (error) {
+			updateLocalAccount(account.id, previous)
+			saveError =
+				error instanceof Error ? error.message : 'Could not save account.'
+		} finally {
+			await refreshSettings()
+		}
+		if (saveError) {
+			notify(saveError)
+		}
 	}
 
 	function queueReorderFocus(options: {

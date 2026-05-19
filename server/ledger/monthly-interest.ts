@@ -6,8 +6,6 @@ import {
 	monthlyInterestTransactionNote,
 } from '#shared/ledger-interest.ts'
 
-export const monthlyInterestCron = '0 0 1 * *'
-
 type QueryRow = Record<string, unknown>
 
 type EligibleAccount = {
@@ -42,7 +40,7 @@ export async function runMonthlyInterest(
 	const runAt = input.runAt ?? new Date()
 	const period = input.period ?? getMonthlyInterestPeriod(runAt)
 	const createdAt = getMonthlyInterestPeriodStart(period)
-	const accounts = await listEligibleAccounts(db)
+	const accounts = await listEligibleAccounts(db, createdAt)
 	const result: MonthlyInterestRunResult = {
 		period,
 		checkedAccounts: accounts.length,
@@ -99,7 +97,7 @@ export async function runMonthlyInterest(
 	return result
 }
 
-async function listEligibleAccounts(db: D1Database) {
+async function listEligibleAccounts(db: D1Database, periodStart: string) {
 	const rows = await all(
 		db,
 		`SELECT
@@ -110,11 +108,14 @@ async function listEligibleAccounts(db: D1Database) {
 			COALESCE(SUM(t.amount_cents), 0) AS balance_cents
 		 FROM accounts a
 		 INNER JOIN kids k ON k.id = a.kid_id
-		 LEFT JOIN transactions t ON t.account_id = a.id
+		 LEFT JOIN transactions t
+		 ON t.account_id = a.id
+		 AND t.created_at < ?
 		 WHERE a.is_archived = 0
 		 AND k.is_archived = 0
 		 GROUP BY a.id, a.kid_id, a.apy_basis_points, k.household_id
 		 ORDER BY a.id ASC`,
+		[periodStart],
 	)
 	return rows.map((row) => {
 		return {

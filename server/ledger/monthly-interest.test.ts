@@ -3,9 +3,11 @@ import { Database } from 'bun:sqlite'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createLedgerService } from './ledger-service.ts'
 import { runMonthlyInterest } from './monthly-interest.ts'
 import {
 	calculateMonthlyInterestCents,
+	getMonthlyInterestPeriodStart,
 	monthlyInterestSourceType,
 	monthlyInterestTransactionNote,
 } from '#shared/ledger-interest.ts'
@@ -119,7 +121,7 @@ function createLedgerFixture(sqlite: Database) {
 		)
 		.run(householdId, 'Avery', ':)', 0)
 	const kidId = Number(sqlite.query('SELECT id FROM kids').get().id)
-	return { householdId, kidId }
+	return { householdId, kidId, userId }
 }
 
 function createAccount(
@@ -129,6 +131,7 @@ function createAccount(
 		name: string
 		apyBasisPoints?: number
 		balanceCents: number
+		createdAt?: string
 	},
 ) {
 	sqlite
@@ -143,12 +146,18 @@ function createAccount(
 	if (input.balanceCents !== 0) {
 		sqlite
 			.query(
-				`INSERT INTO transactions (household_id, kid_id, account_id, amount_cents, note)
-				 SELECT k.household_id, k.id, ?, ?, ?
+				`INSERT INTO transactions (household_id, kid_id, account_id, amount_cents, note, created_at)
+				 SELECT k.household_id, k.id, ?, ?, ?, ?
 				 FROM kids k
 				 WHERE k.id = ?`,
 			)
-			.run(accountId, input.balanceCents, 'Initial balance', input.kidId)
+			.run(
+				accountId,
+				input.balanceCents,
+				'Initial balance',
+				input.createdAt ?? '2026-04-30 23:59:59',
+				input.kidId,
+			)
 	}
 	return accountId
 }
@@ -177,6 +186,16 @@ test('monthly interest calculation uses APY monthly compounding rates', () => {
 			apyBasisPoints: 2_400,
 		}),
 	).toBe(54)
+})
+
+test('monthly interest period start rejects invalid month values', () => {
+	expect(() => getMonthlyInterestPeriodStart('2026-00')).toThrow(
+		'Interest period month must be between 01 and 12.',
+	)
+	expect(() => getMonthlyInterestPeriodStart('2026-13')).toThrow(
+		'Interest period month must be between 01 and 12.',
+	)
+	expect(getMonthlyInterestPeriodStart('2026-12')).toBe('2026-12-01 00:00:00')
 })
 
 test('monthly interest creates auditable ledger transactions using per-account APY rates', async () => {
@@ -264,6 +283,76 @@ test('monthly interest is idempotent per account and period', async () => {
 			)
 			.get(accountId, '2026-05'),
 	).toEqual({ count: 1 })
+})
+
+test('monthly interest uses the period-start balance snapshot', async () => {
+	using database = await createTestDatabase()
+	const { kidId } = createLedgerFixture(database.sqlite)
+	const accountId = createAccount(database.sqlite, {
+		kidId,
+		name: 'Custom Rate',
+		apyBasisPoints: 1_200,
+		balanceCents: 3_000,
+	})
+	database.sqlite
+		.query(
+			`INSERT INTO transactions (household_id, kid_id, account_id, amount_cents, note, created_at)
+			 SELECT k.household_id, k.id, ?, ?, ?, ?
+			 FROM kids k
+			 WHERE k.id = ?`,
+		)
+		.run(accountId, 10_000, 'After period start', '2026-05-01 00:00:00', kidId)
+
+	await runMonthlyInterest(database.db, { period: '2026-05' })
+
+	expect(listInterestTransactions(database.sqlite)).toEqual([
+		{
+			account_id: accountId,
+			amount_cents: 28,
+			note: monthlyInterestTransactionNote,
+			source_type: monthlyInterestSourceType,
+			source_period: '2026-05',
+			created_at: '2026-05-01 00:00:00',
+		},
+	])
+	expect(
+		database.sqlite
+			.query(
+				`SELECT balance_cents
+				 FROM interest_accruals
+				 WHERE account_id = ? AND period = ?`,
+			)
+			.get(accountId, '2026-05'),
+	).toEqual({ balance_cents: 3_000 })
+})
+
+test('ledger service rejects invalid APY basis points', async () => {
+	using database = await createTestDatabase()
+	const { kidId, userId } = createLedgerFixture(database.sqlite)
+	const service = createLedgerService(database.db, userId)
+	const accountId = createAccount(database.sqlite, {
+		kidId,
+		name: 'Custom Rate',
+		apyBasisPoints: 1_200,
+		balanceCents: 3_000,
+	})
+
+	await expect(
+		service.createAccount({
+			kidId,
+			name: 'Bad APY',
+			apyBasisPoints: -1,
+			colorToken: 'orchid',
+		}),
+	).rejects.toThrow('apyBasisPoints must be between 0 and 100000.')
+	await expect(
+		service.updateAccount({
+			accountId,
+			name: 'Too High APY',
+			apyBasisPoints: 100_001,
+			colorToken: 'orchid',
+		}),
+	).rejects.toThrow('apyBasisPoints must be between 0 and 100000.')
 })
 
 test('monthly interest records zero accruals so later reruns do not pay after the start-of-month snapshot', async () => {

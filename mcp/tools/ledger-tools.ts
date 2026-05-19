@@ -147,7 +147,8 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_create_account',
 		{
 			title: 'Create Account',
-			description: 'Create an account under a kid with an optional APY rate.',
+			description:
+				'Create an account under a kid with optional apyBasisPoints (for example, 500 = 5% APY).',
 			inputSchema: {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
@@ -184,7 +185,8 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_update_account',
 		{
 			title: 'Update Account',
-			description: 'Update an account name, APY rate, or color.',
+			description:
+				'Update an account name, apyBasisPoints (for example, 500 = 5% APY), or color.',
 			inputSchema: {
 				accountId: z.number().int().positive(),
 				name: z.string().min(1),

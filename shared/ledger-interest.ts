@@ -39,8 +39,14 @@ export function getMonthlyInterestPeriod(date: Date) {
 }
 
 export function getMonthlyInterestPeriodStart(period: string) {
-	if (!/^\d{4}-\d{2}$/.test(period)) {
+	const match = /^(\d{4})-(\d{2})$/.exec(period)
+	if (!match) {
 		throw new Error('Interest period must use YYYY-MM format.')
 	}
-	return `${period}-01 00:00:00`
+	const [, year, month] = match
+	const numericMonth = Number(month)
+	if (numericMonth < 1 || numericMonth > 12) {
+		throw new Error('Interest period month must be between 01 and 12.')
+	}
+	return `${year}-${month}-01 00:00:00`
 }

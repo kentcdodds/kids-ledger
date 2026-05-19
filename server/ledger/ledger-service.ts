@@ -238,7 +238,7 @@ export class LedgerService {
 			'kid_id',
 			kid.id,
 		)
-		const apyBasisPoints = normalizeApyBasisPoints(input.apyBasisPoints) ?? 0
+		const apyBasisPoints = getValidApyBasisPoints(input.apyBasisPoints, 0)
 		const inserted = await this.#run(
 			`INSERT INTO accounts (kid_id, name, apy_basis_points, color_token, sort_order)
 			 VALUES (?, ?, ?, ?, ?)`,
@@ -262,8 +262,10 @@ export class LedgerService {
 		colorToken: string
 	}) {
 		const account = await this.#requireAccount(input.accountId)
-		const apyBasisPoints =
-			normalizeApyBasisPoints(input.apyBasisPoints) ?? account.apyBasisPoints
+		const apyBasisPoints = getValidApyBasisPoints(
+			input.apyBasisPoints,
+			account.apyBasisPoints,
+		)
 		await this.#run(
 			`UPDATE accounts
 			 SET name = ?, apy_basis_points = ?, color_token = ?, updated_at = CURRENT_TIMESTAMP
@@ -1046,6 +1048,15 @@ function getString(value: unknown) {
 
 function getBoolean(value: unknown) {
 	return getNumber(value) === 1
+}
+
+function getValidApyBasisPoints(value: number | undefined, fallback: number) {
+	if (value === undefined) return fallback
+	const normalized = normalizeApyBasisPoints(value)
+	if (normalized === null) {
+		throw new Error('apyBasisPoints must be between 0 and 100000.')
+	}
+	return normalized
 }
 
 function encodeTransactionCursor(cursor: { createdAt: string; id: number }) {
