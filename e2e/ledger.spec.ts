@@ -51,3 +51,27 @@ test('transaction modal includes a current total quick amount', async ({
 	await currentTotalButton.click()
 	await expect(modal.getByLabel('Amount')).toHaveValue('4.25')
 })
+
+test('home shows monthly interest preview for accounts with APY', async ({
+	page,
+	login,
+}) => {
+	await login()
+	const accountName = `Savings-${crypto.randomUUID().slice(0, 6)}`
+	await createKidWithAccount(page, {
+		accountName,
+		accountApyPercent: '12',
+	})
+
+	await page.goto('/')
+	const accountButton = page.getByRole('button', {
+		name: new RegExp(accountName),
+	})
+	await accountButton.click()
+	await page.getByLabel('Amount').fill('30.00')
+	await page.getByRole('button', { name: 'Add' }).last().click()
+
+	await expect(accountButton).toContainText('12% APY')
+	await expect(accountButton).toContainText('estimated payout $0.28')
+	await expect(accountButton).toContainText(/on [A-Z][a-z]{2} \d{1,2}/)
+})

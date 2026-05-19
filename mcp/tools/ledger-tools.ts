@@ -147,24 +147,33 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_create_account',
 		{
 			title: 'Create Account',
-			description: 'Create an account under a kid.',
+			description:
+				'Create an account under a kid with optional apyBasisPoints (for example, 500 = 5% APY).',
 			inputSchema: {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
+				apyBasisPoints: z.number().int().nonnegative().optional(),
 				colorToken: z.string().min(1).default('orchid'),
 			},
 		},
 		async ({
 			kidId,
 			name,
+			apyBasisPoints,
 			colorToken,
 		}: {
 			kidId: number
 			name: string
+			apyBasisPoints?: number
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			const created = await service.createAccount({ kidId, name, colorToken })
+			const created = await service.createAccount({
+				kidId,
+				name,
+				apyBasisPoints,
+				colorToken,
+			})
 			return {
 				...successContent('Account created', `Created account ${created.id}.`),
 				structuredContent: created,
@@ -176,24 +185,33 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_update_account',
 		{
 			title: 'Update Account',
-			description: 'Update an account name or color.',
+			description:
+				'Update an account name, apyBasisPoints (for example, 500 = 5% APY), or color.',
 			inputSchema: {
 				accountId: z.number().int().positive(),
 				name: z.string().min(1),
+				apyBasisPoints: z.number().int().nonnegative().optional(),
 				colorToken: z.string().min(1),
 			},
 		},
 		async ({
 			accountId,
 			name,
+			apyBasisPoints,
 			colorToken,
 		}: {
 			accountId: number
 			name: string
+			apyBasisPoints?: number
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			await service.updateAccount({ accountId, name, colorToken })
+			await service.updateAccount({
+				accountId,
+				name,
+				apyBasisPoints,
+				colorToken,
+			})
 			return successContent('Account updated', `Updated account ${accountId}.`)
 		},
 	)

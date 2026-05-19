@@ -12,8 +12,12 @@ Current schema is defined by migrations in `migrations/`:
 - `password_resets`: hashed reset tokens with expiry and foreign key to users
 - `households`: one household per authenticated parent user
 - `kids`: child profiles scoped to a household (`sort_order`, archive flags)
-- `accounts`: child account buckets (`color_token`, `sort_order`, archive flags)
-- `transactions`: append-only money movements (signed `amount_cents`)
+- `accounts`: child account buckets (`apy_basis_points`, `color_token`,
+  `sort_order`, archive flags)
+- `transactions`: append-only money movements (signed `amount_cents`) with
+  source fields for system-generated entries such as monthly interest
+- `interest_accruals`: one monthly interest snapshot per account/period for
+  idempotency and audit metadata
 - `quick_amount_presets`: ordered household quick-amount values (in cents)
 
 App access pattern:
@@ -39,6 +43,26 @@ SQL (`D1Database.prepare`) for ledger workflows. The ledger domain depends on
 custom joins, aggregates, and shape-specific read models that are easier to
 express and tune with hand-written SQL while keeping all ledger persistence
 logic centralized in one service.
+
+## Monthly account interest
+
+The Worker cron trigger runs at `0 0 1 * *` (UTC) and calls
+`server/ledger/monthly-interest.ts`. Interest is configured per account with the
+`accounts.apy_basis_points` column. New accounts default to `0` basis points, so
+no interest is paid until a parent sets an account-specific APY. The monthly
+payout uses APY compounding:
+
+```txt
+monthlyInterest = balance * ((1 + APY) ** (1 / 12) - 1)
+```
+
+At the start of each month, the job snapshots each active account's current
+ledger balance before interest, records an `interest_accruals` row for that
+account and `YYYY-MM` period, and creates a normal `transactions` row with note
+`Monthly interest` when the rounded interest amount is positive. The unique
+accrual `(account_id, period)` makes reruns idempotent and also freezes zero
+interest snapshots so a later rerun in the same month does not pay based on
+post-snapshot deposits.
 
 ## KV (`OAUTH_KV`)
 

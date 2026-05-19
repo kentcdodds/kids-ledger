@@ -24,6 +24,10 @@ import {
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 import { handleModalKeydown } from '#client/dom-utils.ts'
+import {
+	calculateMonthlyInterestCents,
+	formatApyLabel,
+} from '#shared/ledger-interest.ts'
 
 type TransactionState = {
 	kid: KidSummary
@@ -36,6 +40,29 @@ type TransactionState = {
 }
 
 const modalCloseAnimationDurationMs = 220
+
+function getNextMonthlyInterestPayoutDate(from = new Date()) {
+	return new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1))
+}
+
+function formatPayoutDate(date: Date) {
+	return new Intl.DateTimeFormat('en-US', {
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC',
+	}).format(date)
+}
+
+function getInterestPreviewText(account: KidAccount) {
+	if (account.apyBasisPoints <= 0) return null
+	const nextPayoutCents = calculateMonthlyInterestCents({
+		balanceCents: account.balanceCents,
+		apyBasisPoints: account.apyBasisPoints,
+	})
+	return `${formatApyLabel(account.apyBasisPoints)} · estimated payout ${formatCents(
+		nextPayoutCents,
+	)} on ${formatPayoutDate(getNextMonthlyInterestPayoutDate())}`
+}
 
 export function HomeRoute(handle: Handle) {
 	let status: 'loading' | 'ready' | 'error' = 'loading'
@@ -273,57 +300,73 @@ export function HomeRoute(handle: Handle) {
 								No accounts yet. <a href="/settings">Add one in settings.</a>
 							</p>
 						) : null}
-						{kid.accounts.map((account) => (
-							<button
-								key={account.id}
-								type="button"
-								on={{
-									click: (event) => {
-										if (!(event.currentTarget instanceof HTMLButtonElement))
-											return
-										openTransactionModal(kid, account, event.currentTarget)
-									},
-								}}
-								css={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'center',
-									gap: spacing.sm,
-									padding: spacing.md,
-									borderRadius: radius.lg,
-									border: 'none',
-									background: getAccountGradientBackground(account.colorToken),
-									color: '#ffffff',
-									cursor: 'pointer',
-									boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
-									transition: `all ${transitions.fast}`,
-									'&:hover': { filter: 'brightness(1.1)' },
-									'&:active': {
-										transform: 'translateY(4px)',
-										boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
-									},
-								}}
-							>
-								<span
+						{kid.accounts.map((account) => {
+							const interestPreviewText = getInterestPreviewText(account)
+							return (
+								<button
+									key={account.id}
+									type="button"
+									on={{
+										click: (event) => {
+											if (!(event.currentTarget instanceof HTMLButtonElement))
+												return
+											openTransactionModal(kid, account, event.currentTarget)
+										},
+									}}
 									css={{
-										display: 'grid',
-										gap: 2,
-										textAlign: 'left',
-										fontWeight: typography.fontWeight.semibold,
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										gap: spacing.sm,
+										padding: spacing.md,
+										borderRadius: radius.lg,
+										border: 'none',
+										background: getAccountGradientBackground(
+											account.colorToken,
+										),
+										color: '#ffffff',
+										cursor: 'pointer',
+										boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
+										transition: `all ${transitions.fast}`,
+										'&:hover': { filter: 'brightness(1.1)' },
+										'&:active': {
+											transform: 'translateY(4px)',
+											boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
+										},
 									}}
 								>
-									{account.name}
 									<span
-										css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}
+										css={{
+											display: 'grid',
+											gap: 2,
+											textAlign: 'left',
+											fontWeight: typography.fontWeight.semibold,
+										}}
 									>
-										Tap to add or remove money
+										{account.name}
+										<span
+											css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}
+										>
+											Tap to add or remove money
+										</span>
+										{interestPreviewText ? (
+											<span
+												css={{
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.normal,
+													opacity: 0.9,
+												}}
+											>
+												{interestPreviewText}
+											</span>
+										) : null}
 									</span>
-								</span>
-								<strong css={{ fontSize: typography.fontSize.lg }}>
-									{formatCents(account.balanceCents)}
-								</strong>
-							</button>
-						))}
+									<strong css={{ fontSize: typography.fontSize.lg }}>
+										{formatCents(account.balanceCents)}
+									</strong>
+								</button>
+							)
+						})}
 					</div>
 				</article>
 			))}

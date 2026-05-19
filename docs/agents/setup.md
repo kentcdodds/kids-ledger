@@ -93,6 +93,17 @@ After `bun run dev` is running and you are logged in:
 - `/history` should show recent-first transactions and URL-synced filters.
 - `/ledger/export/json` should download a JSON backup while authenticated.
 
+## Monthly interest checks
+
+- Monthly interest is paid by the Worker scheduled handler configured with cron
+  `0 0 1 * *` (UTC).
+- Account APY is stored per account in basis points and defaults to zero for new
+  accounts.
+- The implementation lives in `server/ledger/monthly-interest.ts`; fast coverage
+  is available with `bun test ./server/ledger/monthly-interest.test.ts`.
+- Interest reruns are expected to be idempotent for an account and `YYYY-MM`
+  period because `interest_accruals` stores the start-of-month balance snapshot.
+
 ## PR preview deployments
 
 The GitHub Actions preview workflow creates per-preview Cloudflare resources so

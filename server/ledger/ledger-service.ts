@@ -1,4 +1,5 @@
 import { invariant } from '@epic-web/invariant'
+import { normalizeApyBasisPoints } from '#shared/ledger-interest.ts'
 
 const defaultQuickAmounts = [25, 50, 100, 500, 1000, 2000] as const
 const maxTransactionsPageSize = 50
@@ -7,6 +8,7 @@ export type LedgerAccount = {
 	id: number
 	kidId: number
 	name: string
+	apyBasisPoints: number
 	colorToken: string
 	sortOrder: number
 	isArchived: boolean
@@ -91,7 +93,7 @@ export class LedgerService {
 			[household.id],
 		)
 		const accounts = await this.#all(
-			`SELECT a.id, a.name, a.color_token, a.sort_order, a.kid_id, k.name AS kid_name
+			`SELECT a.id, a.name, a.apy_basis_points, a.color_token, a.sort_order, a.kid_id, k.name AS kid_name
 			 FROM accounts a
 			 INNER JOIN kids k ON k.id = a.kid_id
 			 WHERE k.household_id = ? AND a.is_archived = 1
@@ -108,6 +110,7 @@ export class LedgerService {
 			accounts: accounts.map((account) => ({
 				id: getNumber(account.id),
 				name: getString(account.name),
+				apyBasisPoints: getNumber(account.apy_basis_points),
 				colorToken: getString(account.color_token),
 				sortOrder: getNumber(account.sort_order),
 				kidId: getNumber(account.kid_id),
@@ -226,6 +229,7 @@ export class LedgerService {
 	async createAccount(input: {
 		kidId: number
 		name: string
+		apyBasisPoints?: number
 		colorToken: string
 	}) {
 		const kid = await this.#requireKid(input.kidId)
@@ -234,10 +238,17 @@ export class LedgerService {
 			'kid_id',
 			kid.id,
 		)
+		const apyBasisPoints = getValidApyBasisPoints(input.apyBasisPoints, 0)
 		const inserted = await this.#run(
-			`INSERT INTO accounts (kid_id, name, color_token, sort_order)
-			 VALUES (?, ?, ?, ?)`,
-			[kid.id, input.name.trim(), input.colorToken.trim(), nextSortOrder],
+			`INSERT INTO accounts (kid_id, name, apy_basis_points, color_token, sort_order)
+			 VALUES (?, ?, ?, ?, ?)`,
+			[
+				kid.id,
+				input.name.trim(),
+				apyBasisPoints,
+				input.colorToken.trim(),
+				nextSortOrder,
+			],
 		)
 		const accountId = inserted.meta?.last_row_id
 		invariant(typeof accountId === 'number', 'Could not create account.')
@@ -247,14 +258,19 @@ export class LedgerService {
 	async updateAccount(input: {
 		accountId: number
 		name: string
+		apyBasisPoints?: number
 		colorToken: string
 	}) {
 		const account = await this.#requireAccount(input.accountId)
+		const apyBasisPoints = getValidApyBasisPoints(
+			input.apyBasisPoints,
+			account.apyBasisPoints,
+		)
 		await this.#run(
 			`UPDATE accounts
-			 SET name = ?, color_token = ?, updated_at = CURRENT_TIMESTAMP
+			 SET name = ?, apy_basis_points = ?, color_token = ?, updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
-			[input.name.trim(), input.colorToken.trim(), account.id],
+			[input.name.trim(), apyBasisPoints, input.colorToken.trim(), account.id],
 		)
 	}
 
@@ -690,7 +706,7 @@ export class LedgerService {
 			[household.id],
 		)
 		const accounts = await this.#all(
-			`SELECT a.id, a.kid_id, a.name, a.color_token, a.sort_order, a.is_archived, a.archived_at, a.created_at, a.updated_at
+			`SELECT a.id, a.kid_id, a.name, a.apy_basis_points, a.color_token, a.sort_order, a.is_archived, a.archived_at, a.created_at, a.updated_at
 			 FROM accounts a
 			 INNER JOIN kids k ON k.id = a.kid_id
 			 WHERE k.household_id = ?
@@ -698,16 +714,25 @@ export class LedgerService {
 			[household.id],
 		)
 		const transactions = await this.#all(
-			`SELECT id, household_id, kid_id, account_id, amount_cents, note, created_at
+			`SELECT id, household_id, kid_id, account_id, amount_cents, note, source_type, source_period, created_at
 			 FROM transactions
 			 WHERE household_id = ?
 			 ORDER BY created_at DESC, id DESC`,
 			[household.id],
 		)
+		const interestAccruals = await this.#all(
+			`SELECT ia.id, ia.account_id, ia.period, ia.balance_cents, ia.apy_basis_points, ia.amount_cents, ia.transaction_id, ia.created_at, ia.updated_at
+			 FROM interest_accruals ia
+			 INNER JOIN accounts a ON a.id = ia.account_id
+			 INNER JOIN kids k ON k.id = a.kid_id
+			 WHERE k.household_id = ?
+			 ORDER BY ia.period DESC, ia.id DESC`,
+			[household.id],
+		)
 		const quickAmounts = await this.listQuickAmounts()
 
 		return {
-			version: 1,
+			version: 2,
 			exportedAt: new Date().toISOString(),
 			household: {
 				id: household.id,
@@ -729,6 +754,7 @@ export class LedgerService {
 				id: getNumber(account.id),
 				kidId: getNumber(account.kid_id),
 				name: getString(account.name),
+				apyBasisPoints: getNumber(account.apy_basis_points),
 				colorToken: getString(account.color_token),
 				sortOrder: getNumber(account.sort_order),
 				isArchived: getBoolean(account.is_archived),
@@ -743,7 +769,23 @@ export class LedgerService {
 				accountId: getNumber(transaction.account_id),
 				amountCents: getNumber(transaction.amount_cents),
 				note: getString(transaction.note),
+				sourceType: getString(transaction.source_type),
+				sourcePeriod: getString(transaction.source_period),
 				createdAt: getString(transaction.created_at),
+			})),
+			interestAccruals: interestAccruals.map((accrual) => ({
+				id: getNumber(accrual.id),
+				accountId: getNumber(accrual.account_id),
+				period: getString(accrual.period),
+				balanceCents: getNumber(accrual.balance_cents),
+				apyBasisPoints: getNumber(accrual.apy_basis_points),
+				amountCents: getNumber(accrual.amount_cents),
+				transactionId:
+					accrual.transaction_id === null
+						? null
+						: getNumber(accrual.transaction_id),
+				createdAt: getString(accrual.created_at),
+				updatedAt: getString(accrual.updated_at),
 			})),
 			quickAmounts,
 		}
@@ -841,6 +883,7 @@ export class LedgerService {
 			`SELECT
 				a.id,
 				a.kid_id,
+				a.apy_basis_points,
 				a.is_archived,
 				k.household_id
 			 FROM accounts a
@@ -860,6 +903,7 @@ export class LedgerService {
 			id: getNumber(row.id),
 			kidId: getNumber(row.kid_id),
 			householdId,
+			apyBasisPoints: getNumber(row.apy_basis_points),
 			isArchived: getBoolean(row.is_archived),
 		}
 	}
@@ -925,6 +969,7 @@ export class LedgerService {
 				a.id,
 				a.kid_id,
 				a.name,
+				a.apy_basis_points,
 				a.color_token,
 				a.sort_order,
 				a.is_archived,
@@ -933,7 +978,7 @@ export class LedgerService {
 			 LEFT JOIN transactions t ON t.account_id = a.id
 			 WHERE a.kid_id IN (${kidIdList.map(() => '?').join(',')})
 			 ${includeArchived ? '' : 'AND a.is_archived = 0'}
-			 GROUP BY a.id, a.kid_id, a.name, a.color_token, a.sort_order, a.is_archived
+			 GROUP BY a.id, a.kid_id, a.name, a.apy_basis_points, a.color_token, a.sort_order, a.is_archived
 			 ORDER BY a.sort_order ASC, a.id ASC`,
 			kidIdList,
 		)
@@ -950,6 +995,7 @@ export class LedgerService {
 				id: getNumber(accountRow.id),
 				kidId,
 				name: getString(accountRow.name),
+				apyBasisPoints: getNumber(accountRow.apy_basis_points),
 				colorToken: getString(accountRow.color_token),
 				sortOrder: getNumber(accountRow.sort_order),
 				isArchived: getBoolean(accountRow.is_archived),
@@ -1002,6 +1048,15 @@ function getString(value: unknown) {
 
 function getBoolean(value: unknown) {
 	return getNumber(value) === 1
+}
+
+function getValidApyBasisPoints(value: number | undefined, fallback: number) {
+	if (value === undefined) return fallback
+	const normalized = normalizeApyBasisPoints(value)
+	if (normalized === null) {
+		throw new Error('apyBasisPoints must be between 0 and 100000.')
+	}
+	return normalized
 }
 
 function encodeTransactionCursor(cursor: { createdAt: string; id: number }) {

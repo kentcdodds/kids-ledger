@@ -4,6 +4,9 @@
 	"compatibility_date": "2026-01-31",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"main": "./worker/index.ts",
+	"triggers": {
+		"crons": ["0 0 1 * *"],
+	},
 	"migrations": [
 		{
 			"new_sqlite_classes": ["MCP"],
@@ -16,6 +19,9 @@
 	},
 	"env": {
 		"production": {
+			"triggers": {
+				"crons": ["0 0 1 * *"],
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -43,6 +49,9 @@
 			],
 		},
 		"preview": {
+			"triggers": {
+				"crons": ["0 0 1 * *"],
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -70,6 +79,9 @@
 			],
 		},
 		"test": {
+			"triggers": {
+				"crons": ["0 0 1 * *"],
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",

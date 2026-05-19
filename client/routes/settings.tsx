@@ -38,6 +38,10 @@ import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
 import { buildTransactionModalCss } from '#client/styles/transaction-modal-css.ts'
 import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
 import { handleModalKeydown } from '#client/dom-utils.ts'
+import {
+	formatApyLabel,
+	parseApyPercentToBasisPoints,
+} from '#shared/ledger-interest.ts'
 
 const defaultKidEmojis = [
 	fallbackKidEmoji,
@@ -178,6 +182,7 @@ export function SettingsRoute(handle: Handle) {
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
+	let newAccountApyBasisPointsByKidId: Record<number, number> = {}
 	let editingKidTransactionModalCss: {
 		kidId: number
 		kidName: string
@@ -257,13 +262,19 @@ export function SettingsRoute(handle: Handle) {
 
 	function updateLocalAccount(
 		accountId: number,
-		updates: { name?: string; colorToken?: string },
+		updates: {
+			name?: string
+			apyBasisPoints?: number
+			colorToken?: string
+		},
 	) {
 		if (state.status !== 'ready') return
 		for (const kid of state.kids) {
 			const account = kid.accounts.find((entry) => entry.id === accountId)
 			if (!account) continue
 			if (updates.name !== undefined) account.name = updates.name
+			if (updates.apyBasisPoints !== undefined)
+				account.apyBasisPoints = updates.apyBasisPoints
 			if (updates.colorToken !== undefined)
 				account.colorToken = updates.colorToken
 			handle.update()
@@ -273,6 +284,80 @@ export function SettingsRoute(handle: Handle) {
 
 	function getCreateAccountColor(kidId: number) {
 		return newAccountColorsByKidId[kidId] ?? 'orchid'
+	}
+
+	function getCreateAccountApyBasisPoints(kidId: number) {
+		return newAccountApyBasisPointsByKidId[kidId] ?? 0
+	}
+
+	function formatApyPercentInputValue(apyBasisPoints: number) {
+		return String(apyBasisPoints / 100)
+	}
+
+	function getAccountDraft(account: KidSummary['accounts'][number]) {
+		const nameInput = document.querySelector(
+			`input[data-account-name="${account.id}"]`,
+		) as HTMLInputElement
+		const apyInput = document.querySelector(
+			`input[data-account-apy="${account.id}"]`,
+		) as HTMLInputElement
+		const colorSelect = document.querySelector(
+			`select[data-account-color="${account.id}"]`,
+		) as HTMLSelectElement
+		const apyBasisPoints = parseApyPercentToBasisPoints(apyInput?.value ?? '')
+		return {
+			name: nameInput?.value || account.name,
+			apyBasisPoints,
+			apyInput,
+			colorToken: colorSelect?.value || account.colorToken,
+		}
+	}
+
+	async function saveAccountDraft(account: KidSummary['accounts'][number]) {
+		const draft = getAccountDraft(account)
+		if (draft.apyBasisPoints === null) {
+			draft.apyInput?.setCustomValidity(
+				'Enter a valid APY percent between 0 and 1000.',
+			)
+			draft.apyInput?.reportValidity()
+			notify('Enter a valid APY percent between 0 and 1000.')
+			return
+		}
+		draft.apyInput?.setCustomValidity('')
+		if (
+			draft.name === account.name &&
+			draft.apyBasisPoints === account.apyBasisPoints &&
+			draft.colorToken === account.colorToken
+		) {
+			return
+		}
+		const previous = {
+			name: account.name,
+			apyBasisPoints: account.apyBasisPoints,
+			colorToken: account.colorToken,
+		}
+		const updates = {
+			name: draft.name,
+			apyBasisPoints: draft.apyBasisPoints,
+			colorToken: draft.colorToken,
+		}
+		let saveError: string | null = null
+		updateLocalAccount(account.id, updates)
+		try {
+			await updateAccount({
+				accountId: account.id,
+				...updates,
+			})
+		} catch (error) {
+			updateLocalAccount(account.id, previous)
+			saveError =
+				error instanceof Error ? error.message : 'Could not save account.'
+		} finally {
+			await refreshSettings()
+		}
+		if (saveError) {
+			notify(saveError)
+		}
 	}
 
 	function queueReorderFocus(options: {
@@ -777,7 +862,7 @@ export function SettingsRoute(handle: Handle) {
 												key={account.id}
 												css={{
 													display: 'grid',
-													gridTemplateColumns: 'auto 1fr auto auto',
+													gridTemplateColumns: 'auto 1fr auto auto auto',
 													rowGap: spacing.xs,
 													columnGap: spacing.sm,
 													alignItems: 'center',
@@ -845,32 +930,7 @@ export function SettingsRoute(handle: Handle) {
 														aria-label={`${account.name} name`}
 														data-account-name={account.id}
 														on={{
-															blur: async (e) => {
-																const name =
-																	(e.currentTarget as HTMLInputElement).value ||
-																	account.name
-																const colorSelect = document.querySelector(
-																	`select[data-account-color="${account.id}"]`,
-																) as HTMLSelectElement
-																const colorToken =
-																	colorSelect?.value || account.colorToken
-																if (
-																	name === account.name &&
-																	colorToken === account.colorToken
-																) {
-																	return
-																}
-																updateLocalAccount(account.id, {
-																	name,
-																	colorToken,
-																})
-																await updateAccount({
-																	accountId: account.id,
-																	name,
-																	colorToken,
-																})
-																await refreshSettings()
-															},
+															blur: () => void saveAccountDraft(account),
 														}}
 														css={{
 															...inputCss,
@@ -893,32 +953,48 @@ export function SettingsRoute(handle: Handle) {
 															fontSize: typography.fontSize.sm,
 														}}
 													>
-														{formatCents(account.balanceCents)}
+														{formatCents(account.balanceCents)} ·{' '}
+														{formatApyLabel(account.apyBasisPoints)}
 													</span>
 												</div>
+												<label
+													css={{
+														display: 'grid',
+														gap: 2,
+														color: textColors.muted,
+														fontSize: typography.fontSize.sm,
+														[mq.mobile]: {
+															gridColumn: '2 / 4',
+															gridRow: '3',
+														},
+													}}
+												>
+													<span>APY</span>
+													<input
+														type="number"
+														min="0"
+														step="0.01"
+														aria-label={`${account.name} APY percent`}
+														data-account-apy={account.id}
+														defaultValue={formatApyPercentInputValue(
+															account.apyBasisPoints,
+														)}
+														on={{
+															blur: () => void saveAccountDraft(account),
+														}}
+														css={{
+															...inputCss,
+															backgroundColor: colors.surface,
+															color: colors.text,
+															colorScheme: 'light dark',
+														}}
+													/>
+												</label>
 												<select
 													aria-label={`${account.name} color`}
 													data-account-color={account.id}
 													on={{
-														change: async (e) => {
-															const colorToken = (
-																e.currentTarget as HTMLSelectElement
-															).value
-															const nameInput = document.querySelector(
-																`input[data-account-name="${account.id}"]`,
-															) as HTMLInputElement
-															const name = nameInput?.value || account.name
-															updateLocalAccount(account.id, {
-																name,
-																colorToken,
-															})
-															await updateAccount({
-																accountId: account.id,
-																name,
-																colorToken,
-															})
-															await refreshSettings()
-														},
+														change: () => void saveAccountDraft(account),
 													}}
 													css={{
 														...inputCss,
@@ -968,7 +1044,7 @@ export function SettingsRoute(handle: Handle) {
 								<div
 									css={{
 										display: 'grid',
-										gridTemplateColumns: '1fr auto auto',
+										gridTemplateColumns: '1fr auto auto auto',
 										gap: spacing.sm,
 										padding: spacing.md,
 										border: `2px dashed ${colors.border}`,
@@ -986,6 +1062,44 @@ export function SettingsRoute(handle: Handle) {
 										placeholder="New account name"
 										css={inputCss}
 									/>
+									<label
+										css={{
+											display: 'grid',
+											gap: spacing.xs,
+											color: colors.text,
+											fontSize: typography.fontSize.sm,
+										}}
+									>
+										<span>APY</span>
+										<input
+											type="number"
+											min="0"
+											step="0.01"
+											aria-label="New account APY percent"
+											data-create-account-apy={kid.id}
+											value={formatApyPercentInputValue(
+												getCreateAccountApyBasisPoints(kid.id),
+											)}
+											on={{
+												change: (event) => {
+													if (
+														!(event.currentTarget instanceof HTMLInputElement)
+													)
+														return
+													const apyBasisPoints = parseApyPercentToBasisPoints(
+														event.currentTarget.value,
+													)
+													if (apyBasisPoints !== null) {
+														event.currentTarget.setCustomValidity('')
+														newAccountApyBasisPointsByKidId[kid.id] =
+															apyBasisPoints
+													}
+													handle.update()
+												},
+											}}
+											css={inputCss}
+										/>
+									</label>
 									<select
 										data-create-account-color={kid.id}
 										value={getCreateAccountColor(kid.id)}
@@ -1016,17 +1130,36 @@ export function SettingsRoute(handle: Handle) {
 												const colorSelect = document.querySelector(
 													`select[data-create-account-color="${kid.id}"]`,
 												)
+												const apyInput = document.querySelector(
+													`input[data-create-account-apy="${kid.id}"]`,
+												)
 												if (
 													!(nameInput instanceof HTMLInputElement) ||
-													!(colorSelect instanceof HTMLSelectElement)
+													!(colorSelect instanceof HTMLSelectElement) ||
+													!(apyInput instanceof HTMLInputElement)
 												) {
 													return
 												}
 												const accountName = nameInput.value.trim()
 												if (!accountName) return
+												const apyBasisPoints = parseApyPercentToBasisPoints(
+													apyInput.value,
+												)
+												if (apyBasisPoints === null) {
+													apyInput.setCustomValidity(
+														'Enter a valid APY percent between 0 and 1000.',
+													)
+													apyInput.reportValidity()
+													notify(
+														'Enter a valid APY percent between 0 and 1000.',
+													)
+													return
+												}
+												apyInput.setCustomValidity('')
 												await createAccount({
 													kidId: kid.id,
 													name: accountName,
+													apyBasisPoints,
 													colorToken: getCreateAccountColor(kid.id),
 												})
 												nameInput.value = ''
@@ -1151,6 +1284,29 @@ export function SettingsRoute(handle: Handle) {
 								Add
 							</button>
 						</form>
+					</section>
+
+					<section
+						css={{
+							display: 'grid',
+							gap: spacing.xs,
+							padding: spacing.md,
+							border: `3px solid ${colors.border}`,
+							borderRadius: radius.xl,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+						}}
+					>
+						<h2 css={{ margin: 0, color: colors.text }}>
+							How account APY works
+						</h2>
+						<p css={{ margin: 0, color: colors.textMuted }}>
+							APY means annual percentage yield. Set it per account to earn
+							monthly interest automatically: on the first day of each month,
+							Kids Ledger snapshots that account&apos;s balance, converts the
+							APY to a monthly compound rate, and records a Monthly interest
+							transaction when the rounded payout is positive.
+						</p>
 					</section>
 
 					<section
