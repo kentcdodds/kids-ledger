@@ -72,6 +72,6 @@ test('home shows monthly interest preview for accounts with APY', async ({
 	await page.getByRole('button', { name: 'Add' }).last().click()
 
 	await expect(accountButton).toContainText('12% APY')
-	await expect(accountButton).toContainText('next payout $0.28')
+	await expect(accountButton).toContainText('estimated payout $0.28')
 	await expect(accountButton).toContainText(/on [A-Z][a-z]{2} \d{1,2}/)
 })

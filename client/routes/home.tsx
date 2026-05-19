@@ -49,6 +49,7 @@ function formatPayoutDate(date: Date) {
 	return new Intl.DateTimeFormat('en-US', {
 		month: 'short',
 		day: 'numeric',
+		timeZone: 'UTC',
 	}).format(date)
 }
 
@@ -58,7 +59,7 @@ function getInterestPreviewText(account: KidAccount) {
 		balanceCents: account.balanceCents,
 		apyBasisPoints: account.apyBasisPoints,
 	})
-	return `${formatApyLabel(account.apyBasisPoints)} · next payout ${formatCents(
+	return `${formatApyLabel(account.apyBasisPoints)} · estimated payout ${formatCents(
 		nextPayoutCents,
 	)} on ${formatPayoutDate(getNextMonthlyInterestPayoutDate())}`
 }
