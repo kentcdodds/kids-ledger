@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url'
 import { runMonthlyInterest } from './monthly-interest.ts'
 import {
 	calculateMonthlyInterestCents,
-	ledgerAccountTypeConfigs,
 	monthlyInterestSourceType,
 	monthlyInterestTransactionNote,
 } from '#shared/ledger-interest.ts'
@@ -128,16 +127,16 @@ function createAccount(
 	input: {
 		kidId: number
 		name: string
-		accountType: 'spending' | 'savings'
+		apyBasisPoints?: number
 		balanceCents: number
 	},
 ) {
 	sqlite
 		.query(
-			`INSERT INTO accounts (kid_id, name, account_type, color_token, sort_order)
+			`INSERT INTO accounts (kid_id, name, apy_basis_points, color_token, sort_order)
 			 VALUES (?, ?, ?, ?, ?)`,
 		)
-		.run(input.kidId, input.name, input.accountType, 'orchid', 0)
+		.run(input.kidId, input.name, input.apyBasisPoints ?? 0, 'orchid', 0)
 	const accountId = Number(
 		sqlite.query('SELECT id FROM accounts ORDER BY id DESC LIMIT 1').get().id,
 	)
@@ -169,30 +168,30 @@ test('monthly interest calculation uses APY monthly compounding rates', () => {
 	expect(
 		calculateMonthlyInterestCents({
 			balanceCents: 3_000,
-			apyBasisPoints: ledgerAccountTypeConfigs.spending.apyBasisPoints,
+			apyBasisPoints: 1_200,
 		}),
 	).toBe(28)
 	expect(
 		calculateMonthlyInterestCents({
 			balanceCents: 3_000,
-			apyBasisPoints: ledgerAccountTypeConfigs.savings.apyBasisPoints,
+			apyBasisPoints: 2_400,
 		}),
 	).toBe(54)
 })
 
-test('monthly interest creates auditable ledger transactions for spending and savings accounts', async () => {
+test('monthly interest creates auditable ledger transactions using per-account APY rates', async () => {
 	using database = await createTestDatabase()
 	const { kidId } = createLedgerFixture(database.sqlite)
 	const spendingAccountId = createAccount(database.sqlite, {
 		kidId,
 		name: 'Spending',
-		accountType: 'spending',
+		apyBasisPoints: 1_200,
 		balanceCents: 3_000,
 	})
 	const savingsAccountId = createAccount(database.sqlite, {
 		kidId,
 		name: 'Savings',
-		accountType: 'savings',
+		apyBasisPoints: 2_400,
 		balanceCents: 3_000,
 	})
 
@@ -232,7 +231,7 @@ test('monthly interest is idempotent per account and period', async () => {
 	const accountId = createAccount(database.sqlite, {
 		kidId,
 		name: 'Savings',
-		accountType: 'savings',
+		apyBasisPoints: 2_400,
 		balanceCents: 3_000,
 	})
 
@@ -273,7 +272,7 @@ test('monthly interest records zero accruals so later reruns do not pay after th
 	const accountId = createAccount(database.sqlite, {
 		kidId,
 		name: 'Spending',
-		accountType: 'spending',
+		apyBasisPoints: 1_200,
 		balanceCents: 0,
 	})
 
@@ -298,4 +297,33 @@ test('monthly interest records zero accruals so later reruns do not pay after th
 			)
 			.get(accountId, '2026-06'),
 	).toEqual({ balance_cents: 0, amount_cents: 0 })
+})
+
+test('new accounts default to zero APY regardless of account name', async () => {
+	using database = await createTestDatabase()
+	const { kidId } = createLedgerFixture(database.sqlite)
+	const accountId = createAccount(database.sqlite, {
+		kidId,
+		name: 'Savings',
+		balanceCents: 3_000,
+	})
+
+	const result = await runMonthlyInterest(database.db, { period: '2026-07' })
+
+	expect(result).toMatchObject({
+		checkedAccounts: 1,
+		recordedAccruals: 1,
+		createdTransactions: 0,
+		skippedZeroInterest: 1,
+	})
+	expect(listInterestTransactions(database.sqlite)).toHaveLength(0)
+	expect(
+		database.sqlite
+			.query(
+				`SELECT apy_basis_points, amount_cents
+				 FROM interest_accruals
+				 WHERE account_id = ? AND period = ?`,
+			)
+			.get(accountId, '2026-07'),
+	).toEqual({ apy_basis_points: 0, amount_cents: 0 })
 })

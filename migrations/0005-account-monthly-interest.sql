@@ -1,8 +1,4 @@
-ALTER TABLE accounts ADD COLUMN account_type TEXT NOT NULL DEFAULT 'spending';
-
-UPDATE accounts
-SET account_type = 'savings'
-WHERE LOWER(name) LIKE 'save%' OR LOWER(name) LIKE '%saving%';
+ALTER TABLE accounts ADD COLUMN apy_basis_points INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE transactions ADD COLUMN source_type TEXT NOT NULL DEFAULT 'manual';
 ALTER TABLE transactions ADD COLUMN source_period TEXT NOT NULL DEFAULT '';

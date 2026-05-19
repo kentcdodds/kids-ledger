@@ -97,6 +97,8 @@ After `bun run dev` is running and you are logged in:
 
 - Monthly interest is paid by the Worker scheduled handler configured with cron
   `0 0 1 * *` (UTC).
+- Account APY is stored per account in basis points and defaults to zero for new
+  accounts.
 - The implementation lives in `server/ledger/monthly-interest.ts`; fast coverage
   is available with `bun test ./server/ledger/monthly-interest.test.ts`.
 - Interest reruns are expected to be idempotent for an account and `YYYY-MM`

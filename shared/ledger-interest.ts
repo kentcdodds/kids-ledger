@@ -1,49 +1,22 @@
-export const ledgerAccountTypes = ['spending', 'savings'] as const
-
-export type LedgerAccountType = (typeof ledgerAccountTypes)[number]
-
-export const ledgerAccountTypeConfigs = {
-	spending: {
-		label: 'Spending',
-		apyBasisPoints: 1_200,
-	},
-	savings: {
-		label: 'Savings',
-		apyBasisPoints: 2_400,
-	},
-} satisfies Record<LedgerAccountType, { label: string; apyBasisPoints: number }>
-
 export const monthlyInterestTransactionNote = 'Monthly interest'
 export const monthlyInterestSourceType = 'monthly_interest'
-
-export function isLedgerAccountType(
-	value: unknown,
-): value is LedgerAccountType {
-	return (
-		typeof value === 'string' &&
-		ledgerAccountTypes.includes(value as LedgerAccountType)
-	)
-}
-
-export function normalizeLedgerAccountType(
-	value: unknown,
-): LedgerAccountType | null {
-	if (!isLedgerAccountType(value)) return null
-	return value
-}
-
-export function inferLedgerAccountTypeFromName(
-	name: string,
-): LedgerAccountType {
-	const normalizedName = name.trim().toLowerCase()
-	if (normalizedName.startsWith('save') || normalizedName.includes('saving')) {
-		return 'savings'
-	}
-	return 'spending'
-}
+export const maxApyBasisPoints = 100_000
 
 export function formatApyLabel(apyBasisPoints: number) {
 	return `${apyBasisPoints / 100}% APY`
+}
+
+export function normalizeApyBasisPoints(value: unknown) {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return null
+	const normalized = Math.round(value)
+	if (normalized < 0 || normalized > maxApyBasisPoints) return null
+	return normalized
+}
+
+export function parseApyPercentToBasisPoints(value: string) {
+	const numeric = Number(value)
+	if (!Number.isFinite(numeric)) return null
+	return normalizeApyBasisPoints(numeric * 100)
 }
 
 export function getMonthlyInterestRate(apyBasisPoints: number) {

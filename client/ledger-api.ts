@@ -1,11 +1,10 @@
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
-import { type LedgerAccountType } from '#shared/ledger-interest.ts'
 
 export type KidAccount = {
 	id: number
 	kidId: number
 	name: string
-	accountType: LedgerAccountType
+	apyBasisPoints: number
 	colorToken: string
 	sortOrder: number
 	isArchived: boolean
@@ -110,7 +109,7 @@ export async function fetchSettings() {
 				accounts: Array<{
 					id: number
 					name: string
-					accountType: LedgerAccountType
+					apyBasisPoints: number
 					colorToken: string
 					sortOrder: number
 					kidId: number
@@ -188,7 +187,7 @@ export async function deleteKid(kidId: number) {
 export async function createAccount(input: {
 	kidId: number
 	name: string
-	accountType: LedgerAccountType
+	apyBasisPoints: number
 	colorToken: string
 }) {
 	return postJson<{ ok: true; accountId: number }>(
@@ -200,7 +199,7 @@ export async function createAccount(input: {
 export async function updateAccount(input: {
 	accountId: number
 	name: string
-	accountType: LedgerAccountType
+	apyBasisPoints: number
 	colorToken: string
 }) {
 	return postJson<{ ok: true }>('/ledger/accounts/update', input)

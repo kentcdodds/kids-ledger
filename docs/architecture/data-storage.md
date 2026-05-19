@@ -12,7 +12,7 @@ Current schema is defined by migrations in `migrations/`:
 - `password_resets`: hashed reset tokens with expiry and foreign key to users
 - `households`: one household per authenticated parent user
 - `kids`: child profiles scoped to a household (`sort_order`, archive flags)
-- `accounts`: child account buckets (`account_type`, `color_token`,
+- `accounts`: child account buckets (`apy_basis_points`, `color_token`,
   `sort_order`, archive flags)
 - `transactions`: append-only money movements (signed `amount_cents`) with
   source fields for system-generated entries such as monthly interest
@@ -47,9 +47,10 @@ logic centralized in one service.
 ## Monthly account interest
 
 The Worker cron trigger runs at `0 0 1 * *` (UTC) and calls
-`server/ledger/monthly-interest.ts`. Interest is configured centrally in
-`shared/ledger-interest.ts`: Spending accounts earn 12% APY and Savings accounts
-earn 24% APY. The monthly payout uses APY compounding:
+`server/ledger/monthly-interest.ts`. Interest is configured per account with the
+`accounts.apy_basis_points` column. New accounts default to `0` basis points, so
+no interest is paid until a parent sets an account-specific APY. The monthly
+payout uses APY compounding:
 
 ```txt
 monthlyInterest = balance * ((1 + APY) ** (1 / 12) - 1)

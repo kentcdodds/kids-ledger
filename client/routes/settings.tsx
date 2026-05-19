@@ -40,9 +40,7 @@ import { transactionModalCssVariables } from '#shared/transaction-modal-css.ts'
 import { handleModalKeydown } from '#client/dom-utils.ts'
 import {
 	formatApyLabel,
-	ledgerAccountTypeConfigs,
-	ledgerAccountTypes,
-	type LedgerAccountType,
+	parseApyPercentToBasisPoints,
 } from '#shared/ledger-interest.ts'
 
 const defaultKidEmojis = [
@@ -168,7 +166,6 @@ type SettingsState =
 				accounts: Array<{
 					id: number
 					name: string
-					accountType: LedgerAccountType
 					colorToken: string
 					sortOrder: number
 					kidId: number
@@ -185,7 +182,7 @@ export function SettingsRoute(handle: Handle) {
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
-	let newAccountTypesByKidId: Record<number, LedgerAccountType> = {}
+	let newAccountApyBasisPointsByKidId: Record<number, number> = {}
 	let editingKidTransactionModalCss: {
 		kidId: number
 		kidName: string
@@ -267,7 +264,7 @@ export function SettingsRoute(handle: Handle) {
 		accountId: number,
 		updates: {
 			name?: string
-			accountType?: LedgerAccountType
+			apyBasisPoints?: number
 			colorToken?: string
 		},
 	) {
@@ -276,8 +273,8 @@ export function SettingsRoute(handle: Handle) {
 			const account = kid.accounts.find((entry) => entry.id === accountId)
 			if (!account) continue
 			if (updates.name !== undefined) account.name = updates.name
-			if (updates.accountType !== undefined)
-				account.accountType = updates.accountType
+			if (updates.apyBasisPoints !== undefined)
+				account.apyBasisPoints = updates.apyBasisPoints
 			if (updates.colorToken !== undefined)
 				account.colorToken = updates.colorToken
 			handle.update()
@@ -289,8 +286,48 @@ export function SettingsRoute(handle: Handle) {
 		return newAccountColorsByKidId[kidId] ?? 'orchid'
 	}
 
-	function getCreateAccountType(kidId: number): LedgerAccountType {
-		return newAccountTypesByKidId[kidId] ?? 'spending'
+	function getCreateAccountApyBasisPoints(kidId: number) {
+		return newAccountApyBasisPointsByKidId[kidId] ?? 0
+	}
+
+	function formatApyPercentInputValue(apyBasisPoints: number) {
+		return String(apyBasisPoints / 100)
+	}
+
+	function getAccountDraft(account: KidSummary['accounts'][number]) {
+		const nameInput = document.querySelector(
+			`input[data-account-name="${account.id}"]`,
+		) as HTMLInputElement
+		const apyInput = document.querySelector(
+			`input[data-account-apy="${account.id}"]`,
+		) as HTMLInputElement
+		const colorSelect = document.querySelector(
+			`select[data-account-color="${account.id}"]`,
+		) as HTMLSelectElement
+		return {
+			name: nameInput?.value || account.name,
+			apyBasisPoints:
+				parseApyPercentToBasisPoints(apyInput?.value ?? '') ??
+				account.apyBasisPoints,
+			colorToken: colorSelect?.value || account.colorToken,
+		}
+	}
+
+	async function saveAccountDraft(account: KidSummary['accounts'][number]) {
+		const draft = getAccountDraft(account)
+		if (
+			draft.name === account.name &&
+			draft.apyBasisPoints === account.apyBasisPoints &&
+			draft.colorToken === account.colorToken
+		) {
+			return
+		}
+		updateLocalAccount(account.id, draft)
+		await updateAccount({
+			accountId: account.id,
+			...draft,
+		})
+		await refreshSettings()
 	}
 
 	function queueReorderFocus(options: {
@@ -863,41 +900,7 @@ export function SettingsRoute(handle: Handle) {
 														aria-label={`${account.name} name`}
 														data-account-name={account.id}
 														on={{
-															blur: async (e) => {
-																const name =
-																	(e.currentTarget as HTMLInputElement).value ||
-																	account.name
-																const colorSelect = document.querySelector(
-																	`select[data-account-color="${account.id}"]`,
-																) as HTMLSelectElement
-																const typeSelect = document.querySelector(
-																	`select[data-account-type="${account.id}"]`,
-																) as HTMLSelectElement
-																const colorToken =
-																	colorSelect?.value || account.colorToken
-																const accountType =
-																	(typeSelect?.value as LedgerAccountType) ||
-																	account.accountType
-																if (
-																	name === account.name &&
-																	accountType === account.accountType &&
-																	colorToken === account.colorToken
-																) {
-																	return
-																}
-																updateLocalAccount(account.id, {
-																	name,
-																	accountType,
-																	colorToken,
-																})
-																await updateAccount({
-																	accountId: account.id,
-																	name,
-																	accountType,
-																	colorToken,
-																})
-																await refreshSettings()
-															},
+															blur: () => void saveAccountDraft(account),
 														}}
 														css={{
 															...inputCss,
@@ -920,39 +923,21 @@ export function SettingsRoute(handle: Handle) {
 															fontSize: typography.fontSize.sm,
 														}}
 													>
-														{formatCents(account.balanceCents)}
+														{formatCents(account.balanceCents)} ·{' '}
+														{formatApyLabel(account.apyBasisPoints)}
 													</span>
 												</div>
-												<select
-													aria-label={`${account.name} type`}
-													data-account-type={account.id}
+												<input
+													type="number"
+													min="0"
+													step="0.01"
+													aria-label={`${account.name} APY percent`}
+													data-account-apy={account.id}
+													defaultValue={formatApyPercentInputValue(
+														account.apyBasisPoints,
+													)}
 													on={{
-														change: async (e) => {
-															const accountType = (
-																e.currentTarget as HTMLSelectElement
-															).value as LedgerAccountType
-															const nameInput = document.querySelector(
-																`input[data-account-name="${account.id}"]`,
-															) as HTMLInputElement
-															const colorSelect = document.querySelector(
-																`select[data-account-color="${account.id}"]`,
-															) as HTMLSelectElement
-															const name = nameInput?.value || account.name
-															const colorToken =
-																colorSelect?.value || account.colorToken
-															updateLocalAccount(account.id, {
-																name,
-																accountType,
-																colorToken,
-															})
-															await updateAccount({
-																accountId: account.id,
-																name,
-																accountType,
-																colorToken,
-															})
-															await refreshSettings()
-														},
+														blur: () => void saveAccountDraft(account),
 													}}
 													css={{
 														...inputCss,
@@ -964,48 +949,12 @@ export function SettingsRoute(handle: Handle) {
 															gridRow: '3',
 														},
 													}}
-												>
-													{ledgerAccountTypes.map((accountType) => (
-														<option
-															key={accountType}
-															value={accountType}
-															selected={account.accountType === accountType}
-														>
-															{ledgerAccountTypeConfigs[accountType].label}
-														</option>
-													))}
-												</select>
+												/>
 												<select
 													aria-label={`${account.name} color`}
 													data-account-color={account.id}
 													on={{
-														change: async (e) => {
-															const colorToken = (
-																e.currentTarget as HTMLSelectElement
-															).value
-															const nameInput = document.querySelector(
-																`input[data-account-name="${account.id}"]`,
-															) as HTMLInputElement
-															const typeSelect = document.querySelector(
-																`select[data-account-type="${account.id}"]`,
-															) as HTMLSelectElement
-															const name = nameInput?.value || account.name
-															const accountType =
-																(typeSelect?.value as LedgerAccountType) ||
-																account.accountType
-															updateLocalAccount(account.id, {
-																name,
-																accountType,
-																colorToken,
-															})
-															await updateAccount({
-																accountId: account.id,
-																name,
-																accountType,
-																colorToken,
-															})
-															await refreshSettings()
-														},
+														change: () => void saveAccountDraft(account),
 													}}
 													css={{
 														...inputCss,
@@ -1073,31 +1022,31 @@ export function SettingsRoute(handle: Handle) {
 										placeholder="New account name"
 										css={inputCss}
 									/>
-									<select
-										aria-label="New account type"
-										data-create-account-type={kid.id}
-										value={getCreateAccountType(kid.id)}
+									<input
+										type="number"
+										min="0"
+										step="0.01"
+										aria-label="New account APY percent"
+										data-create-account-apy={kid.id}
+										value={formatApyPercentInputValue(
+											getCreateAccountApyBasisPoints(kid.id),
+										)}
 										on={{
 											change: (event) => {
-												if (!(event.currentTarget instanceof HTMLSelectElement))
+												if (!(event.currentTarget instanceof HTMLInputElement))
 													return
-												newAccountTypesByKidId[kid.id] = event.currentTarget
-													.value as LedgerAccountType
+												const apyBasisPoints = parseApyPercentToBasisPoints(
+													event.currentTarget.value,
+												)
+												if (apyBasisPoints !== null) {
+													newAccountApyBasisPointsByKidId[kid.id] =
+														apyBasisPoints
+												}
 												handle.update()
 											},
 										}}
 										css={inputCss}
-									>
-										{ledgerAccountTypes.map((accountType) => (
-											<option key={accountType} value={accountType}>
-												{ledgerAccountTypeConfigs[accountType].label} (
-												{formatApyLabel(
-													ledgerAccountTypeConfigs[accountType].apyBasisPoints,
-												)}
-												)
-											</option>
-										))}
-									</select>
+									/>
 									<select
 										data-create-account-color={kid.id}
 										value={getCreateAccountColor(kid.id)}
@@ -1128,13 +1077,13 @@ export function SettingsRoute(handle: Handle) {
 												const colorSelect = document.querySelector(
 													`select[data-create-account-color="${kid.id}"]`,
 												)
-												const typeSelect = document.querySelector(
-													`select[data-create-account-type="${kid.id}"]`,
+												const apyInput = document.querySelector(
+													`input[data-create-account-apy="${kid.id}"]`,
 												)
 												if (
 													!(nameInput instanceof HTMLInputElement) ||
 													!(colorSelect instanceof HTMLSelectElement) ||
-													!(typeSelect instanceof HTMLSelectElement)
+													!(apyInput instanceof HTMLInputElement)
 												) {
 													return
 												}
@@ -1143,7 +1092,8 @@ export function SettingsRoute(handle: Handle) {
 												await createAccount({
 													kidId: kid.id,
 													name: accountName,
-													accountType: typeSelect.value as LedgerAccountType,
+													apyBasisPoints:
+														parseApyPercentToBasisPoints(apyInput.value) ?? 0,
 													colorToken: getCreateAccountColor(kid.id),
 												})
 												nameInput.value = ''

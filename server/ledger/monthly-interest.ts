@@ -2,12 +2,8 @@ import {
 	calculateMonthlyInterestCents,
 	getMonthlyInterestPeriod,
 	getMonthlyInterestPeriodStart,
-	ledgerAccountTypeConfigs,
-	ledgerAccountTypes,
 	monthlyInterestSourceType,
 	monthlyInterestTransactionNote,
-	normalizeLedgerAccountType,
-	type LedgerAccountType,
 } from '#shared/ledger-interest.ts'
 
 export const monthlyInterestCron = '0 0 1 * *'
@@ -18,7 +14,7 @@ type EligibleAccount = {
 	id: number
 	householdId: number
 	kidId: number
-	accountType: LedgerAccountType
+	apyBasisPoints: number
 	balanceCents: number
 }
 
@@ -57,16 +53,15 @@ export async function runMonthlyInterest(
 	}
 
 	for (const account of accounts) {
-		const config = ledgerAccountTypeConfigs[account.accountType]
 		const amountCents = calculateMonthlyInterestCents({
 			balanceCents: account.balanceCents,
-			apyBasisPoints: config.apyBasisPoints,
+			apyBasisPoints: account.apyBasisPoints,
 		})
 		const insertedAccrual = await insertInterestAccrual(db, {
 			accountId: account.id,
 			period,
 			balanceCents: account.balanceCents,
-			apyBasisPoints: config.apyBasisPoints,
+			apyBasisPoints: account.apyBasisPoints,
 			amountCents,
 		})
 		if (insertedAccrual) {
@@ -105,13 +100,12 @@ export async function runMonthlyInterest(
 }
 
 async function listEligibleAccounts(db: D1Database) {
-	const accountTypePlaceholders = ledgerAccountTypes.map(() => '?').join(', ')
 	const rows = await all(
 		db,
 		`SELECT
 			a.id,
 			a.kid_id,
-			a.account_type,
+			a.apy_basis_points,
 			k.household_id,
 			COALESCE(SUM(t.amount_cents), 0) AS balance_cents
 		 FROM accounts a
@@ -119,24 +113,18 @@ async function listEligibleAccounts(db: D1Database) {
 		 LEFT JOIN transactions t ON t.account_id = a.id
 		 WHERE a.is_archived = 0
 		 AND k.is_archived = 0
-		 AND a.account_type IN (${accountTypePlaceholders})
-		 GROUP BY a.id, a.kid_id, a.account_type, k.household_id
+		 GROUP BY a.id, a.kid_id, a.apy_basis_points, k.household_id
 		 ORDER BY a.id ASC`,
-		[...ledgerAccountTypes],
 	)
-	return rows
-		.map((row) => {
-			const accountType = normalizeLedgerAccountType(row.account_type)
-			if (!accountType) return null
-			return {
-				id: getNumber(row.id),
-				householdId: getNumber(row.household_id),
-				kidId: getNumber(row.kid_id),
-				accountType,
-				balanceCents: getNumber(row.balance_cents),
-			} satisfies EligibleAccount
-		})
-		.filter((account) => account !== null)
+	return rows.map((row) => {
+		return {
+			id: getNumber(row.id),
+			householdId: getNumber(row.household_id),
+			kidId: getNumber(row.kid_id),
+			apyBasisPoints: getNumber(row.apy_basis_points),
+			balanceCents: getNumber(row.balance_cents),
+		} satisfies EligibleAccount
+	})
 }
 
 async function insertInterestAccrual(

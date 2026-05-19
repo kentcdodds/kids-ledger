@@ -8,10 +8,6 @@ import {
 	transactionModalCssCreateFieldDescription,
 	transactionModalCssUpdateFieldDescription,
 } from '#shared/transaction-modal-css.ts'
-import {
-	ledgerAccountTypes,
-	type LedgerAccountType,
-} from '#shared/ledger-interest.ts'
 
 export async function registerLedgerTools(agent: MCP) {
 	agent.server.registerTool(
@@ -151,30 +147,30 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_create_account',
 		{
 			title: 'Create Account',
-			description: 'Create an account under a kid.',
+			description: 'Create an account under a kid with an optional APY rate.',
 			inputSchema: {
 				kidId: z.number().int().positive(),
 				name: z.string().min(1),
-				accountType: z.enum(ledgerAccountTypes).optional(),
+				apyBasisPoints: z.number().int().nonnegative().optional(),
 				colorToken: z.string().min(1).default('orchid'),
 			},
 		},
 		async ({
 			kidId,
 			name,
-			accountType,
+			apyBasisPoints,
 			colorToken,
 		}: {
 			kidId: number
 			name: string
-			accountType?: LedgerAccountType
+			apyBasisPoints?: number
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
 			const created = await service.createAccount({
 				kidId,
 				name,
-				accountType,
+				apyBasisPoints,
 				colorToken,
 			})
 			return {
@@ -188,27 +184,32 @@ export async function registerLedgerTools(agent: MCP) {
 		'ledger_update_account',
 		{
 			title: 'Update Account',
-			description: 'Update an account name or color.',
+			description: 'Update an account name, APY rate, or color.',
 			inputSchema: {
 				accountId: z.number().int().positive(),
 				name: z.string().min(1),
-				accountType: z.enum(ledgerAccountTypes).optional(),
+				apyBasisPoints: z.number().int().nonnegative().optional(),
 				colorToken: z.string().min(1),
 			},
 		},
 		async ({
 			accountId,
 			name,
-			accountType,
+			apyBasisPoints,
 			colorToken,
 		}: {
 			accountId: number
 			name: string
-			accountType?: LedgerAccountType
+			apyBasisPoints?: number
 			colorToken: string
 		}) => {
 			const service = await createLedgerServiceForAgent(agent)
-			await service.updateAccount({ accountId, name, accountType, colorToken })
+			await service.updateAccount({
+				accountId,
+				name,
+				apyBasisPoints,
+				colorToken,
+			})
 			return successContent('Account updated', `Updated account ${accountId}.`)
 		},
 	)

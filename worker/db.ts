@@ -77,7 +77,7 @@ export const accountsTable = createTable({
 		id: number(),
 		kid_id: number(),
 		name: string(),
-		account_type: string(),
+		apy_basis_points: number(),
 		color_token: string(),
 		sort_order: number(),
 		is_archived: number(),

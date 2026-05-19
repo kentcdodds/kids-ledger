@@ -40,14 +40,14 @@ const kidIdSchema = object({
 const createAccountSchema = object({
 	kidId: number(),
 	name: string(),
-	accountType: optional(string()),
+	apyBasisPoints: optional(number()),
 	colorToken: string(),
 })
 
 const updateAccountSchema = object({
 	accountId: number(),
 	name: string(),
-	accountType: optional(string()),
+	apyBasisPoints: optional(number()),
 	colorToken: string(),
 })
 
