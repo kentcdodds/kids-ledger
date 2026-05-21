@@ -41,8 +41,7 @@ type TransactionState = {
 }
 
 type TransferState = {
-	fromKid: KidSummary
-	fromAccount: KidAccount
+	fromAccountId: string
 	toAccountId: string
 	amount: string
 	note: string
@@ -140,24 +139,26 @@ export function HomeRoute(handle: Handle) {
 		})
 	}
 
-	function openTransferModal(
-		kid: KidSummary,
-		account: KidAccount,
-		opener: HTMLButtonElement,
-	) {
+	function openTransferModal(opener: HTMLButtonElement) {
 		clearTransferCloseModalTimeout()
-		setKidModalBackground(kid.emoji)
 		transferModalOpener = opener
 		transferModalClosing = false
-		const destination = getDefaultTransferDestination(kid, account, kids)
+		const source = getDefaultTransferSource(kids)
+		const destination = source
+			? getDefaultTransferDestination(source.account, source.kid, kids)
+			: null
+		if (source) {
+			setKidModalBackground(source.kid.emoji)
+		}
 		transferState = {
-			fromKid: kid,
-			fromAccount: account,
+			fromAccountId: source ? String(source.account.id) : '',
 			toAccountId: destination ? String(destination.id) : '',
 			amount: '',
 			note: '',
 			status: 'idle',
-			error: destination ? null : 'Add another account before transferring.',
+			error: destination
+				? null
+				: 'Add at least two accounts before transferring.',
 		}
 		handle.update()
 		handle.queueTask(() => {
@@ -263,6 +264,23 @@ export function HomeRoute(handle: Handle) {
 		handle.update()
 	}
 
+	function setTransferSource(rawAccountId: string) {
+		if (!transferState) return
+		const source = getTransferAccountOptionById(kids, rawAccountId)
+		transferState.fromAccountId = rawAccountId
+		transferState.toAccountId = source
+			? String(
+					getDefaultTransferDestination(source.account, source.kid, kids)?.id ??
+						'',
+				)
+			: ''
+		transferState.error = null
+		if (source) {
+			setKidModalBackground(source.kid.emoji)
+		}
+		handle.update()
+	}
+
 	async function submitTransaction(direction: 'add' | 'remove') {
 		if (!transactionState || transactionState.status === 'saving') return
 		const cents = parseAmountToCents(transactionState.amount)
@@ -306,18 +324,23 @@ export function HomeRoute(handle: Handle) {
 			handle.update()
 			return
 		}
+		const fromAccountId = Number(transferState.fromAccountId)
+		if (!Number.isInteger(fromAccountId) || fromAccountId < 1) {
+			transferState.error = 'Choose a source account.'
+			handle.update()
+			return
+		}
 		const toAccountId = Number(transferState.toAccountId)
 		if (!Number.isInteger(toAccountId) || toAccountId < 1) {
 			transferState.error = 'Choose a destination account.'
 			handle.update()
 			return
 		}
-		if (toAccountId === transferState.fromAccount.id) {
+		if (toAccountId === fromAccountId) {
 			transferState.error = 'Choose two different accounts.'
 			handle.update()
 			return
 		}
-		const fromAccountId = transferState.fromAccount.id
 		const note = transferState.note
 		transferState.status = 'saving'
 		transferState.error = null
@@ -431,7 +454,7 @@ export function HomeRoute(handle: Handle) {
 									key={account.id}
 									css={{
 										display: 'grid',
-										gridTemplateColumns: 'minmax(0, 1fr) auto',
+										gridTemplateColumns: '1fr',
 										gap: spacing.sm,
 										alignItems: 'stretch',
 										padding: spacing.xs,
@@ -509,35 +532,51 @@ export function HomeRoute(handle: Handle) {
 											{formatCents(account.balanceCents)}
 										</strong>
 									</button>
-									<button
-										type="button"
-										on={{
-											click: (event) => {
-												if (!(event.currentTarget instanceof HTMLButtonElement))
-													return
-												openTransferModal(kid, account, event.currentTarget)
-											},
-										}}
-										css={{
-											...buttonCss,
-											alignSelf: 'stretch',
-											backgroundColor: 'rgba(255,255,255,0.92)',
-											color: colors.text,
-											boxShadow: '0 3px 0 0 rgba(0,0,0,0.2)',
-											'&:active': {
-												transform: 'translateY(3px)',
-												boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
-											},
-										}}
-									>
-										Transfer
-									</button>
 								</article>
 							)
 						})}
 					</div>
 				</article>
 			))}
+
+			{status === 'ready' ? (
+				<section
+					css={{
+						display: 'grid',
+						gap: spacing.sm,
+						padding: spacing.lg,
+						borderRadius: radius.xl,
+						border: `3px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+						boxShadow: shadows.md,
+						textAlign: 'center',
+					}}
+				>
+					<h2 css={{ margin: 0, color: colors.text }}>Move money around</h2>
+					<p css={{ margin: 0, color: colors.textMuted }}>
+						Transfer between any two accounts. Same-kid accounts are suggested
+						first.
+					</p>
+					<button
+						type="button"
+						disabled={getTransferAccountOptions(kids).length < 2}
+						on={{
+							click: (event) => {
+								if (!(event.currentTarget instanceof HTMLButtonElement)) return
+								openTransferModal(event.currentTarget)
+							},
+						}}
+						css={{
+							...buttonCss,
+							justifySelf: 'center',
+							minWidth: 'min(100%, 18rem)',
+							paddingInline: spacing.lg,
+						}}
+					>
+						Transfer money
+					</button>
+				</section>
+			) : null}
 
 			{transactionState ? (
 				<div
@@ -878,30 +917,42 @@ export function HomeRoute(handle: Handle) {
 							</button>
 						</header>
 
-						<section
-							css={{
-								display: 'grid',
-								gap: spacing.xs,
-								padding: spacing.md,
-								borderRadius: radius.lg,
-								background: getAccountGradientBackground(
-									transferState.fromAccount.colorToken,
-								),
-								color: '#ffffff',
-							}}
-						>
-							<span css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}>
-								From
+						<label css={{ display: 'grid', gap: spacing.xs }}>
+							<span css={{ color: colors.text }}>From account</span>
+							<select
+								value={transferState.fromAccountId}
+								disabled={getTransferAccountOptions(kids).length === 0}
+								on={{
+									change: (event) => {
+										if (!(event.currentTarget instanceof HTMLSelectElement))
+											return
+										setTransferSource(event.currentTarget.value)
+									},
+								}}
+								css={inputCss}
+							>
+								{getTransferAccountGroups(kids).map((group) => (
+									<optgroup
+										key={group.kid.id}
+										label={`${group.kid.emoji} ${group.kid.name}`}
+									>
+										{group.accounts.map((account) => (
+											<option key={account.id} value={String(account.id)}>
+												{account.name} ({formatCents(account.balanceCents)})
+											</option>
+										))}
+									</optgroup>
+								))}
+							</select>
+							<span
+								css={{
+									color: colors.textMuted,
+									fontSize: typography.fontSize.sm,
+								}}
+							>
+								{getSelectedTransferSourceBalanceLabel(transferState, kids)}
 							</span>
-							<strong css={{ fontSize: typography.fontSize.lg }}>
-								{transferState.fromKid.emoji} {transferState.fromKid.name} ·{' '}
-								{transferState.fromAccount.name}
-							</strong>
-							<span css={{ opacity: 0.9 }}>
-								Current balance:{' '}
-								{formatCents(transferState.fromAccount.balanceCents)}
-							</span>
-						</section>
+						</label>
 
 						<label css={{ display: 'grid', gap: spacing.xs }}>
 							<span css={{ color: colors.text }}>To account</span>
@@ -942,8 +993,10 @@ export function HomeRoute(handle: Handle) {
 									fontSize: typography.fontSize.sm,
 								}}
 							>
-								Accounts for {transferState.fromKid.name} are listed first;
-								other kids are available below.
+								Accounts for{' '}
+								{getSelectedTransferSource(transferState, kids)?.kid.name ??
+									'the selected kid'}{' '}
+								are listed first; other kids are available below.
 							</span>
 						</label>
 
@@ -986,18 +1039,25 @@ export function HomeRoute(handle: Handle) {
 								<button
 									type="button"
 									disabled={
-										Math.abs(transferState.fromAccount.balanceCents) === 0
+										Math.abs(
+											getSelectedTransferSource(transferState, kids)?.account
+												.balanceCents ?? 0,
+										) === 0
 									}
 									on={{
 										click: () =>
 											setTransferAmountFromQuick(
-												Math.abs(transferState!.fromAccount.balanceCents),
+												Math.abs(
+													getSelectedTransferSource(transferState!, kids)
+														?.account.balanceCents ?? 0,
+												),
 											),
 									}}
 									css={quickAmountButtonCss()}
 								>
 									{`Current Total (${formatCents(
-										transferState.fromAccount.balanceCents,
+										getSelectedTransferSource(transferState, kids)?.account
+											.balanceCents ?? 0,
 									)})`}
 								</button>
 								{quickAmounts.map((amount) => (
@@ -1116,9 +1176,60 @@ function quickAmountButtonCss() {
 	}
 }
 
+function getTransferAccountOptions(kids: Array<KidSummary>) {
+	return kids.flatMap((kid) => {
+		return kid.accounts.map((account) => ({ kid, account }))
+	})
+}
+
+function getTransferAccountGroups(kids: Array<KidSummary>) {
+	return kids
+		.map((kid) => ({ kid, accounts: kid.accounts }))
+		.filter((group) => group.accounts.length > 0)
+}
+
+function getDefaultTransferSource(kids: Array<KidSummary>) {
+	return (
+		getTransferAccountOptions(kids).find((option) => {
+			return option.account.balanceCents > 0
+		}) ??
+		getTransferAccountOptions(kids)[0] ??
+		null
+	)
+}
+
+function getTransferAccountOptionById(
+	kids: Array<KidSummary>,
+	rawAccountId: string,
+) {
+	const accountId = Number(rawAccountId)
+	if (!Number.isInteger(accountId)) return null
+	return (
+		getTransferAccountOptions(kids).find((option) => {
+			return option.account.id === accountId
+		}) ?? null
+	)
+}
+
+function getSelectedTransferSource(
+	transferState: TransferState,
+	kids: Array<KidSummary>,
+) {
+	return getTransferAccountOptionById(kids, transferState.fromAccountId)
+}
+
+function getSelectedTransferSourceBalanceLabel(
+	transferState: TransferState,
+	kids: Array<KidSummary>,
+) {
+	const source = getSelectedTransferSource(transferState, kids)
+	if (!source) return 'Choose the account to move money from.'
+	return `Current balance: ${formatCents(source.account.balanceCents)}`
+}
+
 function getDefaultTransferDestination(
-	kid: KidSummary,
 	account: KidAccount,
+	kid: KidSummary,
 	kids: Array<KidSummary>,
 ) {
 	const sameKidAccount = kid.accounts.find((candidate) => {
@@ -1139,19 +1250,21 @@ function getTransferDestinationGroups(
 	transferState: TransferState,
 	kids: Array<KidSummary>,
 ) {
+	const source = getSelectedTransferSource(transferState, kids)
+	if (!source) return []
 	const groups = kids
 		.map((kid) => ({
 			kid,
 			accounts: kid.accounts.filter((account) => {
-				return account.id !== transferState.fromAccount.id
+				return account.id !== source.account.id
 			}),
 		}))
 		.filter((group) => group.accounts.length > 0)
 	const sameKidGroups = groups.filter((group) => {
-		return group.kid.id === transferState.fromKid.id
+		return group.kid.id === source.kid.id
 	})
 	const otherKidGroups = groups.filter((group) => {
-		return group.kid.id !== transferState.fromKid.id
+		return group.kid.id !== source.kid.id
 	})
 	return [...sameKidGroups, ...otherKidGroups]
 }

@@ -107,12 +107,9 @@ test('parent can transfer money between same-kid and cross-kid accounts', async 
 	await page.getByRole('button', { name: 'Add' }).last().click()
 	await expect(page.getByText('Family Total:')).toContainText('$12.00')
 
-	await page
-		.getByRole('button', { name: new RegExp(accountName) })
-		.locator('xpath=ancestor::article[1]')
-		.getByRole('button', { name: 'Transfer' })
-		.click()
+	await page.getByRole('button', { name: 'Transfer money' }).click()
 	const modal = page.getByRole('dialog', { name: 'Transfer money' })
+	await expect(modal.getByLabel('From account')).toContainText(accountName)
 	await expect(modal.getByLabel('To account')).toContainText(savingsName)
 	await expect(
 		modal.getByText(`Accounts for ${kidName} are listed first`),
@@ -127,11 +124,10 @@ test('parent can transfer money between same-kid and cross-kid accounts', async 
 		page.getByRole('button', { name: new RegExp(savingsName) }),
 	).toContainText('$5.50')
 
-	await page
-		.getByRole('button', { name: new RegExp(savingsName) })
-		.locator('xpath=ancestor::article[1]')
-		.getByRole('button', { name: 'Transfer' })
-		.click()
+	await page.getByRole('button', { name: 'Transfer money' }).click()
+	await modal
+		.getByLabel('From account')
+		.selectOption({ label: `${savingsName} ($5.50)` })
 	await modal
 		.getByLabel('To account')
 		.selectOption({ label: `${otherAccountName} ($0.00)` })
