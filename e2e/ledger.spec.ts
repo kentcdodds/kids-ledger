@@ -109,8 +109,12 @@ test('parent can transfer money between same-kid and cross-kid accounts', async 
 
 	await page.getByRole('button', { name: 'Transfer money' }).click()
 	const modal = page.getByRole('dialog', { name: 'Transfer money' })
-	await expect(modal.getByLabel('From account')).toContainText(accountName)
-	await expect(modal.getByLabel('To account')).toContainText(savingsName)
+	await expect(
+		modal.getByLabel('From account').locator('option:checked'),
+	).toContainText(accountName)
+	await expect(
+		modal.getByLabel('To account').locator('option:checked'),
+	).toContainText(savingsName)
 	await expect(
 		modal.getByText(`Accounts for ${kidName} are listed first`),
 	).toBeVisible()

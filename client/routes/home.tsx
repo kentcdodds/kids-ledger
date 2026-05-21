@@ -117,6 +117,10 @@ export function HomeRoute(handle: Handle) {
 		opener: HTMLButtonElement,
 	) {
 		clearCloseModalTimeout()
+		clearTransferCloseModalTimeout()
+		transferState = null
+		transferModalClosing = false
+		transferModalOpener = null
 		removeTransactionModalStyles()
 		setKidModalBackground(kid.emoji)
 		transactionModalOpener = opener
@@ -141,6 +145,11 @@ export function HomeRoute(handle: Handle) {
 
 	function openTransferModal(opener: HTMLButtonElement) {
 		clearTransferCloseModalTimeout()
+		clearCloseModalTimeout()
+		transactionState = null
+		transactionModalClosing = false
+		transactionModalOpener = null
+		removeTransactionModalStyles()
 		transferModalOpener = opener
 		transferModalClosing = false
 		const source = getDefaultTransferSource(kids)
@@ -723,17 +732,7 @@ export function HomeRoute(handle: Handle) {
 												Math.abs(transactionState!.account.balanceCents),
 											),
 									}}
-									css={{
-										...buttonCss,
-										backgroundColor: colors.surface,
-										color: colors.text,
-										border: `2px solid ${colors.border}`,
-										boxShadow: `0 2px 0 0 ${colors.border}`,
-										'&:active': {
-											transform: 'translateY(2px)',
-											boxShadow: `0 0 0 0 ${colors.border}`,
-										},
-									}}
+									css={quickAmountButtonCss()}
 								>
 									{`Current Total (${formatCents(
 										transactionState.account.balanceCents,
@@ -744,17 +743,7 @@ export function HomeRoute(handle: Handle) {
 										key={amount}
 										type="button"
 										on={{ click: () => setTransactionAmountFromQuick(amount) }}
-										css={{
-											...buttonCss,
-											backgroundColor: colors.surface,
-											color: colors.text,
-											border: `2px solid ${colors.border}`,
-											boxShadow: `0 2px 0 0 ${colors.border}`,
-											'&:active': {
-												transform: 'translateY(2px)',
-												boxShadow: `0 0 0 0 ${colors.border}`,
-											},
-										}}
+										css={quickAmountButtonCss()}
 									>
 										{formatCents(amount)}
 									</button>
@@ -1039,25 +1028,18 @@ export function HomeRoute(handle: Handle) {
 								<button
 									type="button"
 									disabled={
-										Math.abs(
-											getSelectedTransferSource(transferState, kids)?.account
-												.balanceCents ?? 0,
-										) === 0
+										getTransferAvailableBalanceCents(transferState, kids) === 0
 									}
 									on={{
 										click: () =>
 											setTransferAmountFromQuick(
-												Math.abs(
-													getSelectedTransferSource(transferState!, kids)
-														?.account.balanceCents ?? 0,
-												),
+												getTransferAvailableBalanceCents(transferState!, kids),
 											),
 									}}
 									css={quickAmountButtonCss()}
 								>
 									{`Current Total (${formatCents(
-										getSelectedTransferSource(transferState, kids)?.account
-											.balanceCents ?? 0,
+										getTransferAvailableBalanceCents(transferState, kids),
 									)})`}
 								</button>
 								{quickAmounts.map((amount) => (
@@ -1225,6 +1207,16 @@ function getSelectedTransferSourceBalanceLabel(
 	const source = getSelectedTransferSource(transferState, kids)
 	if (!source) return 'Choose the account to move money from.'
 	return `Current balance: ${formatCents(source.account.balanceCents)}`
+}
+
+function getTransferAvailableBalanceCents(
+	transferState: TransferState,
+	kids: Array<KidSummary>,
+) {
+	return Math.max(
+		getSelectedTransferSource(transferState, kids)?.account.balanceCents ?? 0,
+		0,
+	)
 }
 
 function getDefaultTransferDestination(
