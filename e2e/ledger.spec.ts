@@ -1,4 +1,9 @@
-import { createKidWithAccount, expect, test } from './playwright-utils.ts'
+import {
+	addAccountToKidCard,
+	createKidWithAccount,
+	expect,
+	test,
+} from './playwright-utils.ts'
 
 test('parent can complete first kid/account/transaction flow', async ({
 	page,
@@ -74,4 +79,70 @@ test('home shows monthly interest preview for accounts with APY', async ({
 	await expect(accountButton).toContainText('12% APY')
 	await expect(accountButton).toContainText('estimated payout $0.28')
 	await expect(accountButton).toContainText(/on [A-Z][a-z]{2} \d{1,2}/)
+})
+
+test('parent can transfer money between same-kid and cross-kid accounts', async ({
+	page,
+	login,
+}) => {
+	await login()
+	const kidName = `Kid-${crypto.randomUUID().slice(0, 6)}`
+	const accountName = `Spending-${crypto.randomUUID().slice(0, 6)}`
+	const { kidCard } = await createKidWithAccount(page, {
+		kidName,
+		accountName,
+	})
+	const savingsName = await addAccountToKidCard(kidCard, {
+		accountName: `Savings-${crypto.randomUUID().slice(0, 6)}`,
+	})
+	const otherAccountName = `Giving-${crypto.randomUUID().slice(0, 6)}`
+	await createKidWithAccount(page, {
+		kidName: `Other-${crypto.randomUUID().slice(0, 6)}`,
+		accountName: otherAccountName,
+	})
+
+	await page.goto('/')
+	await page.getByRole('button', { name: new RegExp(accountName) }).click()
+	await page.getByLabel('Amount').fill('12.00')
+	await page.getByRole('button', { name: 'Add' }).last().click()
+	await expect(page.getByText('Family Total:')).toContainText('$12.00')
+
+	await page
+		.getByRole('button', { name: new RegExp(accountName) })
+		.locator('xpath=ancestor::article[1]')
+		.getByRole('button', { name: 'Transfer' })
+		.click()
+	const modal = page.getByRole('dialog', { name: 'Transfer money' })
+	await expect(modal.getByLabel('To account')).toContainText(savingsName)
+	await expect(
+		modal.getByText(`Accounts for ${kidName} are listed first`),
+	).toBeVisible()
+	await modal.getByLabel('Amount').fill('5.50')
+	await modal.getByRole('button', { name: 'Transfer' }).click()
+
+	await expect(
+		page.getByRole('button', { name: new RegExp(accountName) }),
+	).toContainText('$6.50')
+	await expect(
+		page.getByRole('button', { name: new RegExp(savingsName) }),
+	).toContainText('$5.50')
+
+	await page
+		.getByRole('button', { name: new RegExp(savingsName) })
+		.locator('xpath=ancestor::article[1]')
+		.getByRole('button', { name: 'Transfer' })
+		.click()
+	await modal
+		.getByLabel('To account')
+		.selectOption({ label: `${otherAccountName} ($0.00)` })
+	await modal.getByLabel('Amount').fill('2.25')
+	await modal.getByRole('button', { name: 'Transfer' }).click()
+
+	await expect(
+		page.getByRole('button', { name: new RegExp(savingsName) }),
+	).toContainText('$3.25')
+	await expect(
+		page.getByRole('button', { name: new RegExp(otherAccountName) }),
+	).toContainText('$2.25')
+	await expect(page.getByText('Family Total:')).toContainText('$12.00')
 })

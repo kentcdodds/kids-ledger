@@ -1,6 +1,7 @@
 import { type Handle } from 'remix/component'
 import {
 	createTransaction,
+	createTransfer,
 	fetchDashboard,
 	type KidAccount,
 	type KidSummary,
@@ -39,6 +40,16 @@ type TransactionState = {
 	warning: string | null
 }
 
+type TransferState = {
+	fromKid: KidSummary
+	fromAccount: KidAccount
+	toAccountId: string
+	amount: string
+	note: string
+	status: 'idle' | 'saving'
+	error: string | null
+}
+
 const modalCloseAnimationDurationMs = 220
 
 function getNextMonthlyInterestPayoutDate(from = new Date()) {
@@ -75,6 +86,10 @@ export function HomeRoute(handle: Handle) {
 	let transactionModalOpener: HTMLButtonElement | null = null
 	let transactionModalClosing = false
 	let closeModalTimeoutId: number | null = null
+	let transferState: TransferState | null = null
+	let transferModalOpener: HTMLButtonElement | null = null
+	let transferModalClosing = false
+	let closeTransferModalTimeoutId: number | null = null
 
 	function removeTransactionModalStyles() {
 		if (typeof document === 'undefined') return
@@ -89,6 +104,12 @@ export function HomeRoute(handle: Handle) {
 		if (closeModalTimeoutId === null) return
 		window.clearTimeout(closeModalTimeoutId)
 		closeModalTimeoutId = null
+	}
+
+	function clearTransferCloseModalTimeout() {
+		if (closeTransferModalTimeoutId === null) return
+		window.clearTimeout(closeTransferModalTimeoutId)
+		closeTransferModalTimeoutId = null
 	}
 
 	function openTransactionModal(
@@ -119,6 +140,34 @@ export function HomeRoute(handle: Handle) {
 		})
 	}
 
+	function openTransferModal(
+		kid: KidSummary,
+		account: KidAccount,
+		opener: HTMLButtonElement,
+	) {
+		clearTransferCloseModalTimeout()
+		setKidModalBackground(kid.emoji)
+		transferModalOpener = opener
+		transferModalClosing = false
+		const destination = getDefaultTransferDestination(kid, account, kids)
+		transferState = {
+			fromKid: kid,
+			fromAccount: account,
+			toAccountId: destination ? String(destination.id) : '',
+			amount: '',
+			note: '',
+			status: 'idle',
+			error: destination ? null : 'Add another account before transferring.',
+		}
+		handle.update()
+		handle.queueTask(() => {
+			const closeButton = document.getElementById('transfer-modal-close')
+			if (closeButton instanceof HTMLButtonElement) {
+				closeButton.focus()
+			}
+		})
+	}
+
 	function closeTransactionModal() {
 		if (!transactionState || transactionModalClosing) return
 		const opener = transactionModalOpener
@@ -140,8 +189,32 @@ export function HomeRoute(handle: Handle) {
 		}, modalCloseAnimationDurationMs)
 	}
 
+	function closeTransferModal() {
+		if (!transferState || transferModalClosing) return
+		const opener = transferModalOpener
+		transferModalOpener = null
+		transferModalClosing = true
+		handle.update()
+		closeTransferModalTimeoutId = window.setTimeout(() => {
+			transferState = null
+			transferModalClosing = false
+			closeTransferModalTimeoutId = null
+			clearKidModalBackground()
+			handle.update()
+			if (opener?.isConnected) {
+				handle.queueTask(() => {
+					opener.focus()
+				})
+			}
+		}, modalCloseAnimationDurationMs)
+	}
+
 	function handleTransactionModalKeydown(event: KeyboardEvent) {
 		handleModalKeydown(event, closeTransactionModal)
+	}
+
+	function handleTransferModalKeydown(event: KeyboardEvent) {
+		handleModalKeydown(event, closeTransferModal)
 	}
 
 	async function refreshDashboard() {
@@ -170,6 +243,7 @@ export function HomeRoute(handle: Handle) {
 	handle.queueTask(() => {
 		return () => {
 			clearCloseModalTimeout()
+			clearTransferCloseModalTimeout()
 			removeTransactionModalStyles()
 			clearKidModalBackground()
 		}
@@ -179,6 +253,13 @@ export function HomeRoute(handle: Handle) {
 		if (!transactionState) return
 		transactionState.amount = (cents / 100).toFixed(2)
 		transactionState.error = null
+		handle.update()
+	}
+
+	function setTransferAmountFromQuick(cents: number) {
+		if (!transferState) return
+		transferState.amount = (cents / 100).toFixed(2)
+		transferState.error = null
 		handle.update()
 	}
 
@@ -213,6 +294,49 @@ export function HomeRoute(handle: Handle) {
 		} catch (error) {
 			window.alert(
 				error instanceof Error ? error.message : 'Could not save transaction.',
+			)
+		}
+	}
+
+	async function submitTransfer() {
+		if (!transferState || transferState.status === 'saving') return
+		const cents = parseAmountToCents(transferState.amount)
+		if (cents === null || cents <= 0) {
+			transferState.error = 'Enter an amount greater than zero.'
+			handle.update()
+			return
+		}
+		const toAccountId = Number(transferState.toAccountId)
+		if (!Number.isInteger(toAccountId) || toAccountId < 1) {
+			transferState.error = 'Choose a destination account.'
+			handle.update()
+			return
+		}
+		if (toAccountId === transferState.fromAccount.id) {
+			transferState.error = 'Choose two different accounts.'
+			handle.update()
+			return
+		}
+		const fromAccountId = transferState.fromAccount.id
+		const note = transferState.note
+		transferState.status = 'saving'
+		transferState.error = null
+		handle.update()
+		closeTransferModal()
+		try {
+			const result = await createTransfer({
+				fromAccountId,
+				toAccountId,
+				amountCents: cents,
+				note,
+			})
+			if (result.result.warning) {
+				window.alert(result.result.warning)
+			}
+			await refreshDashboard()
+		} catch (error) {
+			window.alert(
+				error instanceof Error ? error.message : 'Could not save transfer.',
 			)
 		}
 	}
@@ -303,68 +427,112 @@ export function HomeRoute(handle: Handle) {
 						{kid.accounts.map((account) => {
 							const interestPreviewText = getInterestPreviewText(account)
 							return (
-								<button
+								<article
 									key={account.id}
-									type="button"
-									on={{
-										click: (event) => {
-											if (!(event.currentTarget instanceof HTMLButtonElement))
-												return
-											openTransactionModal(kid, account, event.currentTarget)
-										},
-									}}
 									css={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
+										display: 'grid',
+										gridTemplateColumns: 'minmax(0, 1fr) auto',
 										gap: spacing.sm,
-										padding: spacing.md,
+										alignItems: 'stretch',
+										padding: spacing.xs,
 										borderRadius: radius.lg,
-										border: 'none',
 										background: getAccountGradientBackground(
 											account.colorToken,
 										),
 										color: '#ffffff',
-										cursor: 'pointer',
 										boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
-										transition: `all ${transitions.fast}`,
-										'&:hover': { filter: 'brightness(1.1)' },
-										'&:active': {
-											transform: 'translateY(4px)',
-											boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
+										[mq.mobile]: {
+											gridTemplateColumns: '1fr',
 										},
 									}}
 								>
-									<span
+									<button
+										type="button"
+										on={{
+											click: (event) => {
+												if (!(event.currentTarget instanceof HTMLButtonElement))
+													return
+												openTransactionModal(kid, account, event.currentTarget)
+											},
+										}}
 										css={{
-											display: 'grid',
-											gap: 2,
+											display: 'flex',
+											justifyContent: 'space-between',
+											alignItems: 'center',
+											gap: spacing.sm,
+											minWidth: 0,
+											padding: spacing.sm,
+											border: 'none',
+											borderRadius: radius.md,
+											background: 'transparent',
+											color: 'inherit',
+											cursor: 'pointer',
 											textAlign: 'left',
-											fontWeight: typography.fontWeight.semibold,
+											transition: `background-color ${transitions.fast}`,
+											'&:hover': {
+												backgroundColor: 'rgba(255,255,255,0.14)',
+											},
 										}}
 									>
-										{account.name}
 										<span
-											css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}
+											css={{
+												display: 'grid',
+												gap: 2,
+												minWidth: 0,
+												fontWeight: typography.fontWeight.semibold,
+											}}
 										>
-											Tap to add or remove money
-										</span>
-										{interestPreviewText ? (
+											{account.name}
 											<span
-												css={{
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.normal,
-													opacity: 0.9,
-												}}
+												css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}
 											>
-												{interestPreviewText}
+												Tap to add or remove money
 											</span>
-										) : null}
-									</span>
-									<strong css={{ fontSize: typography.fontSize.lg }}>
-										{formatCents(account.balanceCents)}
-									</strong>
-								</button>
+											{interestPreviewText ? (
+												<span
+													css={{
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.normal,
+														opacity: 0.9,
+													}}
+												>
+													{interestPreviewText}
+												</span>
+											) : null}
+										</span>
+										<strong
+											css={{
+												flexShrink: 0,
+												fontSize: typography.fontSize.lg,
+											}}
+										>
+											{formatCents(account.balanceCents)}
+										</strong>
+									</button>
+									<button
+										type="button"
+										on={{
+											click: (event) => {
+												if (!(event.currentTarget instanceof HTMLButtonElement))
+													return
+												openTransferModal(kid, account, event.currentTarget)
+											},
+										}}
+										css={{
+											...buttonCss,
+											alignSelf: 'stretch',
+											backgroundColor: 'rgba(255,255,255,0.92)',
+											color: colors.text,
+											boxShadow: '0 3px 0 0 rgba(0,0,0,0.2)',
+											'&:active': {
+												transform: 'translateY(3px)',
+												boxShadow: '0 0 0 0 rgba(0,0,0,0.2)',
+											},
+										}}
+									>
+										Transfer
+									</button>
+								</article>
 							)
 						})}
 					</div>
@@ -620,6 +788,283 @@ export function HomeRoute(handle: Handle) {
 					</section>
 				</div>
 			) : null}
+
+			{transferState ? (
+				<div
+					on={{
+						click: (event) => {
+							if (event.target === event.currentTarget) {
+								closeTransferModal()
+							}
+						},
+					}}
+					css={{
+						position: 'fixed',
+						inset: 0,
+						backgroundColor: 'rgba(0, 0, 0, 0.45)',
+						display: 'grid',
+						placeItems: 'center',
+						padding: spacing.md,
+						zIndex: 1000,
+						pointerEvents: transferModalClosing ? 'none' : 'auto',
+						animation: transferModalClosing
+							? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+							: 'modal-backdrop-in 180ms ease-out forwards',
+						[mq.mobile]: {
+							padding: 0,
+							placeItems: 'stretch',
+						},
+					}}
+				>
+					<section
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="transfer-modal-title"
+						aria-describedby="transfer-modal-description"
+						on={{ keydown: handleTransferModalKeydown }}
+						css={{
+							width: 'min(34rem, 100%)',
+							maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
+							overflow: 'auto',
+							display: 'grid',
+							gap: spacing.md,
+							padding: spacing.lg,
+							fontFamily: typography.fontFamily,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.lg,
+							animation: transferModalClosing
+								? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+								: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+							[mq.mobile]: {
+								width: '100%',
+								maxHeight: '100dvh',
+								minHeight: '100dvh',
+								borderRadius: 0,
+								border: 'none',
+								gap: spacing.sm,
+								padding: spacing.md,
+							},
+						}}
+					>
+						<header css={{ display: 'flex', justifyContent: 'space-between' }}>
+							<div>
+								<h3
+									id="transfer-modal-title"
+									css={{ margin: 0, color: colors.text }}
+								>
+									Transfer money
+								</h3>
+								<p
+									id="transfer-modal-description"
+									css={{ margin: 0, color: colors.textMuted }}
+								>
+									Move any amount from one account to another.
+								</p>
+							</div>
+							<button
+								id="transfer-modal-close"
+								type="button"
+								on={{ click: closeTransferModal }}
+								css={{
+									border: 'none',
+									background: 'transparent',
+									color: colors.textMuted,
+									cursor: 'pointer',
+								}}
+							>
+								Close
+							</button>
+						</header>
+
+						<section
+							css={{
+								display: 'grid',
+								gap: spacing.xs,
+								padding: spacing.md,
+								borderRadius: radius.lg,
+								background: getAccountGradientBackground(
+									transferState.fromAccount.colorToken,
+								),
+								color: '#ffffff',
+							}}
+						>
+							<span css={{ fontSize: typography.fontSize.sm, opacity: 0.9 }}>
+								From
+							</span>
+							<strong css={{ fontSize: typography.fontSize.lg }}>
+								{transferState.fromKid.emoji} {transferState.fromKid.name} ·{' '}
+								{transferState.fromAccount.name}
+							</strong>
+							<span css={{ opacity: 0.9 }}>
+								Current balance:{' '}
+								{formatCents(transferState.fromAccount.balanceCents)}
+							</span>
+						</section>
+
+						<label css={{ display: 'grid', gap: spacing.xs }}>
+							<span css={{ color: colors.text }}>To account</span>
+							<select
+								value={transferState.toAccountId}
+								disabled={
+									getTransferDestinationGroups(transferState, kids).length === 0
+								}
+								on={{
+									change: (event) => {
+										if (!(event.currentTarget instanceof HTMLSelectElement))
+											return
+										transferState!.toAccountId = event.currentTarget.value
+										transferState!.error = null
+										handle.update()
+									},
+								}}
+								css={inputCss}
+							>
+								{getTransferDestinationGroups(transferState, kids).map(
+									(group) => (
+										<optgroup
+											key={group.kid.id}
+											label={`${group.kid.emoji} ${group.kid.name}`}
+										>
+											{group.accounts.map((account) => (
+												<option key={account.id} value={String(account.id)}>
+													{account.name} ({formatCents(account.balanceCents)})
+												</option>
+											))}
+										</optgroup>
+									),
+								)}
+							</select>
+							<span
+								css={{
+									color: colors.textMuted,
+									fontSize: typography.fontSize.sm,
+								}}
+							>
+								Accounts for {transferState.fromKid.name} are listed first;
+								other kids are available below.
+							</span>
+						</label>
+
+						<label css={{ display: 'grid', gap: spacing.xs }}>
+							<span css={{ color: colors.text }}>Amount</span>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								value={transferState.amount}
+								on={{
+									input: (event) => {
+										if (!(event.currentTarget instanceof HTMLInputElement))
+											return
+										transferState!.amount = event.currentTarget.value
+										transferState!.error = null
+										handle.update()
+									},
+								}}
+								css={inputCss}
+							/>
+						</label>
+
+						<div css={{ display: 'grid', gap: spacing.xs }}>
+							<span
+								css={{
+									color: colors.textMuted,
+									fontSize: typography.fontSize.sm,
+								}}
+							>
+								Quick amounts
+							</span>
+							<div
+								css={{
+									display: 'grid',
+									gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+									gap: spacing.xs,
+								}}
+							>
+								<button
+									type="button"
+									disabled={
+										Math.abs(transferState.fromAccount.balanceCents) === 0
+									}
+									on={{
+										click: () =>
+											setTransferAmountFromQuick(
+												Math.abs(transferState!.fromAccount.balanceCents),
+											),
+									}}
+									css={quickAmountButtonCss()}
+								>
+									{`Current Total (${formatCents(
+										transferState.fromAccount.balanceCents,
+									)})`}
+								</button>
+								{quickAmounts.map((amount) => (
+									<button
+										key={amount}
+										type="button"
+										on={{ click: () => setTransferAmountFromQuick(amount) }}
+										css={quickAmountButtonCss()}
+									>
+										{formatCents(amount)}
+									</button>
+								))}
+							</div>
+						</div>
+
+						<label css={{ display: 'grid', gap: spacing.xs }}>
+							<span css={{ color: colors.text }}>Note (optional)</span>
+							<input
+								type="text"
+								value={transferState.note}
+								on={{
+									input: (event) => {
+										if (!(event.currentTarget instanceof HTMLInputElement))
+											return
+										transferState!.note = event.currentTarget.value
+										handle.update()
+									},
+								}}
+								css={inputCss}
+							/>
+						</label>
+
+						{transferState.error ? (
+							<p css={{ margin: 0, color: colors.error }}>
+								{transferState.error}
+							</p>
+						) : null}
+
+						<div
+							css={{
+								display: 'grid',
+								gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+								gap: spacing.sm,
+							}}
+						>
+							<button
+								type="button"
+								on={{ click: closeTransferModal }}
+								css={{
+									...modalButtonCss(colors.surface, colors.text, colors.border),
+									border: `2px solid ${colors.border}`,
+								}}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								disabled={transferState.status === 'saving'}
+								on={{ click: () => void submitTransfer() }}
+								css={modalButtonCss('#bfdbfe', '#172554', '#2563eb')}
+							>
+								Transfer
+							</button>
+						</div>
+					</section>
+				</div>
+			) : null}
 		</section>
 	)
 }
@@ -655,6 +1100,60 @@ function modalButtonCss(
 			boxShadow: `0 0 0 0 ${activeShadow}`,
 		},
 	}
+}
+
+function quickAmountButtonCss() {
+	return {
+		...buttonCss,
+		backgroundColor: colors.surface,
+		color: colors.text,
+		border: `2px solid ${colors.border}`,
+		boxShadow: `0 2px 0 0 ${colors.border}`,
+		'&:active': {
+			transform: 'translateY(2px)',
+			boxShadow: `0 0 0 0 ${colors.border}`,
+		},
+	}
+}
+
+function getDefaultTransferDestination(
+	kid: KidSummary,
+	account: KidAccount,
+	kids: Array<KidSummary>,
+) {
+	const sameKidAccount = kid.accounts.find((candidate) => {
+		return candidate.id !== account.id
+	})
+	if (sameKidAccount) return sameKidAccount
+	for (const candidateKid of kids) {
+		if (candidateKid.id === kid.id) continue
+		const destination = candidateKid.accounts.find((candidate) => {
+			return candidate.id !== account.id
+		})
+		if (destination) return destination
+	}
+	return null
+}
+
+function getTransferDestinationGroups(
+	transferState: TransferState,
+	kids: Array<KidSummary>,
+) {
+	const groups = kids
+		.map((kid) => ({
+			kid,
+			accounts: kid.accounts.filter((account) => {
+				return account.id !== transferState.fromAccount.id
+			}),
+		}))
+		.filter((group) => group.accounts.length > 0)
+	const sameKidGroups = groups.filter((group) => {
+		return group.kid.id === transferState.fromKid.id
+	})
+	const otherKidGroups = groups.filter((group) => {
+		return group.kid.id !== transferState.fromKid.id
+	})
+	return [...sameKidGroups, ...otherKidGroups]
 }
 
 function LoggedOutHome() {

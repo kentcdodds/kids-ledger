@@ -24,6 +24,7 @@ import {
 	createLedgerSettingsHandler,
 	createQuickAmountsSetHandler,
 	createTransactionCreateHandler,
+	createTransferCreateHandler,
 } from './handlers/ledger-api.ts'
 import { home } from './handlers/home.ts'
 import { login } from './handlers/login.ts'
@@ -94,6 +95,7 @@ export function createAppRouter(appEnv: AppEnv) {
 		routes.apiTransactionsCreate,
 		createTransactionCreateHandler(appEnv),
 	)
+	router.map(routes.apiTransfersCreate, createTransferCreateHandler(appEnv))
 	router.map(routes.apiQuickAmountsSet, createQuickAmountsSetHandler(appEnv))
 	router.map(routes.apiExportJson, createExportJsonHandler(appEnv))
 

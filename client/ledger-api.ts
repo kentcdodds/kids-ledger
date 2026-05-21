@@ -238,6 +238,24 @@ export async function createTransaction(input: {
 	}>('/ledger/transactions/create', input)
 }
 
+export async function createTransfer(input: {
+	fromAccountId: number
+	toAccountId: number
+	amountCents: number
+	note?: string
+}) {
+	return postJson<{
+		ok: true
+		result: {
+			fromAccountId: number
+			fromBalanceCents: number
+			toAccountId: number
+			toBalanceCents: number
+			warning: string | null
+		}
+	}>('/ledger/transfers/create', input)
+}
+
 export async function setQuickAmounts(amounts: Array<number>) {
 	return postJson<{ ok: true; quickAmounts: Array<number> }>(
 		'/ledger/quick-amounts/set',

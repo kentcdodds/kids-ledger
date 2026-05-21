@@ -66,6 +66,13 @@ const createTransactionSchema = object({
 	note: optional(string()),
 })
 
+const createTransferSchema = object({
+	fromAccountId: number(),
+	toAccountId: number(),
+	amountCents: number(),
+	note: optional(string()),
+})
+
 const setQuickAmountsSchema = object({
 	amounts: array(number()),
 })
@@ -340,6 +347,17 @@ export function createTransactionCreateHandler(appEnv: AppEnv) {
 	}) satisfies BuildAction<
 		typeof routes.apiTransactionsCreate.method,
 		typeof routes.apiTransactionsCreate.pattern
+	>
+}
+
+export function createTransferCreateHandler(appEnv: AppEnv) {
+	return createLedgerMutationHandler(appEnv, {
+		schema: createTransferSchema,
+		run: (service, input) => service.transferBetweenAccounts(input),
+		mapResponse: (result) => ({ result }),
+	}) satisfies BuildAction<
+		typeof routes.apiTransfersCreate.method,
+		typeof routes.apiTransfersCreate.pattern
 	>
 }
 
