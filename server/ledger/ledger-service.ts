@@ -373,6 +373,64 @@ export class LedgerService {
 		}
 	}
 
+	async transferBetweenAccounts(input: {
+		fromAccountId: number
+		toAccountId: number
+		amountCents: number
+		note?: string
+	}) {
+		if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+			throw new Error('amountCents must be a positive integer.')
+		}
+		if (input.fromAccountId === input.toAccountId) {
+			throw new Error('Choose two different accounts for a transfer.')
+		}
+		const fromAccount = await this.#requireAccount(input.fromAccountId)
+		const toAccount = await this.#requireAccount(input.toAccountId)
+		if (fromAccount.isArchived || toAccount.isArchived) {
+			throw new Error('Archived accounts cannot be used for transfers.')
+		}
+		const note = (input.note ?? '').trim()
+		const fromNote = note
+			? `Transfer to ${toAccount.kidName} - ${toAccount.name}: ${note}`
+			: `Transfer to ${toAccount.kidName} - ${toAccount.name}`
+		const toNote = note
+			? `Transfer from ${fromAccount.kidName} - ${fromAccount.name}: ${note}`
+			: `Transfer from ${fromAccount.kidName} - ${fromAccount.name}`
+
+		await this.#run(
+			`INSERT INTO transactions (household_id, kid_id, account_id, amount_cents, note, source_type)
+			 VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)`,
+			[
+				fromAccount.householdId,
+				fromAccount.kidId,
+				fromAccount.id,
+				-Math.abs(input.amountCents),
+				fromNote,
+				'transfer',
+				toAccount.householdId,
+				toAccount.kidId,
+				toAccount.id,
+				Math.abs(input.amountCents),
+				toNote,
+				'transfer',
+			],
+		)
+
+		const fromBalance = await this.#getAccountBalance(fromAccount.id)
+		const toBalance = await this.#getAccountBalance(toAccount.id)
+		return {
+			fromAccountId: fromAccount.id,
+			fromBalanceCents: fromBalance,
+			toAccountId: toAccount.id,
+			toBalanceCents: toBalance,
+			warning:
+				fromBalance < 0
+					? 'The source account balance is negative after this transfer.'
+					: null,
+		}
+	}
+
 	async listTransactions(input: {
 		kidId?: number
 		accountId?: number
@@ -883,8 +941,10 @@ export class LedgerService {
 			`SELECT
 				a.id,
 				a.kid_id,
+				a.name,
 				a.apy_basis_points,
 				a.is_archived,
+				k.name AS kid_name,
 				k.household_id
 			 FROM accounts a
 			 INNER JOIN kids k ON k.id = a.kid_id
@@ -902,6 +962,8 @@ export class LedgerService {
 		return {
 			id: getNumber(row.id),
 			kidId: getNumber(row.kid_id),
+			name: getString(row.name),
+			kidName: getString(row.kid_name),
 			householdId,
 			apyBasisPoints: getNumber(row.apy_basis_points),
 			isArchived: getBoolean(row.is_archived),

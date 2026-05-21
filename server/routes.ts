@@ -36,6 +36,7 @@ export const routes = route({
 	apiAccountsUnarchive: post('/ledger/accounts/unarchive'),
 	apiAccountsDelete: post('/ledger/accounts/delete'),
 	apiTransactionsCreate: post('/ledger/transactions/create'),
+	apiTransfersCreate: post('/ledger/transfers/create'),
 	apiQuickAmountsSet: post('/ledger/quick-amounts/set'),
 	apiExportJson: '/ledger/export/json',
 })
