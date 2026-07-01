@@ -55,11 +55,12 @@ with the session data on the client.
 A basic login/logout flow could look like this:
 
 ```ts
-import * as res from '@remix-run/fetch-router/response-helpers'
+import { createHtmlResponse } from 'remix/response/html'
+import { createRedirectResponse } from 'remix/response/redirect'
 
 router.get('/login', ({ session }) => {
   let error = session.get('error')
-  return res.html(`
+  return createHtmlResponse(`
     <html>
       <body>
         <h1>Login</h1>
@@ -81,18 +82,18 @@ router.post('/login', ({ session, formData }) => {
   let user = authenticateUser(username, password)
   if (!user) {
     session.flash('error', 'Invalid username or password')
-    return res.redirect('/login')
+    return createRedirectResponse('/login')
   }
 
   session.regenerateId()
   session.set('userId', user.id)
 
-  return res.redirect('/dashboard')
+  return createRedirectResponse('/dashboard')
 })
 
 router.post('/logout', ({ session }) => {
   session.destroy()
-  return res.redirect('/')
+  return createRedirectResponse('/')
 })
 ```
 
