@@ -245,7 +245,10 @@ function ensureRouter() {
 	document.addEventListener('submit', handleDocumentSubmit)
 }
 
-export function listenToRouterNavigation(handle: Handle, listener: () => void) {
+export function listenToRouterNavigation(
+	handle: Handle<any>,
+	listener: () => void,
+) {
 	ensureRouter()
 	const onNavigate = () => listener()
 	routerEvents.addEventListener('navigate', onNavigate)

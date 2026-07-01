@@ -499,7 +499,7 @@ export function HomeRoute(handle: Handle) {
 													backgroundColor: 'rgba(255,255,255,0.14)',
 												},
 											}),
-											on<HTMLElement>('click', (event) => {
+											on<HTMLElement, 'click'>('click', (event) => {
 												if (!(event.currentTarget instanceof HTMLButtonElement))
 													return
 												openTransactionModal(kid, account, event.currentTarget)
@@ -581,7 +581,7 @@ export function HomeRoute(handle: Handle) {
 								minWidth: 'min(100%, 18rem)',
 								paddingInline: spacing.lg,
 							}),
-							on<HTMLElement>('click', (event) => {
+							on<HTMLElement, 'click'>('click', (event) => {
 								if (!(event.currentTarget instanceof HTMLButtonElement)) return
 								openTransferModal(event.currentTarget)
 							}),
@@ -612,7 +612,7 @@ export function HomeRoute(handle: Handle) {
 								placeItems: 'stretch',
 							},
 						}),
-						on<HTMLElement>('click', (event) => {
+						on<HTMLElement, 'click'>('click', (event) => {
 							if (event.target === event.currentTarget) {
 								closeTransactionModal()
 							}
@@ -658,7 +658,10 @@ export function HomeRoute(handle: Handle) {
 									padding: spacing.md,
 								},
 							}),
-							on<HTMLElement>('keydown', handleTransactionModalKeydown),
+							on<HTMLElement, 'keydown'>(
+								'keydown',
+								handleTransactionModalKeydown,
+							),
 						]}
 					>
 						<header
@@ -689,7 +692,7 @@ export function HomeRoute(handle: Handle) {
 										color: colors.textMuted,
 										cursor: 'pointer',
 									}),
-									on<HTMLElement>('click', closeTransactionModal),
+									on<HTMLElement, 'click'>('click', closeTransactionModal),
 								]}
 							>
 								Close
@@ -705,7 +708,7 @@ export function HomeRoute(handle: Handle) {
 								value={transactionState.amount}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										transactionState!.amount = event.currentTarget.value
@@ -739,7 +742,7 @@ export function HomeRoute(handle: Handle) {
 									}
 									mix={[
 										css(quickAmountButtonCss()),
-										on<HTMLElement>('click', () =>
+										on<HTMLElement, 'click'>('click', () =>
 											setTransactionAmountFromQuick(
 												Math.abs(transactionState!.account.balanceCents),
 											),
@@ -756,7 +759,7 @@ export function HomeRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(quickAmountButtonCss()),
-											on<HTMLElement>('click', () =>
+											on<HTMLElement, 'click'>('click', () =>
 												setTransactionAmountFromQuick(amount),
 											),
 										]}
@@ -774,7 +777,7 @@ export function HomeRoute(handle: Handle) {
 								value={transactionState.note}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										transactionState!.note = event.currentTarget.value
@@ -813,7 +816,7 @@ export function HomeRoute(handle: Handle) {
 										),
 										border: `2px solid ${colors.border}`,
 									}),
-									on<HTMLElement>('click', closeTransactionModal),
+									on<HTMLElement, 'click'>('click', closeTransactionModal),
 								]}
 							>
 								Cancel
@@ -823,9 +826,9 @@ export function HomeRoute(handle: Handle) {
 								disabled={transactionState.status === 'saving'}
 								mix={[
 									css(modalButtonCss('#86efac', '#052e16', '#16a34a')),
-									on<HTMLElement>(
+									on<HTMLElement, 'click'>(
 										'click',
-										() => void submitTransaction<HTMLElement>('add'),
+										() => void submitTransaction('add'),
 									),
 								]}
 							>
@@ -836,9 +839,9 @@ export function HomeRoute(handle: Handle) {
 								disabled={transactionState.status === 'saving'}
 								mix={[
 									css(modalButtonCss('#fecaca', '#450a0a', '#dc2626')),
-									on<HTMLElement>(
+									on<HTMLElement, 'click'>(
 										'click',
-										() => void submitTransaction<HTMLElement>('remove'),
+										() => void submitTransaction('remove'),
 									),
 								]}
 							>
@@ -869,7 +872,7 @@ export function HomeRoute(handle: Handle) {
 								placeItems: 'stretch',
 							},
 						}),
-						on<HTMLElement>('click', (event) => {
+						on<HTMLElement, 'click'>('click', (event) => {
 							if (event.target === event.currentTarget) {
 								closeTransferModal()
 							}
@@ -907,7 +910,7 @@ export function HomeRoute(handle: Handle) {
 									padding: spacing.md,
 								},
 							}),
-							on<HTMLElement>('keydown', handleTransferModalKeydown),
+							on<HTMLElement, 'keydown'>('keydown', handleTransferModalKeydown),
 						]}
 					>
 						<header
@@ -937,7 +940,7 @@ export function HomeRoute(handle: Handle) {
 										color: colors.textMuted,
 										cursor: 'pointer',
 									}),
-									on<HTMLElement>('click', closeTransferModal),
+									on<HTMLElement, 'click'>('click', closeTransferModal),
 								]}
 							>
 								Close
@@ -951,7 +954,7 @@ export function HomeRoute(handle: Handle) {
 								disabled={getTransferAccountOptions(kids).length === 0}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('change', (event) => {
+									on<HTMLElement, 'change'>('change', (event) => {
 										if (!(event.currentTarget instanceof HTMLSelectElement))
 											return
 										setTransferSource(event.currentTarget.value)
@@ -990,7 +993,7 @@ export function HomeRoute(handle: Handle) {
 								}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('change', (event) => {
+									on<HTMLElement, 'change'>('change', (event) => {
 										if (!(event.currentTarget instanceof HTMLSelectElement))
 											return
 										transferState!.toAccountId = event.currentTarget.value
@@ -1036,7 +1039,7 @@ export function HomeRoute(handle: Handle) {
 								value={transferState.amount}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										transferState!.amount = event.currentTarget.value
@@ -1070,7 +1073,7 @@ export function HomeRoute(handle: Handle) {
 									}
 									mix={[
 										css(quickAmountButtonCss()),
-										on<HTMLElement>('click', () =>
+										on<HTMLElement, 'click'>('click', () =>
 											setTransferAmountFromQuick(
 												getTransferAvailableBalanceCents(transferState!, kids),
 											),
@@ -1087,7 +1090,7 @@ export function HomeRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(quickAmountButtonCss()),
-											on<HTMLElement>('click', () =>
+											on<HTMLElement, 'click'>('click', () =>
 												setTransferAmountFromQuick(amount),
 											),
 										]}
@@ -1105,7 +1108,7 @@ export function HomeRoute(handle: Handle) {
 								value={transferState.note}
 								mix={[
 									css(inputCss),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										transferState!.note = event.currentTarget.value
@@ -1139,7 +1142,7 @@ export function HomeRoute(handle: Handle) {
 										),
 										border: `2px solid ${colors.border}`,
 									}),
-									on<HTMLElement>('click', closeTransferModal),
+									on<HTMLElement, 'click'>('click', closeTransferModal),
 								]}
 							>
 								Cancel
@@ -1149,7 +1152,10 @@ export function HomeRoute(handle: Handle) {
 								disabled={transferState.status === 'saving'}
 								mix={[
 									css(modalButtonCss('#bfdbfe', '#172554', '#2563eb')),
-									on<HTMLElement>('click', () => void submitTransfer()),
+									on<HTMLElement, 'click'>(
+										'click',
+										() => void submitTransfer(),
+									),
 								]}
 							>
 								Transfer

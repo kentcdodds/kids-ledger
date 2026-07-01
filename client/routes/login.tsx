@@ -158,7 +158,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							backgroundColor: colors.surface,
 							boxShadow: shadows.md,
 						}),
-						on<HTMLElement>('submit', handleSubmit),
+						on<HTMLElement, 'submit'>('submit', handleSubmit),
 					]}
 				>
 					<label mix={css({ display: 'grid', gap: spacing.xs })}>
@@ -290,7 +290,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 									textDecoration: 'underline',
 								},
 							}),
-							on<HTMLElement>('click', (event) => {
+							on<HTMLElement, 'click'>('click', (event) => {
 								if (event.defaultPrevented) return
 								switchMode(isSignup ? 'login' : 'signup')
 							}),

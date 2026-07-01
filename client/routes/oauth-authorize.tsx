@@ -326,7 +326,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 							boxShadow: shadows.md,
 							opacity: formReady ? 1 : 0.7,
 						}),
-						on<HTMLElement>('submit', handleSubmit),
+						on<HTMLElement, 'submit'>('submit', handleSubmit),
 					]}
 				>
 					{!isLoggedIn && isSessionReady ? (
@@ -420,9 +420,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 												boxShadow: `0 0 0 0 ${colors.border}`,
 											},
 								}),
-								on<HTMLElement>('click', () =>
-									submitDecision<HTMLElement>('deny'),
-								),
+								on<HTMLElement, 'click'>('click', () => submitDecision('deny')),
 							]}
 						>
 							Deny

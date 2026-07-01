@@ -406,7 +406,7 @@ export function App(handle: Handle) {
 								boxShadow: `0 2px 0 0 ${colors.border}`,
 								cursor: 'pointer',
 							}),
-							on<HTMLElement>('click', () => {
+							on<HTMLElement, 'click'>('click', () => {
 								requestTiltPermission?.()
 							}),
 						]}

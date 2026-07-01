@@ -234,7 +234,7 @@ export function HistoryRoute(handle: Handle) {
 								gridTemplateColumns: '1fr',
 							},
 						}),
-						on<HTMLElement>('submit', (event) => {
+						on<HTMLElement, 'submit'>('submit', (event) => {
 							event.preventDefault()
 							if (showPendingRefresh) return
 							if (!(event.currentTarget instanceof HTMLFormElement)) return
@@ -427,7 +427,7 @@ export function HistoryRoute(handle: Handle) {
 										href={getHistoryHref(query, {})}
 										mix={[
 											css(paginationLinkCss),
-											on<HTMLElement>('click', onPaginationLinkClick),
+											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
 										]}
 									>
 										Start
@@ -445,7 +445,7 @@ export function HistoryRoute(handle: Handle) {
 										href={getHistoryHref(query, { before: state.startCursor })}
 										mix={[
 											css(paginationLinkCss),
-											on<HTMLElement>('click', onPaginationLinkClick),
+											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
 										]}
 									>
 										Previous
@@ -467,7 +467,7 @@ export function HistoryRoute(handle: Handle) {
 										href={getHistoryHref(query, { after: state.middleCursor })}
 										mix={[
 											css(paginationLinkCss),
-											on<HTMLElement>('click', onPaginationLinkClick),
+											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
 										]}
 									>
 										Middle
@@ -485,7 +485,7 @@ export function HistoryRoute(handle: Handle) {
 										href={getHistoryHref(query, { after: state.endCursor })}
 										mix={[
 											css(paginationLinkCss),
-											on<HTMLElement>('click', onPaginationLinkClick),
+											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
 										]}
 									>
 										Next
@@ -503,7 +503,7 @@ export function HistoryRoute(handle: Handle) {
 										href={getHistoryHref(query, { after: state.endPageCursor })}
 										mix={[
 											css(paginationLinkCss),
-											on<HTMLElement>('click', onPaginationLinkClick),
+											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
 										]}
 									>
 										End

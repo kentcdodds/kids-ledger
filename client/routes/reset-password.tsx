@@ -146,7 +146,7 @@ export function ResetPasswordRoute(handle: Handle) {
 							backgroundColor: colors.surface,
 							boxShadow: shadows.md,
 						}),
-						on<HTMLElement>('submit', (event) =>
+						on<HTMLElement, 'submit'>('submit', (event) =>
 							mode === 'confirm'
 								? submitResetConfirm(event, token)
 								: submitResetRequest(event),

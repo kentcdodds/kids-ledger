@@ -643,7 +643,7 @@ export function SettingsRoute(handle: Handle) {
 										fontWeight: typography.fontWeight.bold,
 										textAlign: 'center',
 									}),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										newKidEmoji = normalizeKidEmoji(event.currentTarget.value)
@@ -660,7 +660,7 @@ export function SettingsRoute(handle: Handle) {
 										fontSize: typography.fontSize.xl,
 										fontWeight: typography.fontWeight.bold,
 									}),
-									on<HTMLElement>('input', (event) => {
+									on<HTMLElement, 'input'>('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										newKidName = event.currentTarget.value
@@ -673,7 +673,10 @@ export function SettingsRoute(handle: Handle) {
 								type="button"
 								mix={[
 									css(buttonCss),
-									on<HTMLElement>('click', () => void handleCreateKid()),
+									on<HTMLElement, 'click'>(
+										'click',
+										() => void handleCreateKid(),
+									),
 								]}
 							>
 								Add
@@ -719,7 +722,7 @@ export function SettingsRoute(handle: Handle) {
 											disabled={kidIndex === 0 || isReordering}
 											mix={[
 												css(reorderButtonCss),
-												on<HTMLElement>(
+												on<HTMLElement, 'click'>(
 													'click',
 													() => void handleKidMove(kid.id, -1),
 												),
@@ -738,7 +741,7 @@ export function SettingsRoute(handle: Handle) {
 											}
 											mix={[
 												css(reorderButtonCss),
-												on<HTMLElement>(
+												on<HTMLElement, 'click'>(
 													'click',
 													() => void handleKidMove(kid.id, 1),
 												),
@@ -758,11 +761,11 @@ export function SettingsRoute(handle: Handle) {
 												fontWeight: typography.fontWeight.bold,
 												textAlign: 'center',
 											}),
-											on<HTMLElement>('input', (event) => {
+											on<HTMLElement, 'input'>('input', (event) => {
 												const input = event.currentTarget as HTMLInputElement
 												input.value = normalizeKidEmoji(input.value)
 											}),
-											on<HTMLElement>('blur', async (e) => {
+											on<HTMLElement, 'blur'>('blur', async (e) => {
 												const input = e.currentTarget as HTMLInputElement
 												const emoji = normalizeKidEmoji(input.value)
 												input.value = emoji
@@ -792,7 +795,7 @@ export function SettingsRoute(handle: Handle) {
 												fontSize: typography.fontSize.xl,
 												fontWeight: typography.fontWeight.bold,
 											}),
-											on<HTMLElement>('blur', async (e) => {
+											on<HTMLElement, 'blur'>('blur', async (e) => {
 												const name =
 													(e.currentTarget as HTMLInputElement).value ||
 													kid.name
@@ -827,7 +830,7 @@ export function SettingsRoute(handle: Handle) {
 											title="Customize transaction modal"
 											mix={[
 												css(transactionModalIconButtonCss),
-												on<HTMLElement>('click', () => {
+												on<HTMLElement, 'click'>('click', () => {
 													openTransactionModalCssEditor(kid)
 												}),
 											]}
@@ -839,7 +842,7 @@ export function SettingsRoute(handle: Handle) {
 											aria-label={`Archive ${kid.name}`}
 											mix={[
 												css(archiveIconButtonCss),
-												on<HTMLElement>('click', async () => {
+												on<HTMLElement, 'click'>('click', async () => {
 													await archiveKid(kid.id)
 													await refreshSettings()
 												}),
@@ -964,7 +967,7 @@ export function SettingsRoute(handle: Handle) {
 																	color: colors.text,
 																},
 															}),
-															on<HTMLElement>(
+															on<HTMLElement, 'blur'>(
 																'blur',
 																() => void saveAccountDraft(account),
 															),
@@ -1009,7 +1012,7 @@ export function SettingsRoute(handle: Handle) {
 																color: colors.text,
 																colorScheme: 'light dark',
 															}),
-															on<HTMLElement>(
+															on<HTMLElement, 'blur'>(
 																'blur',
 																() => void saveAccountDraft(account),
 															),
@@ -1030,7 +1033,7 @@ export function SettingsRoute(handle: Handle) {
 																gridRow: '2',
 															},
 														}),
-														on<HTMLElement>(
+														on<HTMLElement, 'change'>(
 															'change',
 															() => void saveAccountDraft(account),
 														),
@@ -1058,7 +1061,7 @@ export function SettingsRoute(handle: Handle) {
 																justifySelf: 'end',
 															},
 														}),
-														on<HTMLElement>('click', async () => {
+														on<HTMLElement, 'click'>('click', async () => {
 															await archiveAccount(account.id)
 															await refreshSettings()
 														}),
@@ -1111,7 +1114,7 @@ export function SettingsRoute(handle: Handle) {
 											)}
 											mix={[
 												css(inputCss),
-												on<HTMLElement>('change', (event) => {
+												on<HTMLElement, 'change'>('change', (event) => {
 													if (
 														!(event.currentTarget instanceof HTMLInputElement)
 													)
@@ -1134,7 +1137,7 @@ export function SettingsRoute(handle: Handle) {
 										value={getCreateAccountColor(kid.id)}
 										mix={[
 											css(inputCss),
-											on<HTMLElement>('change', (event) => {
+											on<HTMLElement, 'change'>('change', (event) => {
 												if (!(event.currentTarget instanceof HTMLSelectElement))
 													return
 												newAccountColorsByKidId[kid.id] =
@@ -1153,7 +1156,7 @@ export function SettingsRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(buttonCss),
-											on<HTMLElement>('click', async () => {
+											on<HTMLElement, 'click'>('click', async () => {
 												const nameInput = document.querySelector(
 													`input[data-create-account-name="${kid.id}"]`,
 												)
@@ -1251,7 +1254,7 @@ export function SettingsRoute(handle: Handle) {
 												lineHeight: 1,
 												'&:hover': { color: colors.error },
 											}),
-											on<HTMLElement>('click', async () => {
+											on<HTMLElement, 'click'>('click', async () => {
 												if (state.status !== 'ready') return
 												const newAmounts = state.quickAmounts.filter(
 													(a) => a !== amount,
@@ -1280,7 +1283,7 @@ export function SettingsRoute(handle: Handle) {
 										gridTemplateColumns: '1fr',
 									},
 								}),
-								on<HTMLElement>('submit', async (event) => {
+								on<HTMLElement, 'submit'>('submit', async (event) => {
 									event.preventDefault()
 									if (state.status !== 'ready') return
 									if (!(event.currentTarget instanceof HTMLFormElement)) return
@@ -1389,7 +1392,7 @@ export function SettingsRoute(handle: Handle) {
 											type="button"
 											mix={[
 												css(buttonCss),
-												on<HTMLElement>('click', async () => {
+												on<HTMLElement, 'click'>('click', async () => {
 													try {
 														await unarchiveKid(kid.id)
 														await refreshSettings()
@@ -1409,7 +1412,7 @@ export function SettingsRoute(handle: Handle) {
 											type="button"
 											mix={[
 												css(dangerButtonCss),
-												on<HTMLElement>('click', async () => {
+												on<HTMLElement, 'click'>('click', async () => {
 													await deleteKid(kid.id)
 													await refreshSettings()
 												}),
@@ -1430,7 +1433,7 @@ export function SettingsRoute(handle: Handle) {
 											type="button"
 											mix={[
 												css(buttonCss),
-												on<HTMLElement>('click', async () => {
+												on<HTMLElement, 'click'>('click', async () => {
 													try {
 														await unarchiveAccount(account.id)
 														await refreshSettings()
@@ -1450,7 +1453,7 @@ export function SettingsRoute(handle: Handle) {
 											type="button"
 											mix={[
 												css(dangerButtonCss),
-												on<HTMLElement>('click', async () => {
+												on<HTMLElement, 'click'>('click', async () => {
 													await deleteAccount(account.id)
 													await refreshSettings()
 												}),
@@ -1512,7 +1515,7 @@ export function SettingsRoute(handle: Handle) {
 										placeItems: 'stretch',
 									},
 								}),
-								on<HTMLElement>('click', (event) => {
+								on<HTMLElement, 'click'>('click', (event) => {
 									if (event.target === event.currentTarget) {
 										closeTransactionModalCssEditor()
 									}
@@ -1548,7 +1551,10 @@ export function SettingsRoute(handle: Handle) {
 											padding: spacing.md,
 										},
 									}),
-									on<HTMLElement>('keydown', handleTransactionModalCssKeydown),
+									on<HTMLElement, 'keydown'>(
+										'keydown',
+										handleTransactionModalCssKeydown,
+									),
 								]}
 							>
 								<header
@@ -1575,7 +1581,10 @@ export function SettingsRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(buttonCss),
-											on<HTMLElement>('click', closeTransactionModalCssEditor),
+											on<HTMLElement, 'click'>(
+												'click',
+												closeTransactionModalCssEditor,
+											),
 										]}
 										disabled={transactionModalCssSaving}
 									>
@@ -1668,7 +1677,7 @@ export function SettingsRoute(handle: Handle) {
 												resize: 'vertical',
 												minHeight: '8rem',
 											}),
-											on<HTMLElement>('input', (event) => {
+											on<HTMLElement, 'input'>('input', (event) => {
 												if (
 													!(event.currentTarget instanceof HTMLTextAreaElement)
 												)
@@ -1760,7 +1769,10 @@ export function SettingsRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(buttonCss),
-											on<HTMLElement>('click', closeTransactionModalCssEditor),
+											on<HTMLElement, 'click'>(
+												'click',
+												closeTransactionModalCssEditor,
+											),
 										]}
 										disabled={transactionModalCssSaving}
 									>
@@ -1770,7 +1782,7 @@ export function SettingsRoute(handle: Handle) {
 										type="button"
 										mix={[
 											css(buttonCss),
-											on<HTMLElement>(
+											on<HTMLElement, 'click'>(
 												'click',
 												() => void saveTransactionModalCss(),
 											),
