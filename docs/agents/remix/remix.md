@@ -14,21 +14,21 @@ See [remix.run](https://remix.run) for framework docs.
 npm i remix
 ```
 
-## Package usage in Remix 3 alpha
+## Package usage in Remix 3 beta
 
 The `remix` package is used through subpath imports.
 
 - ✅ `import { createRouter } from 'remix/fetch-router'`
 - ✅ `import { route } from 'remix/fetch-router/routes'`
-- ✅ `import { createRoot } from 'remix/component'`
-- ❌ `import { ... } from 'remix'` (root import removed in `3.0.0-alpha.3`)
+- ✅ `import { createRoot } from 'remix/ui'`
+- ❌ `import { ... } from 'remix'` (root import removed in Remix 3 prereleases)
 
-## Subpath export surface (`3.0.0-alpha.3`)
+## Subpath export surface (`3.0.0-beta.5`, selected)
 
-Top-level package exports currently include:
+Top-level package exports used or documented in this repo include:
 
 - `remix/async-context-middleware`
-- `remix/component`
+- `remix/ui`
 - `remix/compression-middleware`
 - `remix/cookie`
 - `remix/data-schema`
@@ -65,8 +65,7 @@ Plus adapter/data helper subpaths and utility subpaths:
 - `remix/data-table-mysql`, `remix/data-table-postgres`,
   `remix/data-table-sqlite`
 - `remix/fetch-router/routes`
-- `remix/component/jsx-runtime`, `remix/component/jsx-dev-runtime`,
-  `remix/component/server`
+- `remix/ui/jsx-runtime`, `remix/ui/jsx-dev-runtime`, `remix/ui/server`
 - `remix/interaction/form`, `remix/interaction/keys`,
   `remix/interaction/popover`, `remix/interaction/press`
 - `remix/response/compress`, `remix/response/file`, `remix/response/html`,

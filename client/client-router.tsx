@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 type RouteDefinition = {
 	Component: (...args: Array<any>) => any

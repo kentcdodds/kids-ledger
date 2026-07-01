@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
 	colors,

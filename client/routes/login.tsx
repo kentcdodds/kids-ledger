@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'

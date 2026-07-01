@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { requireSessionOrRedirect } from '#client/session.ts'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { buttonCss } from '#client/styles/form-controls.ts'

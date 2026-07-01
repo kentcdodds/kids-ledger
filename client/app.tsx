@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
 import {

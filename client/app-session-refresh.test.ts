@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { expect, mock, test } from 'bun:test'
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 type QueueTask = Parameters<Handle['queueTask']>[0]
 
