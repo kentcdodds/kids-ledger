@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/ui'
+import { css, on, type Handle } from 'remix/ui'
 import {
 	fetchSettings,
 	fetchTransactions,
@@ -205,34 +205,36 @@ export function HistoryRoute(handle: Handle) {
 		const showPendingRefresh =
 			state.transactions.length > 0 && pendingRefreshDelay.isShowing()
 		return (
-			<section css={{ display: 'grid', gap: spacing.lg }}>
-				<header css={{ display: 'grid', gap: spacing.xs }}>
-					<h1 css={{ margin: 0, color: colors.text }}>Transaction History</h1>
-					<p css={{ margin: 0, color: colors.textMuted }}>
+			<section mix={css({ display: 'grid', gap: spacing.lg })}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
+					<h1 mix={css({ margin: 0, color: colors.text })}>
+						Transaction History
+					</h1>
+					<p mix={css({ margin: 0, color: colors.textMuted })}>
 						Recent-first feed with URL-synced filters.
 					</p>
 				</header>
 
 				<form
 					key={`history-filters-${query.toString()}`}
-					css={{
-						display: 'grid',
-						gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-						gap: spacing.sm,
-						padding: spacing.md,
-						border: `3px solid ${colors.border}`,
-						borderRadius: radius.xl,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-						opacity: showPendingRefresh ? 0.6 : 1,
-						transition: 'opacity 120ms ease',
-						pointerEvents: showPendingRefresh ? 'none' : 'auto',
-						[mq.mobile]: {
-							gridTemplateColumns: '1fr',
-						},
-					}}
-					on={{
-						submit: (event) => {
+					mix={[
+						css({
+							display: 'grid',
+							gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+							gap: spacing.sm,
+							padding: spacing.md,
+							border: `3px solid ${colors.border}`,
+							borderRadius: radius.xl,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+							opacity: showPendingRefresh ? 0.6 : 1,
+							transition: 'opacity 120ms ease',
+							pointerEvents: showPendingRefresh ? 'none' : 'auto',
+							[mq.mobile]: {
+								gridTemplateColumns: '1fr',
+							},
+						}),
+						on('submit', (event) => {
 							event.preventDefault()
 							if (showPendingRefresh) return
 							if (!(event.currentTarget instanceof HTMLFormElement)) return
@@ -254,13 +256,13 @@ export function HistoryRoute(handle: Handle) {
 							if (maxAmount) next.set('maxAmount', maxAmount)
 							next.set('limit', String(defaultHistoryPageSize))
 							updateQuery(next)
-						},
-					}}
+						}),
+					]}
 				>
 					<select
 						name="kidId"
 						defaultValue={query.get('kidId') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					>
 						<option value="">All kids</option>
 						{state.kidOptions.map((kid) => (
@@ -272,7 +274,7 @@ export function HistoryRoute(handle: Handle) {
 					<select
 						name="accountId"
 						defaultValue={query.get('accountId') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					>
 						<option value="">All accounts</option>
 						{state.accountOptions.map((account) => (
@@ -284,7 +286,7 @@ export function HistoryRoute(handle: Handle) {
 					<select
 						name="type"
 						defaultValue={query.get('type') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					>
 						<option value="">All types</option>
 						<option value="add">Adds only</option>
@@ -294,13 +296,13 @@ export function HistoryRoute(handle: Handle) {
 						name="from"
 						type="date"
 						defaultValue={query.get('from') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					/>
 					<input
 						name="to"
 						type="date"
 						defaultValue={query.get('to') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					/>
 					<input
 						name="minAmount"
@@ -309,7 +311,7 @@ export function HistoryRoute(handle: Handle) {
 						step="0.01"
 						placeholder="Min amount"
 						defaultValue={query.get('minAmount') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					/>
 					<input
 						name="maxAmount"
@@ -318,21 +320,21 @@ export function HistoryRoute(handle: Handle) {
 						step="0.01"
 						placeholder="Max amount"
 						defaultValue={query.get('maxAmount') ?? ''}
-						css={inputCss}
+						mix={css(inputCss)}
 					/>
-					<button type="submit" css={buttonCss}>
+					<button type="submit" mix={css(buttonCss)}>
 						Apply
 					</button>
 				</form>
 
 				{state.status === 'loading' && state.transactions.length === 0 ? (
-					<p css={{ color: colors.textMuted }}>Loading transactions...</p>
+					<p mix={css({ color: colors.textMuted })}>Loading transactions...</p>
 				) : null}
 				{state.status === 'error' ? (
-					<p css={{ color: colors.error }}>{state.errorMessage}</p>
+					<p mix={css({ color: colors.error })}>{state.errorMessage}</p>
 				) : null}
 				{state.status === 'ready' && state.transactions.length === 0 ? (
-					<p css={{ color: colors.textMuted }}>
+					<p mix={css({ color: colors.textMuted })}>
 						No transactions match the current filters.
 					</p>
 				) : null}
@@ -342,7 +344,7 @@ export function HistoryRoute(handle: Handle) {
 					return (
 						<article
 							key={transaction.id}
-							css={{
+							mix={css({
 								display: 'grid',
 								gap: spacing.xs,
 								padding: spacing.md,
@@ -355,35 +357,35 @@ export function HistoryRoute(handle: Handle) {
 								color: textColors.text,
 								opacity: showPendingRefresh ? 0.6 : 1,
 								transition: 'opacity 120ms ease',
-							}}
+							})}
 						>
 							<div
-								css={{
+								mix={css({
 									display: 'flex',
 									justifyContent: 'space-between',
 									alignItems: 'center',
-								}}
+								})}
 							>
 								<strong>
 									{transaction.kidEmoji} {transaction.kidName} ·{' '}
 									{transaction.accountName}
 								</strong>
 								<strong
-									css={{
+									mix={css({
 										color:
 											transaction.amountCents < 0
 												? textColors.negative
 												: textColors.text,
-									}}
+									})}
 								>
 									{transaction.amountCents < 0 ? '-' : '+'}
 									{formatCents(Math.abs(transaction.amountCents))}
 								</strong>
 							</div>
 							{transaction.note ? (
-								<p css={{ margin: 0 }}>{transaction.note}</p>
+								<p mix={css({ margin: 0 })}>{transaction.note}</p>
 							) : null}
-							<time css={{ color: textColors.muted }}>
+							<time mix={css({ color: textColors.muted })}>
 								{new Date(transaction.createdAt).toLocaleString()}
 							</time>
 						</article>
@@ -392,7 +394,7 @@ export function HistoryRoute(handle: Handle) {
 				{state.status !== 'error' &&
 				(state.status === 'ready' || state.transactions.length > 0) ? (
 					<div
-						css={{
+						mix={css({
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'space-between',
@@ -401,16 +403,16 @@ export function HistoryRoute(handle: Handle) {
 							opacity: showPendingRefresh ? 0.6 : 1,
 							transition: 'opacity 120ms ease',
 							pointerEvents: showPendingRefresh ? 'none' : 'auto',
-						}}
+						})}
 					>
-						<span css={{ color: colors.textMuted }}>
+						<span mix={css({ color: colors.textMuted })}>
 							{state.totalCount} matching transaction
 							{state.totalCount === 1 ? '' : 's'} · Page {state.page} of{' '}
 							{state.totalPages} · up to {state.pageSize} per page
 						</span>
 						{state.totalCount > 0 ? (
 							<div
-								css={{
+								mix={css({
 									display: 'grid',
 									gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
 									gap: spacing.sm,
@@ -418,31 +420,41 @@ export function HistoryRoute(handle: Handle) {
 									[mq.mobile]: {
 										gridTemplateColumns: '1fr',
 									},
-								}}
+								})}
 							>
 								{state.hasPreviousPage ? (
 									<a
 										href={getHistoryHref(query, {})}
-										css={paginationLinkCss}
-										on={{ click: onPaginationLinkClick }}
+										mix={[
+											css(paginationLinkCss),
+											on('click', onPaginationLinkClick),
+										]}
 									>
 										Start
 									</a>
 								) : (
-									<span aria-disabled="true" css={disabledPaginationControlCss}>
+									<span
+										aria-disabled="true"
+										mix={css(disabledPaginationControlCss)}
+									>
 										Start
 									</span>
 								)}
 								{state.hasPreviousPage && state.startCursor ? (
 									<a
 										href={getHistoryHref(query, { before: state.startCursor })}
-										css={paginationLinkCss}
-										on={{ click: onPaginationLinkClick }}
+										mix={[
+											css(paginationLinkCss),
+											on('click', onPaginationLinkClick),
+										]}
 									>
 										Previous
 									</a>
 								) : (
-									<span aria-disabled="true" css={disabledPaginationControlCss}>
+									<span
+										aria-disabled="true"
+										mix={css(disabledPaginationControlCss)}
+									>
 										Previous
 									</span>
 								)}
@@ -453,39 +465,54 @@ export function HistoryRoute(handle: Handle) {
 								state.middleCursor !== state.endCursor ? (
 									<a
 										href={getHistoryHref(query, { after: state.middleCursor })}
-										css={paginationLinkCss}
-										on={{ click: onPaginationLinkClick }}
+										mix={[
+											css(paginationLinkCss),
+											on('click', onPaginationLinkClick),
+										]}
 									>
 										Middle
 									</a>
 								) : (
-									<span aria-disabled="true" css={disabledPaginationControlCss}>
+									<span
+										aria-disabled="true"
+										mix={css(disabledPaginationControlCss)}
+									>
 										Middle
 									</span>
 								)}
 								{state.hasNextPage ? (
 									<a
 										href={getHistoryHref(query, { after: state.endCursor })}
-										css={paginationLinkCss}
-										on={{ click: onPaginationLinkClick }}
+										mix={[
+											css(paginationLinkCss),
+											on('click', onPaginationLinkClick),
+										]}
 									>
 										Next
 									</a>
 								) : (
-									<span aria-disabled="true" css={disabledPaginationControlCss}>
+									<span
+										aria-disabled="true"
+										mix={css(disabledPaginationControlCss)}
+									>
 										Next
 									</span>
 								)}
 								{state.endPageCursor && state.hasNextPage ? (
 									<a
 										href={getHistoryHref(query, { after: state.endPageCursor })}
-										css={paginationLinkCss}
-										on={{ click: onPaginationLinkClick }}
+										mix={[
+											css(paginationLinkCss),
+											on('click', onPaginationLinkClick),
+										]}
 									>
 										End
 									</a>
 								) : (
-									<span aria-disabled="true" css={disabledPaginationControlCss}>
+									<span
+										aria-disabled="true"
+										mix={css(disabledPaginationControlCss)}
+									>
 										End
 									</span>
 								)}

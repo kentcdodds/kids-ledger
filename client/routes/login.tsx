@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/ui'
+import { css, on, type Handle } from 'remix/ui'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
@@ -128,44 +128,46 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 
 		return (
 			<section
-				css={{
+				mix={css({
 					maxWidth: '28rem',
 					margin: '0 auto',
 					display: 'grid',
 					gap: spacing.lg,
-				}}
+				})}
 			>
-				<header css={{ display: 'grid', gap: spacing.xs }}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
 					<h2
-						css={{
+						mix={css({
 							fontSize: typography.fontSize.xl,
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
-						}}
+						})}
 					>
 						{title}
 					</h2>
-					<p css={{ color: colors.textMuted }}>{description}</p>
+					<p mix={css({ color: colors.textMuted })}>{description}</p>
 				</header>
 				<form
-					css={{
-						display: 'grid',
-						gap: spacing.md,
-						padding: spacing.lg,
-						borderRadius: radius.xl,
-						border: `3px solid ${colors.border}`,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-					}}
-					on={{ submit: handleSubmit }}
+					mix={[
+						css({
+							display: 'grid',
+							gap: spacing.md,
+							padding: spacing.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+						}),
+						on('submit', handleSubmit),
+					]}
 				>
-					<label css={{ display: 'grid', gap: spacing.xs }}>
+					<label mix={css({ display: 'grid', gap: spacing.xs })}>
 						<span
-							css={{
+							mix={css({
 								color: colors.text,
 								fontWeight: typography.fontWeight.medium,
 								fontSize: typography.fontSize.sm,
-							}}
+							})}
 						>
 							Email
 						</span>
@@ -176,20 +178,20 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							autoFocus
 							autoComplete="email"
 							placeholder="you@example.com"
-							css={{
+							mix={css({
 								...inputCss,
 								fontSize: typography.fontSize.base,
 								fontFamily: typography.fontFamily,
-							}}
+							})}
 						/>
 					</label>
-					<label css={{ display: 'grid', gap: spacing.xs }}>
+					<label mix={css({ display: 'grid', gap: spacing.xs })}>
 						<span
-							css={{
+							mix={css({
 								color: colors.text,
 								fontWeight: typography.fontWeight.medium,
 								fontSize: typography.fontSize.sm,
-							}}
+							})}
 						>
 							Password
 						</span>
@@ -199,16 +201,16 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							required
 							autoComplete={isSignup ? 'new-password' : 'current-password'}
 							placeholder="At least 8 characters"
-							css={{
+							mix={css({
 								...inputCss,
 								fontSize: typography.fontSize.base,
 								fontFamily: typography.fontFamily,
-							}}
+							})}
 						/>
 					</label>
 					{!isSignup ? (
 						<label
-							css={{
+							mix={css({
 								display: 'flex',
 								alignItems: 'center',
 								gap: spacing.sm,
@@ -216,17 +218,17 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 								fontSize: typography.fontSize.sm,
 								fontWeight: typography.fontWeight.medium,
 								cursor: 'pointer',
-							}}
+							})}
 						>
 							<input
 								type="checkbox"
 								name="rememberMe"
-								css={{
+								mix={css({
 									width: '1rem',
 									height: '1rem',
 									accentColor: colors.primary,
 									cursor: 'pointer',
-								}}
+								})}
 							/>
 							<span>Remember me for 2 months</span>
 						</label>
@@ -234,7 +236,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 					<button
 						type="submit"
 						disabled={isSubmitting}
-						css={{
+						mix={css({
 							...buttonCss,
 							padding: `${spacing.sm} ${spacing.lg}`,
 							borderRadius: radius.full,
@@ -254,52 +256,28 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 										transform: 'translateY(4px)',
 										boxShadow: `0 0 0 0 ${colors.primaryActive}`,
 									},
-						}}
+						})}
 					>
 						{isSubmitting ? 'Submitting...' : submitLabel}
 					</button>
 					{message ? (
 						<p
-							css={{
+							mix={css({
 								color: status === 'error' ? colors.error : colors.text,
 								fontSize: typography.fontSize.sm,
-							}}
+							})}
 							aria-live="polite"
 						>
 							{message}
 						</p>
 					) : null}
 				</form>
-				<div css={{ display: 'grid', gap: spacing.sm }}>
+				<div mix={css({ display: 'grid', gap: spacing.sm })}>
 					<a
 						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
 						aria-pressed={isSignup}
-						on={{
-							click: (event) => {
-								if (event.defaultPrevented) return
-								switchMode(isSignup ? 'login' : 'signup')
-							},
-						}}
-						css={{
-							background: 'none',
-							border: 'none',
-							padding: 0,
-							color: colors.primaryText,
-							fontSize: typography.fontSize.sm,
-							cursor: 'pointer',
-							textAlign: 'left',
-							textDecoration: 'none',
-							'&:hover': {
-								textDecoration: 'underline',
-							},
-						}}
-					>
-						{toggleLabel} {toggleAction}
-					</a>
-					{!isSignup ? (
-						<a
-							href="/reset-password"
-							css={{
+						mix={[
+							css({
 								background: 'none',
 								border: 'none',
 								padding: 0,
@@ -311,21 +289,45 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 								'&:hover': {
 									textDecoration: 'underline',
 								},
-							}}
+							}),
+							on('click', (event) => {
+								if (event.defaultPrevented) return
+								switchMode(isSignup ? 'login' : 'signup')
+							}),
+						]}
+					>
+						{toggleLabel} {toggleAction}
+					</a>
+					{!isSignup ? (
+						<a
+							href="/reset-password"
+							mix={css({
+								background: 'none',
+								border: 'none',
+								padding: 0,
+								color: colors.primaryText,
+								fontSize: typography.fontSize.sm,
+								cursor: 'pointer',
+								textAlign: 'left',
+								textDecoration: 'none',
+								'&:hover': {
+									textDecoration: 'underline',
+								},
+							})}
 						>
 							Forgot password?
 						</a>
 					) : null}
 					<a
 						href="/"
-						css={{
+						mix={css({
 							color: colors.textMuted,
 							fontSize: typography.fontSize.sm,
 							textDecoration: 'none',
 							'&:hover': {
 								textDecoration: 'underline',
 							},
-						}}
+						})}
 					>
 						Back home
 					</a>

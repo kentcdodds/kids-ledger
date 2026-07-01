@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/fetch-router'
 import { readAuthSessionState } from '#server/auth-session.ts'
 import { type routes } from '#server/routes.ts'
 
@@ -26,7 +26,4 @@ export const session = {
 			{ headers: authSession.headers ?? undefined },
 		)
 	},
-} satisfies BuildAction<
-	typeof routes.session.method,
-	typeof routes.session.pattern
->
+} satisfies Action<typeof routes.session>

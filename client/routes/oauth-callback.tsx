@@ -1,5 +1,5 @@
 import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
-import { type Handle } from 'remix/ui'
+import { css, type Handle } from 'remix/ui'
 
 export function OAuthCallbackRoute(_handle: Handle) {
 	return () => {
@@ -18,52 +18,54 @@ export function OAuthCallbackRoute(_handle: Handle) {
 
 		return (
 			<section
-				css={{
+				mix={css({
 					maxWidth: '32rem',
 					margin: '0 auto',
 					display: 'grid',
 					gap: spacing.lg,
-				}}
+				})}
 			>
-				<header css={{ display: 'grid', gap: spacing.xs }}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
 					<h2
-						css={{
+						mix={css({
 							fontSize: typography.fontSize.xl,
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
-						}}
+						})}
 					>
 						OAuth callback
 					</h2>
-					<p css={{ color: colors.textMuted }}>{title}.</p>
+					<p mix={css({ color: colors.textMuted })}>{title}.</p>
 				</header>
 				{detail ? (
 					<pre
-						css={{
+						mix={css({
 							margin: 0,
 							padding: spacing.md,
 							borderRadius: radius.md,
 							border: `1px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							whiteSpace: 'pre-wrap',
-						}}
+						})}
 					>
 						{detail}
 					</pre>
 				) : null}
 				{state ? (
-					<p css={{ color: colors.textMuted, margin: 0 }}>State: {state}</p>
+					<p mix={css({ color: colors.textMuted, margin: 0 })}>
+						State: {state}
+					</p>
 				) : null}
 				<a
 					href="/"
-					css={{
+					mix={css({
 						color: colors.textMuted,
 						fontSize: typography.fontSize.sm,
 						textDecoration: 'none',
 						'&:hover': {
 							textDecoration: 'underline',
 						},
-					}}
+					})}
 				>
 					Back home
 				</a>

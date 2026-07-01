@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/ui'
+import { css, on, type Handle } from 'remix/ui'
 import {
 	archiveAccount,
 	archiveKid,
@@ -587,28 +587,30 @@ export function SettingsRoute(handle: Handle) {
 	}
 
 	return () => (
-		<section css={{ display: 'grid', gap: spacing.lg }}>
-			<header css={{ display: 'grid', gap: spacing.xs }}>
-				<h1 css={{ margin: 0, color: colors.text }}>Household Settings</h1>
-				<p css={{ margin: 0, color: colors.textMuted }}>
+		<section mix={css({ display: 'grid', gap: spacing.lg })}>
+			<header mix={css({ display: 'grid', gap: spacing.xs })}>
+				<h1 mix={css({ margin: 0, color: colors.text })}>Household Settings</h1>
+				<p mix={css({ margin: 0, color: colors.textMuted })}>
 					Manage kids and accounts. Use arrow buttons to reorder.
 				</p>
 			</header>
 
 			{state.status === 'loading' ? (
-				<p css={{ color: colors.textMuted }}>Loading settings...</p>
+				<p mix={css({ color: colors.textMuted })}>Loading settings...</p>
 			) : null}
 			{state.status === 'error' ? (
-				<p css={{ color: colors.error }}>{state.message}</p>
+				<p mix={css({ color: colors.error })}>{state.message}</p>
 			) : null}
 			{isRefreshing ? (
-				<p css={{ margin: 0, color: colors.textMuted }}>Saving changes...</p>
+				<p mix={css({ margin: 0, color: colors.textMuted })}>
+					Saving changes...
+				</p>
 			) : null}
 
 			{state.status === 'ready' ? (
 				<>
 					<section
-						css={{
+						mix={css({
 							display: 'grid',
 							gap: spacing.sm,
 							padding: spacing.md,
@@ -616,11 +618,11 @@ export function SettingsRoute(handle: Handle) {
 							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.md,
-						}}
+						})}
 					>
-						<h2 css={{ margin: 0, color: colors.text }}>Add kid</h2>
+						<h2 mix={css({ margin: 0, color: colors.text })}>Add kid</h2>
 						<div
-							css={{
+							mix={css({
 								display: 'grid',
 								gridTemplateColumns: '4rem 1fr auto',
 								gap: spacing.sm,
@@ -630,58 +632,60 @@ export function SettingsRoute(handle: Handle) {
 										gridColumn: '1 / -1',
 									},
 								},
-							}}
+							})}
 						>
 							<input
 								value={newKidEmoji}
-								on={{
-									input: (event) => {
+								mix={[
+									css({
+										...inputCss,
+										fontSize: typography.fontSize.xl,
+										fontWeight: typography.fontWeight.bold,
+										textAlign: 'center',
+									}),
+									on('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										newKidEmoji = normalizeKidEmoji(event.currentTarget.value)
 										handle.update()
-									},
-								}}
+									}),
+								]}
 								aria-label="Kid emoji"
-								css={{
-									...inputCss,
-									fontSize: typography.fontSize.xl,
-									fontWeight: typography.fontWeight.bold,
-									textAlign: 'center',
-								}}
 							/>
 							<input
 								value={newKidName}
-								on={{
-									input: (event) => {
+								mix={[
+									css({
+										...inputCss,
+										fontSize: typography.fontSize.xl,
+										fontWeight: typography.fontWeight.bold,
+									}),
+									on('input', (event) => {
 										if (!(event.currentTarget instanceof HTMLInputElement))
 											return
 										newKidName = event.currentTarget.value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 								placeholder="Kid name"
-								css={{
-									...inputCss,
-									fontSize: typography.fontSize.xl,
-									fontWeight: typography.fontWeight.bold,
-								}}
 							/>
 							<button
 								type="button"
-								on={{ click: () => void handleCreateKid() }}
-								css={buttonCss}
+								mix={[
+									css(buttonCss),
+									on('click', () => void handleCreateKid()),
+								]}
 							>
 								Add
 							</button>
 						</div>
 					</section>
 
-					<section css={{ display: 'grid', gap: spacing.md }}>
+					<section mix={css({ display: 'grid', gap: spacing.md })}>
 						{state.kids.map((kid, kidIndex) => (
 							<article
 								key={kid.id}
-								css={{
+								mix={css({
 									display: 'grid',
 									gap: spacing.sm,
 									padding: spacing.lg,
@@ -689,10 +693,10 @@ export function SettingsRoute(handle: Handle) {
 									borderRadius: radius.xl,
 									backgroundColor: colors.surface,
 									boxShadow: shadows.md,
-								}}
+								})}
 							>
 								<header
-									css={{
+									mix={css({
 										display: 'grid',
 										gridTemplateColumns: 'auto 4rem 1fr auto',
 										gap: spacing.sm,
@@ -703,9 +707,9 @@ export function SettingsRoute(handle: Handle) {
 												gridColumn: '1 / -1',
 											},
 										},
-									}}
+									})}
 								>
-									<div css={reorderControlsCss}>
+									<div mix={css(reorderControlsCss)}>
 										<button
 											type="button"
 											data-reorder-scope="kid"
@@ -713,10 +717,10 @@ export function SettingsRoute(handle: Handle) {
 											data-reorder-direction="up"
 											aria-label={`Move ${kid.name} up`}
 											disabled={kidIndex === 0 || isReordering}
-											on={{
-												click: () => void handleKidMove(kid.id, -1),
-											}}
-											css={reorderButtonCss}
+											mix={[
+												css(reorderButtonCss),
+												on('click', () => void handleKidMove(kid.id, -1)),
+											]}
 										>
 											↑
 										</button>
@@ -729,10 +733,10 @@ export function SettingsRoute(handle: Handle) {
 											disabled={
 												kidIndex === state.kids.length - 1 || isReordering
 											}
-											on={{
-												click: () => void handleKidMove(kid.id, 1),
-											}}
-											css={reorderButtonCss}
+											mix={[
+												css(reorderButtonCss),
+												on('click', () => void handleKidMove(kid.id, 1)),
+											]}
 										>
 											↓
 										</button>
@@ -741,12 +745,18 @@ export function SettingsRoute(handle: Handle) {
 										defaultValue={kid.emoji}
 										aria-label={`${kid.name} emoji`}
 										data-kid-emoji={kid.id}
-										on={{
-											input: (event) => {
+										mix={[
+											css({
+												...inputCss,
+												fontSize: typography.fontSize.xl,
+												fontWeight: typography.fontWeight.bold,
+												textAlign: 'center',
+											}),
+											on('input', (event) => {
 												const input = event.currentTarget as HTMLInputElement
 												input.value = normalizeKidEmoji(input.value)
-											},
-											blur: async (e) => {
+											}),
+											on('blur', async (e) => {
 												const input = e.currentTarget as HTMLInputElement
 												const emoji = normalizeKidEmoji(input.value)
 												input.value = emoji
@@ -763,21 +773,20 @@ export function SettingsRoute(handle: Handle) {
 													emoji,
 												})
 												await refreshSettings()
-											},
-										}}
-										css={{
-											...inputCss,
-											fontSize: typography.fontSize.xl,
-											fontWeight: typography.fontWeight.bold,
-											textAlign: 'center',
-										}}
+											}),
+										]}
 									/>
 									<input
 										defaultValue={kid.name}
 										aria-label={`${kid.name} name`}
 										data-kid-name={kid.id}
-										on={{
-											blur: async (e) => {
+										mix={[
+											css({
+												...inputCss,
+												fontSize: typography.fontSize.xl,
+												fontWeight: typography.fontWeight.bold,
+											}),
+											on('blur', async (e) => {
 												const name =
 													(e.currentTarget as HTMLInputElement).value ||
 													kid.name
@@ -794,56 +803,51 @@ export function SettingsRoute(handle: Handle) {
 													emoji,
 												})
 												await refreshSettings()
-											},
-										}}
-										css={{
-											...inputCss,
-											fontSize: typography.fontSize.xl,
-											fontWeight: typography.fontWeight.bold,
-										}}
+											}),
+										]}
 									/>
 									<div
 										data-kid-actions
-										css={{
+										mix={css({
 											display: 'flex',
 											gap: spacing.xs,
 											flexWrap: 'wrap',
 											justifyContent: 'flex-end',
-										}}
+										})}
 									>
 										<button
 											type="button"
 											aria-label={`Customize ${kid.name}'s transaction modal`}
 											title="Customize transaction modal"
-											on={{
-												click: () => {
+											mix={[
+												css(transactionModalIconButtonCss),
+												on('click', () => {
 													openTransactionModalCssEditor(kid)
-												},
-											}}
-											css={transactionModalIconButtonCss}
+												}),
+											]}
 										>
 											<SettingsIcon />
 										</button>
 										<button
 											type="button"
 											aria-label={`Archive ${kid.name}`}
-											on={{
-												click: async () => {
+											mix={[
+												css(archiveIconButtonCss),
+												on('click', async () => {
 													await archiveKid(kid.id)
 													await refreshSettings()
-												},
-											}}
-											css={archiveIconButtonCss}
+												}),
+											]}
 										>
 											<TrashIcon />
 										</button>
 									</div>
 								</header>
-								<p css={{ margin: 0, color: colors.textMuted }}>
+								<p mix={css({ margin: 0, color: colors.textMuted })}>
 									Total: {formatCents(kid.totalBalanceCents)}
 								</p>
 								<div
-									css={{
+									mix={css({
 										display: 'flex',
 										flexDirection: 'column',
 										backgroundColor: colors.surface,
@@ -853,14 +857,14 @@ export function SettingsRoute(handle: Handle) {
 												? `2px solid ${colors.border}`
 												: 'none',
 										overflow: 'hidden',
-									}}
+									})}
 								>
 									{kid.accounts.map((account, index) => {
 										const textColors = getAccountTextColors(account.colorToken)
 										return (
 											<div
 												key={account.id}
-												css={{
+												mix={css({
 													display: 'grid',
 													gridTemplateColumns: 'auto 1fr auto auto auto',
 													rowGap: spacing.xs,
@@ -877,9 +881,9 @@ export function SettingsRoute(handle: Handle) {
 													[mq.mobile]: {
 														gridTemplateColumns: 'auto 1fr auto auto',
 													},
-												}}
+												})}
 											>
-												<div css={reorderControlsCss}>
+												<div mix={css(reorderControlsCss)}>
 													<button
 														type="button"
 														data-reorder-scope="account"
@@ -888,11 +892,18 @@ export function SettingsRoute(handle: Handle) {
 														data-reorder-direction="up"
 														aria-label={`Move ${account.name} up`}
 														disabled={index === 0 || isReordering}
-														on={{
-															click: () =>
-																void handleAccountMove(kid.id, account.id, -1),
-														}}
-														css={reorderButtonCss}
+														mix={[
+															css(reorderButtonCss),
+															on(
+																'click',
+																() =>
+																	void handleAccountMove(
+																		kid.id,
+																		account.id,
+																		-1,
+																	),
+															),
+														]}
 													>
 														↑
 													</button>
@@ -906,59 +917,62 @@ export function SettingsRoute(handle: Handle) {
 														disabled={
 															index === kid.accounts.length - 1 || isReordering
 														}
-														on={{
-															click: () =>
-																void handleAccountMove(kid.id, account.id, 1),
-														}}
-														css={reorderButtonCss}
+														mix={[
+															css(reorderButtonCss),
+															on(
+																'click',
+																() =>
+																	void handleAccountMove(kid.id, account.id, 1),
+															),
+														]}
 													>
 														↓
 													</button>
 												</div>
 												<div
-													css={{
+													mix={css({
 														display: 'grid',
 														gap: 2,
 														[mq.mobile]: {
 															gridColumn: '2 / -1',
 															gridRow: '1',
 														},
-													}}
+													})}
 												>
 													<input
 														defaultValue={account.name}
 														aria-label={`${account.name} name`}
 														data-account-name={account.id}
-														on={{
-															blur: () => void saveAccountDraft(account),
-														}}
-														css={{
-															...inputCss,
-															backgroundColor: 'transparent',
-															border: '2px solid transparent',
-															boxShadow: 'none',
-															fontWeight: 'bold',
-															color: textColors.text,
-															padding: spacing.xs,
-															'&:focus': {
-																...inputCss['&:focus'],
-																backgroundColor: colors.surface,
-																color: colors.text,
-															},
-														}}
+														mix={[
+															css({
+																...inputCss,
+																backgroundColor: 'transparent',
+																border: '2px solid transparent',
+																boxShadow: 'none',
+																fontWeight: 'bold',
+																color: textColors.text,
+																padding: spacing.xs,
+																'&:focus': {
+																	...inputCss['&:focus'],
+																	backgroundColor: colors.surface,
+																	color: colors.text,
+																},
+															}),
+															on('blur', () => void saveAccountDraft(account)),
+														]}
 													/>
 													<span
-														css={{
+														mix={css({
 															color: textColors.muted,
 															fontSize: typography.fontSize.sm,
-														}}
+														})}
 													>
 														{formatCents(account.balanceCents)} ·{' '}
 														{formatApyLabel(account.apyBasisPoints)}
 													</span>
 												</div>
 												<label
-													css={{
+													mix={css({
 														display: 'grid',
 														gap: 2,
 														color: textColors.muted,
@@ -967,7 +981,7 @@ export function SettingsRoute(handle: Handle) {
 															gridColumn: '2 / 4',
 															gridRow: '3',
 														},
-													}}
+													})}
 												>
 													<span>APY</span>
 													<input
@@ -979,33 +993,33 @@ export function SettingsRoute(handle: Handle) {
 														defaultValue={formatApyPercentInputValue(
 															account.apyBasisPoints,
 														)}
-														on={{
-															blur: () => void saveAccountDraft(account),
-														}}
-														css={{
-															...inputCss,
-															backgroundColor: colors.surface,
-															color: colors.text,
-															colorScheme: 'light dark',
-														}}
+														mix={[
+															css({
+																...inputCss,
+																backgroundColor: colors.surface,
+																color: colors.text,
+																colorScheme: 'light dark',
+															}),
+															on('blur', () => void saveAccountDraft(account)),
+														]}
 													/>
 												</label>
 												<select
 													aria-label={`${account.name} color`}
 													data-account-color={account.id}
-													on={{
-														change: () => void saveAccountDraft(account),
-													}}
-													css={{
-														...inputCss,
-														backgroundColor: colors.surface,
-														color: colors.text,
-														colorScheme: 'light dark',
-														[mq.mobile]: {
-															gridColumn: '2 / 4',
-															gridRow: '2',
-														},
-													}}
+													mix={[
+														css({
+															...inputCss,
+															backgroundColor: colors.surface,
+															color: colors.text,
+															colorScheme: 'light dark',
+															[mq.mobile]: {
+																gridColumn: '2 / 4',
+																gridRow: '2',
+															},
+														}),
+														on('change', () => void saveAccountDraft(account)),
+													]}
 												>
 													{accountColorTokens.map((color) => (
 														<option
@@ -1020,20 +1034,20 @@ export function SettingsRoute(handle: Handle) {
 												<button
 													type="button"
 													aria-label={`Archive ${account.name}`}
-													on={{
-														click: async () => {
+													mix={[
+														css({
+															...archiveIconButtonCss,
+															[mq.mobile]: {
+																gridColumn: '4',
+																gridRow: '2',
+																justifySelf: 'end',
+															},
+														}),
+														on('click', async () => {
 															await archiveAccount(account.id)
 															await refreshSettings()
-														},
-													}}
-													css={{
-														...archiveIconButtonCss,
-														[mq.mobile]: {
-															gridColumn: '4',
-															gridRow: '2',
-															justifySelf: 'end',
-														},
-													}}
+														}),
+													]}
 												>
 													<TrashIcon />
 												</button>
@@ -1042,7 +1056,7 @@ export function SettingsRoute(handle: Handle) {
 									})}
 								</div>
 								<div
-									css={{
+									mix={css({
 										display: 'grid',
 										gridTemplateColumns: '1fr auto auto auto',
 										gap: spacing.sm,
@@ -1055,20 +1069,20 @@ export function SettingsRoute(handle: Handle) {
 										[mq.mobile]: {
 											gridTemplateColumns: '1fr',
 										},
-									}}
+									})}
 								>
 									<input
 										data-create-account-name={kid.id}
 										placeholder="New account name"
-										css={inputCss}
+										mix={css(inputCss)}
 									/>
 									<label
-										css={{
+										mix={css({
 											display: 'grid',
 											gap: spacing.xs,
 											color: colors.text,
 											fontSize: typography.fontSize.sm,
-										}}
+										})}
 									>
 										<span>APY</span>
 										<input
@@ -1080,8 +1094,9 @@ export function SettingsRoute(handle: Handle) {
 											value={formatApyPercentInputValue(
 												getCreateAccountApyBasisPoints(kid.id),
 											)}
-											on={{
-												change: (event) => {
+											mix={[
+												css(inputCss),
+												on('change', (event) => {
 													if (
 														!(event.currentTarget instanceof HTMLInputElement)
 													)
@@ -1095,24 +1110,23 @@ export function SettingsRoute(handle: Handle) {
 															apyBasisPoints
 													}
 													handle.update()
-												},
-											}}
-											css={inputCss}
+												}),
+											]}
 										/>
 									</label>
 									<select
 										data-create-account-color={kid.id}
 										value={getCreateAccountColor(kid.id)}
-										on={{
-											change: (event) => {
+										mix={[
+											css(inputCss),
+											on('change', (event) => {
 												if (!(event.currentTarget instanceof HTMLSelectElement))
 													return
 												newAccountColorsByKidId[kid.id] =
 													event.currentTarget.value
 												handle.update()
-											},
-										}}
-										css={inputCss}
+											}),
+										]}
 									>
 										{accountColorTokens.map((color) => (
 											<option key={color} value={color}>
@@ -1122,8 +1136,9 @@ export function SettingsRoute(handle: Handle) {
 									</select>
 									<button
 										type="button"
-										on={{
-											click: async () => {
+										mix={[
+											css(buttonCss),
+											on('click', async () => {
 												const nameInput = document.querySelector(
 													`input[data-create-account-name="${kid.id}"]`,
 												)
@@ -1164,9 +1179,8 @@ export function SettingsRoute(handle: Handle) {
 												})
 												nameInput.value = ''
 												await refreshSettings()
-											},
-										}}
-										css={buttonCss}
+											}),
+										]}
 									>
 										Add account
 									</button>
@@ -1176,7 +1190,7 @@ export function SettingsRoute(handle: Handle) {
 					</section>
 
 					<section
-						css={{
+						mix={css({
 							display: 'grid',
 							gap: spacing.sm,
 							padding: spacing.md,
@@ -1184,15 +1198,17 @@ export function SettingsRoute(handle: Handle) {
 							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.md,
-						}}
+						})}
 					>
-						<h2 css={{ margin: 0, color: colors.text }}>Quick amounts</h2>
+						<h2 mix={css({ margin: 0, color: colors.text })}>Quick amounts</h2>
 
-						<div css={{ display: 'flex', flexWrap: 'wrap', gap: spacing.sm }}>
+						<div
+							mix={css({ display: 'flex', flexWrap: 'wrap', gap: spacing.sm })}
+						>
 							{state.quickAmounts.map((amount) => (
 								<div
 									key={amount}
-									css={{
+									mix={css({
 										display: 'flex',
 										alignItems: 'center',
 										gap: spacing.xs,
@@ -1201,34 +1217,34 @@ export function SettingsRoute(handle: Handle) {
 										borderRadius: radius.full,
 										border: `2px solid ${colors.primarySoftStrong}`,
 										fontWeight: typography.fontWeight.bold,
-									}}
+									})}
 								>
 									<span>{formatCents(amount)}</span>
 									<button
 										type="button"
-										on={{
-											click: async () => {
+										mix={[
+											css({
+												background: 'none',
+												border: 'none',
+												cursor: 'pointer',
+												color: colors.textMuted,
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												padding: 0,
+												fontSize: typography.fontSize.lg,
+												lineHeight: 1,
+												'&:hover': { color: colors.error },
+											}),
+											on('click', async () => {
 												if (state.status !== 'ready') return
 												const newAmounts = state.quickAmounts.filter(
 													(a) => a !== amount,
 												)
 												await setQuickAmounts(newAmounts)
 												await refreshSettings()
-											},
-										}}
-										css={{
-											background: 'none',
-											border: 'none',
-											cursor: 'pointer',
-											color: colors.textMuted,
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											padding: 0,
-											fontSize: typography.fontSize.lg,
-											lineHeight: 1,
-											'&:hover': { color: colors.error },
-										}}
+											}),
+										]}
 										aria-label={`Remove ${formatCents(amount)}`}
 									>
 										×
@@ -1239,8 +1255,17 @@ export function SettingsRoute(handle: Handle) {
 
 						<form
 							data-router-skip
-							on={{
-								submit: async (event) => {
+							mix={[
+								css({
+									display: 'grid',
+									gridTemplateColumns: '1fr auto',
+									gap: spacing.sm,
+									marginTop: spacing.sm,
+									[mq.mobile]: {
+										gridTemplateColumns: '1fr',
+									},
+								}),
+								on('submit', async (event) => {
 									event.preventDefault()
 									if (state.status !== 'ready') return
 									if (!(event.currentTarget instanceof HTMLFormElement)) return
@@ -1260,17 +1285,8 @@ export function SettingsRoute(handle: Handle) {
 										}
 										input.value = ''
 									}
-								},
-							}}
-							css={{
-								display: 'grid',
-								gridTemplateColumns: '1fr auto',
-								gap: spacing.sm,
-								marginTop: spacing.sm,
-								[mq.mobile]: {
-									gridTemplateColumns: '1fr',
-								},
-							}}
+								}),
+							]}
 						>
 							<input
 								name="newAmount"
@@ -1278,16 +1294,16 @@ export function SettingsRoute(handle: Handle) {
 								step="0.01"
 								min="0.01"
 								placeholder="New amount (e.g. 5.00)"
-								css={inputCss}
+								mix={css(inputCss)}
 							/>
-							<button type="submit" css={buttonCss}>
+							<button type="submit" mix={css(buttonCss)}>
 								Add
 							</button>
 						</form>
 					</section>
 
 					<section
-						css={{
+						mix={css({
 							display: 'grid',
 							gap: spacing.xs,
 							padding: spacing.md,
@@ -1295,12 +1311,12 @@ export function SettingsRoute(handle: Handle) {
 							borderRadius: radius.xl,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.md,
-						}}
+						})}
 					>
-						<h2 css={{ margin: 0, color: colors.text }}>
+						<h2 mix={css({ margin: 0, color: colors.text })}>
 							How account APY works
 						</h2>
-						<p css={{ margin: 0, color: colors.textMuted }}>
+						<p mix={css({ margin: 0, color: colors.textMuted })}>
 							APY means annual percentage yield. Set it per account to earn
 							monthly interest automatically: on the first day of each month,
 							Kids Ledger snapshots that account&apos;s balance, converts the
@@ -1310,7 +1326,7 @@ export function SettingsRoute(handle: Handle) {
 					</section>
 
 					<section
-						css={{
+						mix={css({
 							display: 'grid',
 							gap: spacing.md,
 							padding: spacing.md,
@@ -1318,46 +1334,47 @@ export function SettingsRoute(handle: Handle) {
 							borderRadius: radius.xl,
 							backgroundColor: 'color-mix(in srgb, #dc2626 5%, transparent)',
 							boxShadow: shadows.md,
-						}}
+						})}
 					>
-						<h2 css={{ margin: 0, color: colors.error }}>Danger Zone</h2>
+						<h2 mix={css({ margin: 0, color: colors.error })}>Danger Zone</h2>
 
-						<div css={{ display: 'grid', gap: spacing.sm }}>
+						<div mix={css({ display: 'grid', gap: spacing.sm })}>
 							<h3
-								css={{
+								mix={css({
 									margin: 0,
 									color: colors.text,
 									fontSize: typography.fontSize.lg,
-								}}
+								})}
 							>
 								Archive management
 							</h3>
 							{state.archived.kids.length === 0 &&
 							state.archived.accounts.length === 0 ? (
 								<div
-									css={{
+									mix={css({
 										display: 'flex',
 										flexDirection: 'column',
 										alignItems: 'center',
 										gap: spacing.sm,
 										padding: spacing.xl,
 										color: colors.textMuted,
-									}}
+									})}
 								>
-									<span css={{ fontSize: '2rem' }}>📭</span>
-									<p css={{ margin: 0 }}>No archived records.</p>
+									<span mix={css({ fontSize: '2rem' })}>📭</span>
+									<p mix={css({ margin: 0 })}>No archived records.</p>
 								</div>
 							) : null}
 							{state.archived.kids.map((kid) => (
-								<div key={kid.id} css={archivedRowCss}>
+								<div key={kid.id} mix={css(archivedRowCss)}>
 									<span>
 										{kid.emoji} {kid.name}
 									</span>
-									<div css={archivedRowActionsCss}>
+									<div mix={css(archivedRowActionsCss)}>
 										<button
 											type="button"
-											on={{
-												click: async () => {
+											mix={[
+												css(buttonCss),
+												on('click', async () => {
 													try {
 														await unarchiveKid(kid.id)
 														await refreshSettings()
@@ -1368,21 +1385,20 @@ export function SettingsRoute(handle: Handle) {
 																: 'Could not unarchive kid.',
 														)
 													}
-												},
-											}}
-											css={buttonCss}
+												}),
+											]}
 										>
 											Unarchive
 										</button>
 										<button
 											type="button"
-											on={{
-												click: async () => {
+											mix={[
+												css(dangerButtonCss),
+												on('click', async () => {
 													await deleteKid(kid.id)
 													await refreshSettings()
-												},
-											}}
-											css={dangerButtonCss}
+												}),
+											]}
 										>
 											Delete forever
 										</button>
@@ -1390,15 +1406,16 @@ export function SettingsRoute(handle: Handle) {
 								</div>
 							))}
 							{state.archived.accounts.map((account) => (
-								<div key={account.id} css={archivedRowCss}>
+								<div key={account.id} mix={css(archivedRowCss)}>
 									<span>
 										{account.kidName} · {account.name}
 									</span>
-									<div css={archivedRowActionsCss}>
+									<div mix={css(archivedRowActionsCss)}>
 										<button
 											type="button"
-											on={{
-												click: async () => {
+											mix={[
+												css(buttonCss),
+												on('click', async () => {
 													try {
 														await unarchiveAccount(account.id)
 														await refreshSettings()
@@ -1409,21 +1426,20 @@ export function SettingsRoute(handle: Handle) {
 																: 'Could not unarchive account.',
 														)
 													}
-												},
-											}}
-											css={buttonCss}
+												}),
+											]}
 										>
 											Unarchive
 										</button>
 										<button
 											type="button"
-											on={{
-												click: async () => {
+											mix={[
+												css(dangerButtonCss),
+												on('click', async () => {
 													await deleteAccount(account.id)
 													await refreshSettings()
-												},
-											}}
-											css={dangerButtonCss}
+												}),
+											]}
 										>
 											Delete forever
 										</button>
@@ -1433,28 +1449,28 @@ export function SettingsRoute(handle: Handle) {
 						</div>
 
 						<div
-							css={{
+							mix={css({
 								display: 'grid',
 								gap: spacing.sm,
 								paddingTop: spacing.md,
 								borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)`,
-							}}
+							})}
 						>
 							<h3
-								css={{
+								mix={css({
 									margin: 0,
 									color: colors.text,
 									fontSize: typography.fontSize.lg,
-								}}
+								})}
 							>
 								Data export
 							</h3>
 							<a
 								href="/ledger/export/json"
-								css={{
+								mix={css({
 									color: colors.error,
 									fontWeight: typography.fontWeight.bold,
-								}}
+								})}
 							>
 								Download JSON backup
 							</a>
@@ -1463,73 +1479,78 @@ export function SettingsRoute(handle: Handle) {
 
 					{editingKidTransactionModalCss ? (
 						<div
-							on={{
-								click: (event) => {
+							mix={[
+								css({
+									position: 'fixed',
+									inset: 0,
+									backgroundColor: 'rgba(0, 0, 0, 0.45)',
+									display: 'grid',
+									placeItems: 'center',
+									padding: spacing.md,
+									zIndex: 1000,
+									pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
+									animation: transactionModalCssClosing
+										? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+										: 'modal-backdrop-in 180ms ease-out forwards',
+									[mq.mobile]: {
+										padding: 0,
+										placeItems: 'stretch',
+									},
+								}),
+								on('click', (event) => {
 									if (event.target === event.currentTarget) {
 										closeTransactionModalCssEditor()
 									}
-								},
-							}}
-							css={{
-								position: 'fixed',
-								inset: 0,
-								backgroundColor: 'rgba(0, 0, 0, 0.45)',
-								display: 'grid',
-								placeItems: 'center',
-								padding: spacing.md,
-								zIndex: 1000,
-								pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
-								animation: transactionModalCssClosing
-									? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
-									: 'modal-backdrop-in 180ms ease-out forwards',
-								[mq.mobile]: {
-									padding: 0,
-									placeItems: 'stretch',
-								},
-							}}
+								}),
+							]}
 						>
 							<section
 								role="dialog"
 								aria-modal="true"
 								aria-labelledby="kid-transaction-modal-css-title"
-								on={{ keydown: handleTransactionModalCssKeydown }}
-								css={{
-									width: 'min(42rem, 100%)',
-									maxHeight: '85dvh',
-									overflow: 'auto',
-									display: 'grid',
-									gap: spacing.md,
-									padding: spacing.lg,
-									borderRadius: radius.xl,
-									border: `3px solid ${colors.border}`,
-									backgroundColor: colors.surface,
-									boxShadow: shadows.lg,
-									animation: transactionModalCssClosing
-										? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
-										: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-									[mq.mobile]: {
-										width: '100%',
-										maxHeight: '100dvh',
-										minHeight: '100dvh',
-										borderRadius: 0,
-										border: 'none',
-										gap: spacing.sm,
-										padding: spacing.md,
-									},
-								}}
+								mix={[
+									css({
+										width: 'min(42rem, 100%)',
+										maxHeight: '85dvh',
+										overflow: 'auto',
+										display: 'grid',
+										gap: spacing.md,
+										padding: spacing.lg,
+										borderRadius: radius.xl,
+										border: `3px solid ${colors.border}`,
+										backgroundColor: colors.surface,
+										boxShadow: shadows.lg,
+										animation: transactionModalCssClosing
+											? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+											: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+										[mq.mobile]: {
+											width: '100%',
+											maxHeight: '100dvh',
+											minHeight: '100dvh',
+											borderRadius: 0,
+											border: 'none',
+											gap: spacing.sm,
+											padding: spacing.md,
+										},
+									}),
+									on('keydown', handleTransactionModalCssKeydown),
+								]}
 							>
 								<header
-									css={{ display: 'flex', justifyContent: 'space-between' }}
+									mix={css({
+										display: 'flex',
+										justifyContent: 'space-between',
+									})}
 								>
-									<div css={{ display: 'grid', gap: spacing.xs }}>
+									<div mix={css({ display: 'grid', gap: spacing.xs })}>
 										<h3
 											id="kid-transaction-modal-css-title"
-											css={{ margin: 0, color: colors.text }}
+											mix={css({ margin: 0, color: colors.text })}
 										>
 											Customize {editingKidTransactionModalCss.kidName}&apos;s
 											transaction modal
 										</h3>
-										<p css={{ margin: 0, color: colors.textMuted }}>
+										<p mix={css({ margin: 0, color: colors.textMuted })}>
 											Enter declarations or full CSS rules. When this kid&apos;s
 											transaction modal is open on Home, the styles apply to the
 											whole page.
@@ -1537,16 +1558,20 @@ export function SettingsRoute(handle: Handle) {
 									</div>
 									<button
 										type="button"
-										on={{ click: closeTransactionModalCssEditor }}
-										css={buttonCss}
+										mix={[
+											css(buttonCss),
+											on('click', closeTransactionModalCssEditor),
+										]}
 										disabled={transactionModalCssSaving}
 									>
 										Close
 									</button>
 								</header>
-								<section css={{ display: 'grid', gap: spacing.sm }}>
-									<strong css={{ color: colors.text }}>Live preview</strong>
-									<p css={{ margin: 0, color: colors.textMuted }}>
+								<section mix={css({ display: 'grid', gap: spacing.sm })}>
+									<strong mix={css({ color: colors.text })}>
+										Live preview
+									</strong>
+									<p mix={css({ margin: 0, color: colors.textMuted })}>
 										Updates in real time as you type.
 									</p>
 									{transactionModalCssDraft.trim() ? (
@@ -1556,7 +1581,7 @@ export function SettingsRoute(handle: Handle) {
 									) : null}
 									<section
 										data-kid-transaction-modal-preview
-										css={{
+										mix={css({
 											width: 'min(30rem, 100%)',
 											display: 'grid',
 											gap: spacing.md,
@@ -1566,54 +1591,69 @@ export function SettingsRoute(handle: Handle) {
 											border: `3px solid ${colors.border}`,
 											backgroundColor: colors.surface,
 											boxShadow: shadows.lg,
-										}}
+										})}
 									>
 										<header
-											css={{ display: 'flex', justifyContent: 'space-between' }}
+											mix={css({
+												display: 'flex',
+												justifyContent: 'space-between',
+											})}
 										>
 											<div>
-												<h3 css={{ margin: 0, color: colors.text }}>
+												<h3 mix={css({ margin: 0, color: colors.text })}>
 													{editingKidTransactionModalCss.kidEmoji}{' '}
 													{editingKidTransactionModalCss.kidName}
 												</h3>
-												<p css={{ margin: 0, color: colors.textMuted }}>
+												<p mix={css({ margin: 0, color: colors.textMuted })}>
 													Spending · $12.50
 												</p>
 											</div>
-											<span css={{ color: colors.textMuted }}>Close</span>
+											<span mix={css({ color: colors.textMuted })}>Close</span>
 										</header>
-										<label css={{ display: 'grid', gap: spacing.xs }}>
-											<span css={{ color: colors.text }}>Amount</span>
-											<input type="text" value="5.00" readOnly css={inputCss} />
+										<label mix={css({ display: 'grid', gap: spacing.xs })}>
+											<span mix={css({ color: colors.text })}>Amount</span>
+											<input
+												type="text"
+												value="5.00"
+												readOnly
+												mix={css(inputCss)}
+											/>
 										</label>
 										<div
-											css={{
+											mix={css({
 												display: 'grid',
 												gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
 												gap: spacing.xs,
-											}}
+											})}
 										>
-											<button type="button" css={buttonCss}>
+											<button type="button" mix={css(buttonCss)}>
 												$1.00
 											</button>
-											<button type="button" css={buttonCss}>
+											<button type="button" mix={css(buttonCss)}>
 												$5.00
 											</button>
-											<button type="button" css={buttonCss}>
+											<button type="button" mix={css(buttonCss)}>
 												$10.00
 											</button>
 										</div>
 									</section>
 								</section>
-								<label css={{ display: 'grid', gap: spacing.xs }}>
-									<span css={{ color: colors.text }}>
+								<label mix={css({ display: 'grid', gap: spacing.xs })}>
+									<span mix={css({ color: colors.text })}>
 										Custom CSS declarations
 									</span>
 									<textarea
 										id="kid-transaction-modal-css-input"
 										value={transactionModalCssDraft}
-										on={{
-											input: (event) => {
+										mix={[
+											css({
+												...inputCss,
+												fontFamily:
+													'ui-monospace, SFMono-Regular, Menlo, monospace',
+												resize: 'vertical',
+												minHeight: '8rem',
+											}),
+											on('input', (event) => {
 												if (
 													!(event.currentTarget instanceof HTMLTextAreaElement)
 												)
@@ -1621,48 +1661,43 @@ export function SettingsRoute(handle: Handle) {
 												transactionModalCssDraft = event.currentTarget.value
 												transactionModalCssSaveError = null
 												handle.update()
-											},
-										}}
+											}),
+										]}
 										rows={6}
-										css={{
-											...inputCss,
-											fontFamily:
-												'ui-monospace, SFMono-Regular, Menlo, monospace',
-											resize: 'vertical',
-											minHeight: '8rem',
-										}}
 									/>
 								</label>
-								<section css={{ display: 'grid', gap: spacing.xs }}>
-									<strong css={{ color: colors.text }}>
+								<section mix={css({ display: 'grid', gap: spacing.xs })}>
+									<strong mix={css({ color: colors.text })}>
 										Supported CSS variables
 									</strong>
 									<div
-										css={{
+										mix={css({
 											display: 'flex',
 											flexWrap: 'wrap',
 											gap: spacing.xs,
-										}}
+										})}
 									>
 										{transactionModalCssVariables.map((cssVariable) => (
 											<code
 												key={cssVariable}
-												css={{
+												mix={css({
 													padding: `${spacing.xs} ${spacing.sm}`,
 													border: `1px solid ${colors.border}`,
 													borderRadius: radius.full,
 													backgroundColor: colors.primarySoftest,
-												}}
+												})}
 											>
 												{cssVariable}
 											</code>
 										))}
 									</div>
 								</section>
-								<div css={{ display: 'grid', gap: spacing.xs }}>
-									<strong css={{ color: colors.text }}>Font example</strong>
+								<div mix={css({ display: 'grid', gap: spacing.xs })}>
+									<strong mix={css({ color: colors.text })}>
+										Font example
+									</strong>
 									<pre
-										css={{
+										mix={css({
 											margin: 0,
 											padding: spacing.sm,
 											borderRadius: radius.md,
@@ -1670,17 +1705,17 @@ export function SettingsRoute(handle: Handle) {
 											backgroundColor: colors.primarySoftest,
 											color: colors.text,
 											overflowX: 'auto',
-										}}
+										})}
 									>
 										{transactionModalCssFontExample}
 									</pre>
 								</div>
-								<div css={{ display: 'grid', gap: spacing.xs }}>
-									<strong css={{ color: colors.text }}>
+								<div mix={css({ display: 'grid', gap: spacing.xs })}>
+									<strong mix={css({ color: colors.text })}>
 										Google Fonts example
 									</strong>
 									<pre
-										css={{
+										mix={css({
 											margin: 0,
 											padding: spacing.sm,
 											borderRadius: radius.md,
@@ -1688,36 +1723,40 @@ export function SettingsRoute(handle: Handle) {
 											backgroundColor: colors.primarySoftest,
 											color: colors.text,
 											overflowX: 'auto',
-										}}
+										})}
 									>
 										{transactionModalCssGoogleFontExample}
 									</pre>
 								</div>
 								{transactionModalCssSaveError ? (
-									<p css={{ margin: 0, color: colors.error }}>
+									<p mix={css({ margin: 0, color: colors.error })}>
 										{transactionModalCssSaveError}
 									</p>
 								) : null}
 								<div
-									css={{
+									mix={css({
 										display: 'flex',
 										justifyContent: 'flex-end',
 										gap: spacing.sm,
 										flexWrap: 'wrap',
-									}}
+									})}
 								>
 									<button
 										type="button"
-										on={{ click: closeTransactionModalCssEditor }}
-										css={buttonCss}
+										mix={[
+											css(buttonCss),
+											on('click', closeTransactionModalCssEditor),
+										]}
 										disabled={transactionModalCssSaving}
 									>
 										Cancel
 									</button>
 									<button
 										type="button"
-										on={{ click: () => void saveTransactionModalCss() }}
-										css={buttonCss}
+										mix={[
+											css(buttonCss),
+											on('click', () => void saveTransactionModalCss()),
+										]}
 										disabled={transactionModalCssSaving}
 									>
 										{transactionModalCssSaving ? 'Saving...' : 'Save CSS'}
@@ -1729,7 +1768,11 @@ export function SettingsRoute(handle: Handle) {
 
 					{state.message ? (
 						<p
-							css={{ margin: 0, color: colors.textMuted, textAlign: 'center' }}
+							mix={css({
+								margin: 0,
+								color: colors.textMuted,
+								textAlign: 'center',
+							})}
 						>
 							{state.message}
 						</p>

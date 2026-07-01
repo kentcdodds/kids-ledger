@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/fetch-router'
 import {
 	array,
 	number,
@@ -151,10 +151,7 @@ export function createLedgerDashboardHandler(appEnv: AppEnv) {
 				access.headers ?? undefined,
 			)
 		},
-	} satisfies BuildAction<
-		typeof routes.apiLedgerDashboard.method,
-		typeof routes.apiLedgerDashboard.pattern
-	>
+	} satisfies Action<typeof routes.apiLedgerDashboard>
 }
 
 export function createLedgerSettingsHandler(appEnv: AppEnv) {
@@ -177,10 +174,7 @@ export function createLedgerSettingsHandler(appEnv: AppEnv) {
 				access.headers ?? undefined,
 			)
 		},
-	} satisfies BuildAction<
-		typeof routes.apiLedgerSettings.method,
-		typeof routes.apiLedgerSettings.pattern
-	>
+	} satisfies Action<typeof routes.apiLedgerSettings>
 }
 
 export function createLedgerHistoryHandler(appEnv: AppEnv) {
@@ -209,10 +203,7 @@ export function createLedgerHistoryHandler(appEnv: AppEnv) {
 				access.headers ?? undefined,
 			)
 		},
-	} satisfies BuildAction<
-		typeof routes.apiLedgerHistory.method,
-		typeof routes.apiLedgerHistory.pattern
-	>
+	} satisfies Action<typeof routes.apiLedgerHistory>
 }
 
 export function createKidCreateHandler(appEnv: AppEnv) {
@@ -221,60 +212,42 @@ export function createKidCreateHandler(appEnv: AppEnv) {
 		run: (service, input) => service.createKid(input),
 		status: 201,
 		mapResponse: (created) => ({ kidId: created.id }),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsCreate.method,
-		typeof routes.apiKidsCreate.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsCreate>
 }
 
 export function createKidUpdateHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: updateKidSchema,
 		run: (service, input) => service.updateKid(input),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsUpdate.method,
-		typeof routes.apiKidsUpdate.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsUpdate>
 }
 
 export function createKidReorderHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: reorderKidsSchema,
 		run: (service, input) => service.reorderKids(input.kidIds),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsReorder.method,
-		typeof routes.apiKidsReorder.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsReorder>
 }
 
 export function createKidArchiveHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: kidIdSchema,
 		run: (service, input) => service.archiveKid(input.kidId),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsArchive.method,
-		typeof routes.apiKidsArchive.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsArchive>
 }
 
 export function createKidUnarchiveHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: kidIdSchema,
 		run: (service, input) => service.unarchiveKid(input.kidId),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsUnarchive.method,
-		typeof routes.apiKidsUnarchive.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsUnarchive>
 }
 
 export function createKidDeleteHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: kidIdSchema,
 		run: (service, input) => service.deleteKidPermanently(input.kidId),
-	}) satisfies BuildAction<
-		typeof routes.apiKidsDelete.method,
-		typeof routes.apiKidsDelete.pattern
-	>
+	}) satisfies Action<typeof routes.apiKidsDelete>
 }
 
 export function createAccountCreateHandler(appEnv: AppEnv) {
@@ -283,60 +256,42 @@ export function createAccountCreateHandler(appEnv: AppEnv) {
 		run: (service, input) => service.createAccount(input),
 		status: 201,
 		mapResponse: (created) => ({ accountId: created.id }),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsCreate.method,
-		typeof routes.apiAccountsCreate.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsCreate>
 }
 
 export function createAccountUpdateHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: updateAccountSchema,
 		run: (service, input) => service.updateAccount(input),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsUpdate.method,
-		typeof routes.apiAccountsUpdate.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsUpdate>
 }
 
 export function createAccountReorderHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: reorderAccountsSchema,
 		run: (service, input) => service.reorderAccounts(input),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsReorder.method,
-		typeof routes.apiAccountsReorder.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsReorder>
 }
 
 export function createAccountArchiveHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: accountIdSchema,
 		run: (service, input) => service.archiveAccount(input.accountId),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsArchive.method,
-		typeof routes.apiAccountsArchive.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsArchive>
 }
 
 export function createAccountUnarchiveHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: accountIdSchema,
 		run: (service, input) => service.unarchiveAccount(input.accountId),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsUnarchive.method,
-		typeof routes.apiAccountsUnarchive.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsUnarchive>
 }
 
 export function createAccountDeleteHandler(appEnv: AppEnv) {
 	return createLedgerMutationHandler(appEnv, {
 		schema: accountIdSchema,
 		run: (service, input) => service.deleteAccountPermanently(input.accountId),
-	}) satisfies BuildAction<
-		typeof routes.apiAccountsDelete.method,
-		typeof routes.apiAccountsDelete.pattern
-	>
+	}) satisfies Action<typeof routes.apiAccountsDelete>
 }
 
 export function createTransactionCreateHandler(appEnv: AppEnv) {
@@ -344,10 +299,7 @@ export function createTransactionCreateHandler(appEnv: AppEnv) {
 		schema: createTransactionSchema,
 		run: (service, input) => service.addTransaction(input),
 		mapResponse: (result) => ({ result }),
-	}) satisfies BuildAction<
-		typeof routes.apiTransactionsCreate.method,
-		typeof routes.apiTransactionsCreate.pattern
-	>
+	}) satisfies Action<typeof routes.apiTransactionsCreate>
 }
 
 export function createTransferCreateHandler(appEnv: AppEnv) {
@@ -355,10 +307,7 @@ export function createTransferCreateHandler(appEnv: AppEnv) {
 		schema: createTransferSchema,
 		run: (service, input) => service.transferBetweenAccounts(input),
 		mapResponse: (result) => ({ result }),
-	}) satisfies BuildAction<
-		typeof routes.apiTransfersCreate.method,
-		typeof routes.apiTransfersCreate.pattern
-	>
+	}) satisfies Action<typeof routes.apiTransfersCreate>
 }
 
 export function createQuickAmountsSetHandler(appEnv: AppEnv) {
@@ -369,10 +318,7 @@ export function createQuickAmountsSetHandler(appEnv: AppEnv) {
 			return service.listQuickAmounts()
 		},
 		mapResponse: (quickAmounts) => ({ quickAmounts }),
-	}) satisfies BuildAction<
-		typeof routes.apiQuickAmountsSet.method,
-		typeof routes.apiQuickAmountsSet.pattern
-	>
+	}) satisfies Action<typeof routes.apiQuickAmountsSet>
 }
 
 export function createExportJsonHandler(appEnv: AppEnv) {
@@ -397,8 +343,5 @@ export function createExportJsonHandler(appEnv: AppEnv) {
 			}
 			return response
 		},
-	} satisfies BuildAction<
-		typeof routes.apiExportJson.method,
-		typeof routes.apiExportJson.pattern
-	>
+	} satisfies Action<typeof routes.apiExportJson>
 }
