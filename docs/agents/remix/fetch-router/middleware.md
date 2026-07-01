@@ -93,7 +93,7 @@ router.map(routes.home, () => new Response('Home'))
 router.map(routes.admin.dashboard, {
 	// This middleware runs only on the `/admin/dashboard` route.
 	middleware: [auth({ token: 'secret' })],
-	action() {
+	handler() {
 		return new Response('Dashboard')
 	},
 })

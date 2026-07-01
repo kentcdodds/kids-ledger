@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { css, on, type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
 	fetchSessionInfo,
@@ -227,29 +227,29 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 
 		return (
 			<section
-				css={{
+				mix={css({
 					maxWidth: '28rem',
 					margin: '0 auto',
 					display: 'grid',
 					gap: spacing.lg,
-				}}
+				})}
 			>
-				<header css={{ display: 'grid', gap: spacing.xs }}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
 					<h2
-						css={{
+						mix={css({
 							fontSize: typography.fontSize.xl,
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
-						}}
+						})}
 					>
 						Authorize access
 					</h2>
-					<p css={{ color: colors.textMuted }}>
+					<p mix={css({ color: colors.textMuted })}>
 						{clientLabel} wants to access your kids-ledger account.
 					</p>
 				</header>
 				<section
-					css={{
+					mix={css({
 						padding: spacing.lg,
 						borderRadius: radius.xl,
 						border: `3px solid ${colors.border}`,
@@ -257,85 +257,87 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						boxShadow: shadows.md,
 						display: 'grid',
 						gap: spacing.sm,
-					}}
+					})}
 				>
 					<p
-						css={{
+						mix={css({
 							margin: 0,
 							fontWeight: typography.fontWeight.medium,
 							color: colors.text,
-						}}
+						})}
 					>
 						Requested scopes
 					</p>
-					<p css={{ margin: 0, color: colors.textMuted }}>{scopeLabel}</p>
+					<p mix={css({ margin: 0, color: colors.textMuted })}>{scopeLabel}</p>
 				</section>
 				{isSessionLoading ? (
-					<p css={{ color: colors.textMuted }}>Checking your session…</p>
+					<p mix={css({ color: colors.textMuted })}>Checking your session…</p>
 				) : null}
 				{isLoggedIn ? (
 					<section
-						css={{
+						mix={css({
 							padding: spacing.md,
 							borderRadius: radius.lg,
 							border: `2px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							display: 'grid',
 							gap: spacing.xs,
-						}}
+						})}
 					>
 						<p
-							css={{
+							mix={css({
 								margin: 0,
 								fontWeight: typography.fontWeight.medium,
 								color: colors.text,
-							}}
+							})}
 						>
 							Signed in as {sessionEmail}
 						</p>
-						<p css={{ margin: 0, color: colors.textMuted }}>
+						<p mix={css({ margin: 0, color: colors.textMuted })}>
 							Approve to continue with this account.
 						</p>
 					</section>
 				) : null}
 				{status === 'loading' ? (
-					<p css={{ color: colors.textMuted }}>
+					<p mix={css({ color: colors.textMuted })}>
 						Loading authorization details…
 					</p>
 				) : null}
 				{message ? (
 					<p
-						css={{
+						mix={css({
 							color: message.type === 'error' ? colors.error : colors.text,
 							fontSize: typography.fontSize.sm,
-						}}
+						})}
 						role={message.type === 'error' ? 'alert' : undefined}
 					>
 						{message.text}
 					</p>
 				) : null}
 				<form
-					css={{
-						display: 'grid',
-						gap: spacing.md,
-						padding: spacing.lg,
-						borderRadius: radius.xl,
-						border: `3px solid ${colors.border}`,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-						opacity: formReady ? 1 : 0.7,
-					}}
-					on={{ submit: handleSubmit }}
+					mix={[
+						css({
+							display: 'grid',
+							gap: spacing.md,
+							padding: spacing.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+							opacity: formReady ? 1 : 0.7,
+						}),
+						on<HTMLElement, 'submit'>('submit', handleSubmit),
+					]}
 				>
 					{!isLoggedIn && isSessionReady ? (
 						<>
-							<label css={{ display: 'grid', gap: spacing.xs }}>
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
 								<span
-									css={{
+									mix={css({
 										color: colors.text,
 										fontWeight: typography.fontWeight.medium,
 										fontSize: typography.fontSize.sm,
-									}}
+									})}
 								>
 									Email
 								</span>
@@ -346,20 +348,20 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									autoComplete="email"
 									placeholder="you@example.com"
 									disabled={actionsDisabled}
-									css={{
+									mix={css({
 										...inputCss,
 										fontSize: typography.fontSize.base,
 										fontFamily: typography.fontFamily,
-									}}
+									})}
 								/>
 							</label>
-							<label css={{ display: 'grid', gap: spacing.xs }}>
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
 								<span
-									css={{
+									mix={css({
 										color: colors.text,
 										fontWeight: typography.fontWeight.medium,
 										fontSize: typography.fontSize.sm,
-									}}
+									})}
 								>
 									Password
 								</span>
@@ -370,52 +372,56 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									autoComplete="current-password"
 									placeholder="Enter your password"
 									disabled={actionsDisabled}
-									css={{
+									mix={css({
 										...inputCss,
 										fontSize: typography.fontSize.base,
 										fontFamily: typography.fontFamily,
-									}}
+									})}
 								/>
 							</label>
 						</>
 					) : null}
-					<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+					<div
+						mix={css({ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' })}
+					>
 						<button
 							type="submit"
 							disabled={actionsDisabled}
-							css={{
+							mix={css({
 								...buttonCss,
 								padding: `${spacing.sm} ${spacing.lg}`,
 								borderRadius: radius.full,
 								fontSize: typography.fontSize.base,
 								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
 								opacity: actionsDisabled ? 0.7 : 1,
-							}}
+							})}
 						>
 							{authorizeLabel}
 						</button>
 						<button
 							type="button"
 							disabled={actionsDisabled}
-							on={{ click: () => submitDecision('deny') }}
-							css={{
-								...buttonCss,
-								padding: `${spacing.sm} ${spacing.lg}`,
-								borderRadius: radius.full,
-								border: `2px solid ${colors.border}`,
-								backgroundColor: colors.surface,
-								color: colors.text,
-								fontSize: typography.fontSize.base,
-								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
-								opacity: actionsDisabled ? 0.7 : 1,
-								boxShadow: `0 4px 0 0 ${colors.border}`,
-								'&:active': actionsDisabled
-									? undefined
-									: {
-											transform: 'translateY(4px)',
-											boxShadow: `0 0 0 0 ${colors.border}`,
-										},
-							}}
+							mix={[
+								css({
+									...buttonCss,
+									padding: `${spacing.sm} ${spacing.lg}`,
+									borderRadius: radius.full,
+									border: `2px solid ${colors.border}`,
+									backgroundColor: colors.surface,
+									color: colors.text,
+									fontSize: typography.fontSize.base,
+									cursor: actionsDisabled ? 'not-allowed' : 'pointer',
+									opacity: actionsDisabled ? 0.7 : 1,
+									boxShadow: `0 4px 0 0 ${colors.border}`,
+									'&:active': actionsDisabled
+										? undefined
+										: {
+												transform: 'translateY(4px)',
+												boxShadow: `0 0 0 0 ${colors.border}`,
+											},
+								}),
+								on<HTMLElement, 'click'>('click', () => submitDecision('deny')),
+							]}
 						>
 							Deny
 						</button>
@@ -423,14 +429,14 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				</form>
 				<a
 					href="/"
-					css={{
+					mix={css({
 						color: colors.textMuted,
 						fontSize: typography.fontSize.sm,
 						textDecoration: 'none',
 						'&:hover': {
 							textDecoration: 'underline',
 						},
-					}}
+					})}
 				>
 					Back home
 				</a>

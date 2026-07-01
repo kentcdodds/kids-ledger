@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { css, on, type Handle } from 'remix/ui'
 import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
 import {
@@ -266,7 +266,7 @@ export function App(handle: Handle) {
 
 		return (
 			<main
-				css={{
+				mix={css({
 					maxWidth: '52rem',
 					margin: '0 auto',
 					padding: spacing.md,
@@ -277,76 +277,74 @@ export function App(handle: Handle) {
 					[mq.mobile]: {
 						padding: spacing.sm,
 					},
-				}}
+				})}
 			>
 				<nav
-					css={{
+					mix={css({
 						display: 'flex',
 						gap: spacing.md,
 						flexWrap: 'wrap',
 						alignItems: 'center',
 						marginBottom: spacing.xl,
-					}}
+					})}
 				>
 					{isLoggedIn ? (
-						<a href="/" css={navLogoLinkCss} aria-label="Home">
+						<a href="/" mix={css(navLogoLinkCss)} aria-label="Home">
 							<img
 								src="/logo.png"
 								alt="kids-ledger logo"
-								css={{ width: '48px', height: 'auto', display: 'block' }}
+								mix={css({ width: '48px', height: 'auto', display: 'block' })}
 							/>
 						</a>
 					) : null}
 					{showAuthLinks ? (
 						<>
-							<a href={loginHref} css={getNavLinkCss('/login')}>
+							<a href={loginHref} mix={css(getNavLinkCss('/login'))}>
 								Login
 							</a>
-							<a href={signupHref} css={getNavLinkCss('/signup')}>
+							<a href={signupHref} mix={css(getNavLinkCss('/signup'))}>
 								Signup
 							</a>
 						</>
 					) : null}
 					{isLoggedIn ? (
 						<>
-							<a href="/history" css={getNavLinkCss('/history')}>
+							<a href="/history" mix={css(getNavLinkCss('/history'))}>
 								History
 							</a>
-							<a href="/settings" css={getNavLinkCss('/settings')}>
+							<a href="/settings" mix={css(getNavLinkCss('/settings'))}>
 								Settings
 							</a>
-							<a href="/account" css={getNavLinkCss('/account')}>
+							<a href="/account" mix={css(getNavLinkCss('/account'))}>
 								{sessionEmail}
 							</a>
 						</>
 					) : null}
 				</nav>
-				<div css={routeContentShellCss}>
+				<div mix={css(routeContentShellCss)}>
 					<Router
-						setup={{
-							routes: clientRoutes,
-							fallback: (
-								<section>
-									<h2
-										css={{
-											fontSize: typography.fontSize.lg,
-											fontWeight: typography.fontWeight.semibold,
-											marginBottom: spacing.sm,
-											color: colors.text,
-										}}
-									>
-										Not Found
-									</h2>
-									<p css={{ color: colors.textMuted }}>
-										That route does not exist.
-									</p>
-								</section>
-							),
-						}}
+						routes={clientRoutes}
+						fallback={
+							<section>
+								<h2
+									mix={css({
+										fontSize: typography.fontSize.lg,
+										fontWeight: typography.fontWeight.semibold,
+										marginBottom: spacing.sm,
+										color: colors.text,
+									})}
+								>
+									Not Found
+								</h2>
+								<p mix={css({ color: colors.textMuted })}>
+									That route does not exist.
+								</p>
+							</section>
+						}
 					/>
 				</div>
 				<footer
-					css={{
+					mix={css({
 						marginTop: isLoggedIn ? 0 : 'auto',
 						paddingTop: spacing.md,
 						paddingBottom: spacing.md,
@@ -356,36 +354,36 @@ export function App(handle: Handle) {
 						alignItems: 'center',
 						gap: spacing.sm,
 						color: colors.textMuted,
-					}}
+					})}
 				>
 					<span>Made with ❤️ by Dad</span>
 					<span aria-hidden="true">•</span>
 					<a
 						href="/privacy-policy"
-						css={{
+						mix={css({
 							color: colors.primaryText,
 							textDecoration: 'underline',
-						}}
+						})}
 					>
 						Privacy Policy
 					</a>
 					<span aria-hidden="true">•</span>
 					<a
 						href="/terms-of-service"
-						css={{
+						mix={css({
 							color: colors.primaryText,
 							textDecoration: 'underline',
-						}}
+						})}
 					>
 						Terms of Service
 					</a>
 					<span aria-hidden="true">•</span>
 					<a
 						href="/about"
-						css={{
+						mix={css({
 							color: colors.primaryText,
 							textDecoration: 'underline',
-						}}
+						})}
 					>
 						About
 					</a>
@@ -393,25 +391,25 @@ export function App(handle: Handle) {
 				{showTiltEnableButton ? (
 					<button
 						type="button"
-						on={{
-							click: () => {
+						mix={[
+							css({
+								position: 'fixed',
+								right: spacing.md,
+								bottom: spacing.md,
+								zIndex: 1000,
+								padding: `${spacing.xs} ${spacing.md}`,
+								borderRadius: '999px',
+								border: `2px solid ${colors.border}`,
+								backgroundColor: colors.surface,
+								color: colors.primaryText,
+								fontWeight: typography.fontWeight.semibold,
+								boxShadow: `0 2px 0 0 ${colors.border}`,
+								cursor: 'pointer',
+							}),
+							on<HTMLElement, 'click'>('click', () => {
 								requestTiltPermission?.()
-							},
-						}}
-						css={{
-							position: 'fixed',
-							right: spacing.md,
-							bottom: spacing.md,
-							zIndex: 1000,
-							padding: `${spacing.xs} ${spacing.md}`,
-							borderRadius: '999px',
-							border: `2px solid ${colors.border}`,
-							backgroundColor: colors.surface,
-							color: colors.primaryText,
-							fontWeight: typography.fontWeight.semibold,
-							boxShadow: `0 2px 0 0 ${colors.border}`,
-							cursor: 'pointer',
-						}}
+							}),
+						]}
 					>
 						{isRequestingTiltPermission
 							? 'Enabling tilt...'

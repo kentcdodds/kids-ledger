@@ -11,7 +11,7 @@ adapters.
 
 - Query builder + CRUD helpers
 - Typed selects and relation loading
-- Schema-validated writes via `remix/data-schema`
+- Column builders and typed writes via `remix/data-table`
 - Transaction support and adapter capability detection
 
 ## Installation
@@ -29,16 +29,15 @@ Install a database driver for your adapter:
 ## Usage
 
 ```ts
-import * as s from 'remix/data-schema'
-import { createDatabase, createTable } from 'remix/data-table'
+import { column as c, createDatabase, table } from 'remix/data-table'
 import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
 import Database from 'better-sqlite3'
 
-let users = createTable({
+let users = table({
 	name: 'users',
 	columns: {
-		id: s.string(),
-		email: s.string(),
+		id: c.uuid(),
+		email: c.text(),
 	},
 })
 

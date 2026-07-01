@@ -1,133 +1,132 @@
-import { createDatabase, createTable, sql } from 'remix/data-table'
-import { number, string } from 'remix/data-schema'
+import { column as c, createDatabase, sql, table } from 'remix/data-table'
 import { createD1DataTableAdapter } from './d1-data-table-adapter.ts'
 
-export const usersTable = createTable({
+export const usersTable = table({
 	name: 'users',
 	columns: {
-		id: number(),
-		username: string(),
-		email: string(),
-		password_hash: string(),
-		created_at: string(),
-		updated_at: string(),
+		id: c.integer(),
+		username: c.text(),
+		email: c.text(),
+		password_hash: c.text(),
+		created_at: c.text(),
+		updated_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const passwordResetsTable = createTable({
+export const passwordResetsTable = table({
 	name: 'password_resets',
 	columns: {
-		id: number(),
-		user_id: number(),
-		token_hash: string(),
-		expires_at: number(),
-		created_at: string(),
+		id: c.integer(),
+		user_id: c.integer(),
+		token_hash: c.text(),
+		expires_at: c.integer(),
+		created_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const mockResendMessagesTable = createTable({
+export const mockResendMessagesTable = table({
 	name: 'mock_resend_messages',
 	columns: {
-		id: string(),
-		token_hash: string(),
-		received_at: number(),
-		from_email: string(),
-		to_json: string(),
-		subject: string(),
-		html: string(),
-		payload_json: string(),
+		id: c.text(),
+		token_hash: c.text(),
+		received_at: c.integer(),
+		from_email: c.text(),
+		to_json: c.text(),
+		subject: c.text(),
+		html: c.text(),
+		payload_json: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const householdsTable = createTable({
+export const householdsTable = table({
 	name: 'households',
 	columns: {
-		id: number(),
-		user_id: number(),
-		name: string(),
-		created_at: string(),
-		updated_at: string(),
+		id: c.integer(),
+		user_id: c.integer(),
+		name: c.text(),
+		created_at: c.text(),
+		updated_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const kidsTable = createTable({
+export const kidsTable = table({
 	name: 'kids',
 	columns: {
-		id: number(),
-		household_id: number(),
-		name: string(),
-		emoji: string(),
-		transaction_modal_css: string(),
-		sort_order: number(),
-		is_archived: number(),
-		archived_at: string(),
-		created_at: string(),
-		updated_at: string(),
+		id: c.integer(),
+		household_id: c.integer(),
+		name: c.text(),
+		emoji: c.text(),
+		transaction_modal_css: c.text(),
+		sort_order: c.integer(),
+		is_archived: c.integer(),
+		archived_at: c.text(),
+		created_at: c.text(),
+		updated_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const accountsTable = createTable({
+export const accountsTable = table({
 	name: 'accounts',
 	columns: {
-		id: number(),
-		kid_id: number(),
-		name: string(),
-		apy_basis_points: number(),
-		color_token: string(),
-		sort_order: number(),
-		is_archived: number(),
-		archived_at: string(),
-		created_at: string(),
-		updated_at: string(),
+		id: c.integer(),
+		kid_id: c.integer(),
+		name: c.text(),
+		apy_basis_points: c.integer(),
+		color_token: c.text(),
+		sort_order: c.integer(),
+		is_archived: c.integer(),
+		archived_at: c.text(),
+		created_at: c.text(),
+		updated_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const transactionsTable = createTable({
+export const transactionsTable = table({
 	name: 'transactions',
 	columns: {
-		id: number(),
-		household_id: number(),
-		kid_id: number(),
-		account_id: number(),
-		amount_cents: number(),
-		note: string(),
-		source_type: string(),
-		source_period: string(),
-		created_at: string(),
+		id: c.integer(),
+		household_id: c.integer(),
+		kid_id: c.integer(),
+		account_id: c.integer(),
+		amount_cents: c.integer(),
+		note: c.text(),
+		source_type: c.text(),
+		source_period: c.text(),
+		created_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const interestAccrualsTable = createTable({
+export const interestAccrualsTable = table({
 	name: 'interest_accruals',
 	columns: {
-		id: number(),
-		account_id: number(),
-		period: string(),
-		balance_cents: number(),
-		apy_basis_points: number(),
-		amount_cents: number(),
-		transaction_id: number(),
-		created_at: string(),
-		updated_at: string(),
+		id: c.integer(),
+		account_id: c.integer(),
+		period: c.text(),
+		balance_cents: c.integer(),
+		apy_basis_points: c.integer(),
+		amount_cents: c.integer(),
+		transaction_id: c.integer(),
+		created_at: c.text(),
+		updated_at: c.text(),
 	},
 	primaryKey: 'id',
 })
 
-export const quickAmountPresetsTable = createTable({
+export const quickAmountPresetsTable = table({
 	name: 'quick_amount_presets',
 	columns: {
-		id: number(),
-		household_id: number(),
-		amount_cents: number(),
-		sort_order: number(),
-		created_at: string(),
+		id: c.integer(),
+		household_id: c.integer(),
+		amount_cents: c.integer(),
+		sort_order: c.integer(),
+		created_at: c.text(),
 	},
 	primaryKey: 'id',
 })

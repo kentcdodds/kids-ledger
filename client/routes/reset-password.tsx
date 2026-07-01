@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { css, on, type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
 	colors,
@@ -116,50 +116,51 @@ export function ResetPasswordRoute(handle: Handle) {
 
 		return (
 			<section
-				css={{
+				mix={css({
 					maxWidth: '28rem',
 					margin: '0 auto',
 					display: 'grid',
 					gap: spacing.lg,
-				}}
+				})}
 			>
-				<header css={{ display: 'grid', gap: spacing.xs }}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
 					<h2
-						css={{
+						mix={css({
 							fontSize: typography.fontSize.xl,
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
-						}}
+						})}
 					>
 						{title}
 					</h2>
-					<p css={{ color: colors.textMuted }}>{description}</p>
+					<p mix={css({ color: colors.textMuted })}>{description}</p>
 				</header>
 				<form
-					css={{
-						display: 'grid',
-						gap: spacing.md,
-						padding: spacing.lg,
-						borderRadius: radius.xl,
-						border: `3px solid ${colors.border}`,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-					}}
-					on={{
-						submit: (event) =>
+					mix={[
+						css({
+							display: 'grid',
+							gap: spacing.md,
+							padding: spacing.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+						}),
+						on<HTMLElement, 'submit'>('submit', (event) =>
 							mode === 'confirm'
 								? submitResetConfirm(event, token)
 								: submitResetRequest(event),
-					}}
+						),
+					]}
 				>
 					{mode === 'confirm' ? (
-						<label css={{ display: 'grid', gap: spacing.xs }}>
+						<label mix={css({ display: 'grid', gap: spacing.xs })}>
 							<span
-								css={{
+								mix={css({
 									color: colors.text,
 									fontWeight: typography.fontWeight.medium,
 									fontSize: typography.fontSize.sm,
-								}}
+								})}
 							>
 								New password
 							</span>
@@ -170,21 +171,21 @@ export function ResetPasswordRoute(handle: Handle) {
 								autoComplete="new-password"
 								placeholder="At least 8 characters"
 								disabled={isSubmitting}
-								css={{
+								mix={css({
 									...inputCss,
 									fontSize: typography.fontSize.base,
 									fontFamily: typography.fontFamily,
-								}}
+								})}
 							/>
 						</label>
 					) : (
-						<label css={{ display: 'grid', gap: spacing.xs }}>
+						<label mix={css({ display: 'grid', gap: spacing.xs })}>
 							<span
-								css={{
+								mix={css({
 									color: colors.text,
 									fontWeight: typography.fontWeight.medium,
 									fontSize: typography.fontSize.sm,
-								}}
+								})}
 							>
 								Email
 							</span>
@@ -195,25 +196,25 @@ export function ResetPasswordRoute(handle: Handle) {
 								autoComplete="email"
 								placeholder="you@example.com"
 								disabled={isSubmitting}
-								css={{
+								mix={css({
 									...inputCss,
 									fontSize: typography.fontSize.base,
 									fontFamily: typography.fontFamily,
-								}}
+								})}
 							/>
 						</label>
 					)}
 					<button
 						type="submit"
 						disabled={isSubmitting}
-						css={{
+						mix={css({
 							...buttonCss,
 							padding: `${spacing.sm} ${spacing.lg}`,
 							borderRadius: radius.full,
 							fontSize: typography.fontSize.base,
 							cursor: isSubmitting ? 'not-allowed' : 'pointer',
 							opacity: isSubmitting ? 0.7 : 1,
-						}}
+						})}
 					>
 						{isSubmitting
 							? 'Submitting...'
@@ -223,40 +224,40 @@ export function ResetPasswordRoute(handle: Handle) {
 					</button>
 					{message ? (
 						<p
-							css={{
+							mix={css({
 								color: status === 'error' ? colors.error : colors.text,
 								fontSize: typography.fontSize.sm,
-							}}
+							})}
 							aria-live="polite"
 						>
 							{message}
 						</p>
 					) : null}
 				</form>
-				<div css={{ display: 'grid', gap: spacing.sm }}>
+				<div mix={css({ display: 'grid', gap: spacing.sm })}>
 					<a
 						href="/login"
-						css={{
+						mix={css({
 							color: colors.primaryText,
 							fontSize: typography.fontSize.sm,
 							textDecoration: 'none',
 							'&:hover': {
 								textDecoration: 'underline',
 							},
-						}}
+						})}
 					>
 						Back to sign in
 					</a>
 					<a
 						href="/"
-						css={{
+						mix={css({
 							color: colors.textMuted,
 							fontSize: typography.fontSize.sm,
 							textDecoration: 'none',
 							'&:hover': {
 								textDecoration: 'underline',
 							},
-						}}
+						})}
 					>
 						Back home
 					</a>

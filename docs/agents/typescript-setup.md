@@ -13,7 +13,7 @@ We have **three** distinct TypeScript environments, each with its own
 
 - **Config**: `types/tsconfig-client.json`
 - **Files**: `client/**/*.ts`, `client/**/*.tsx`
-- **Environment**: browser (`DOM`, `DOM.Iterable`) + JSX (`remix/component`)
+- **Environment**: browser (`DOM`, `DOM.Iterable`) + JSX (`remix/ui`)
 
 ### Tools
 
