@@ -1,8 +1,8 @@
-import { createDatabase, createTable, sql } from 'remix/data-table'
+import { createDatabase, sql, table } from 'remix/data-table'
 import { number, string } from 'remix/data-schema'
 import { createD1DataTableAdapter } from './d1-data-table-adapter.ts'
 
-export const usersTable = createTable({
+export const usersTable = table({
 	name: 'users',
 	columns: {
 		id: number(),
@@ -15,7 +15,7 @@ export const usersTable = createTable({
 	primaryKey: 'id',
 })
 
-export const passwordResetsTable = createTable({
+export const passwordResetsTable = table({
 	name: 'password_resets',
 	columns: {
 		id: number(),
@@ -27,7 +27,7 @@ export const passwordResetsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const mockResendMessagesTable = createTable({
+export const mockResendMessagesTable = table({
 	name: 'mock_resend_messages',
 	columns: {
 		id: string(),
@@ -42,7 +42,7 @@ export const mockResendMessagesTable = createTable({
 	primaryKey: 'id',
 })
 
-export const householdsTable = createTable({
+export const householdsTable = table({
 	name: 'households',
 	columns: {
 		id: number(),
@@ -54,7 +54,7 @@ export const householdsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const kidsTable = createTable({
+export const kidsTable = table({
 	name: 'kids',
 	columns: {
 		id: number(),
@@ -71,7 +71,7 @@ export const kidsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const accountsTable = createTable({
+export const accountsTable = table({
 	name: 'accounts',
 	columns: {
 		id: number(),
@@ -88,7 +88,7 @@ export const accountsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const transactionsTable = createTable({
+export const transactionsTable = table({
 	name: 'transactions',
 	columns: {
 		id: number(),
@@ -104,7 +104,7 @@ export const transactionsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const interestAccrualsTable = createTable({
+export const interestAccrualsTable = table({
 	name: 'interest_accruals',
 	columns: {
 		id: number(),
@@ -120,7 +120,7 @@ export const interestAccrualsTable = createTable({
 	primaryKey: 'id',
 })
 
-export const quickAmountPresetsTable = createTable({
+export const quickAmountPresetsTable = table({
 	name: 'quick_amount_presets',
 	columns: {
 		id: number(),
