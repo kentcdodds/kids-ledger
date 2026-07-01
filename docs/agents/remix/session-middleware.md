@@ -5,22 +5,22 @@ Source: https://github.com/remix-run/remix/tree/main/packages/session-middleware
 ## README
 
 Middleware for managing sessions with
-[`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router)
+[`remix/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router)
 via securely signed cookies.
 
 ## Installation
 
 ```sh
-bun add @remix-run/session-middleware
+bun add remix
 ```
 
 ## Usage
 
 ```ts
-import { createRouter } from '@remix-run/fetch-router'
-import { createCookie } from '@remix-run/cookie'
-import { createCookieSessionStorage } from '@remix-run/session/cookie-storage'
-import { session } from '@remix-run/session-middleware'
+import { createRouter } from 'remix/fetch-router'
+import { createCookie } from 'remix/cookie'
+import { createCookieSessionStorage } from 'remix/session/cookie-storage'
+import { session } from 'remix/session-middleware'
 
 let sessionCookie = createCookie('__session', {
 	secrets: ['s3cr3t'], // session cookies must be signed!

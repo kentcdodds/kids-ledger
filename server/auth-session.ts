@@ -1,4 +1,4 @@
-import { createCookie } from '@remix-run/cookie'
+import { createCookie } from 'remix/cookie'
 
 export const authSessionMaxAgeSeconds = 60 * 60 * 24 * 7
 export const rememberedAuthSessionMaxAgeSeconds = 60 * 60 * 24 * 60
