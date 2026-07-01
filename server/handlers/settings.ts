@@ -4,7 +4,7 @@ import { type routes } from '#server/routes.ts'
 
 export const settings = {
 	middleware: [],
-	async action({ request }) {
+	async handler({ request }) {
 		return renderProtectedPage(request, 'Settings')
 	},
 } satisfies Action<typeof routes.settings>

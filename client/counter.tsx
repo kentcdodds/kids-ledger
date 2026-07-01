@@ -42,7 +42,7 @@ export function Counter(handle: Handle, setup: CounterSetup = {}) {
 						transform: 'translateY(0)',
 					},
 				}),
-				on('click', increment),
+				on<HTMLElement>('click', increment),
 			]}
 		>
 			Count: {count}

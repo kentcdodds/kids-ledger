@@ -4,7 +4,7 @@ import { type routes } from '#server/routes.ts'
 
 export const history = {
 	middleware: [],
-	async action({ request }) {
+	async handler({ request }) {
 		return renderProtectedPage(request, 'History')
 	},
 } satisfies Action<typeof routes.history>

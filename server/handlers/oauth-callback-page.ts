@@ -5,7 +5,7 @@ import { type routes } from '#server/routes.ts'
 
 export const oauthCallbackPage = {
 	middleware: [],
-	async action({ url }) {
+	async handler({ url }) {
 		const title =
 			url.searchParams.get('error') || url.searchParams.get('error_description')
 				? 'Authorization Failed'

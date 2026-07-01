@@ -15,7 +15,7 @@ function jsonResponse(data: unknown, init?: ResponseInit) {
 
 export const session = {
 	middleware: [],
-	async action({ request }) {
+	async handler({ request }) {
 		const authSession = await readAuthSessionState(request)
 		if (!authSession.session) {
 			return jsonResponse({ ok: false })

@@ -123,7 +123,7 @@ function createLedgerMutationHandler<Input, Result = void>(
 ) {
 	return {
 		middleware: [],
-		async action({ request }: { request: Request }) {
+		async handler({ request }: { request: Request }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const parsedBody = await parseJsonBody(request, setup.schema)
@@ -141,7 +141,7 @@ function createLedgerMutationHandler<Input, Result = void>(
 export function createLedgerDashboardHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
-		async action({ request }) {
+		async handler({ request }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const dashboard = await access.service.getDashboard()
@@ -157,7 +157,7 @@ export function createLedgerDashboardHandler(appEnv: AppEnv) {
 export function createLedgerSettingsHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
-		async action({ request }) {
+		async handler({ request }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const [kids, archived, quickAmounts] = await Promise.all([
@@ -180,7 +180,7 @@ export function createLedgerSettingsHandler(appEnv: AppEnv) {
 export function createLedgerHistoryHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
-		async action({ request, url }) {
+		async handler({ request, url }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const result = await access.service.listTransactions({
@@ -324,7 +324,7 @@ export function createQuickAmountsSetHandler(appEnv: AppEnv) {
 export function createExportJsonHandler(appEnv: AppEnv) {
 	return {
 		middleware: [],
-		async action({ request }) {
+		async handler({ request }) {
 			const access = await readLedgerService(request, appEnv)
 			if (!access.ok) return access.response
 			const payload = await access.service.exportLedgerData()

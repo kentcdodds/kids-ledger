@@ -4,7 +4,7 @@ import { type routes } from '#server/routes.ts'
 
 export const chat = {
 	middleware: [],
-	async action({ request }) {
+	async handler({ request }) {
 		return renderProtectedPage(request, 'Chat')
 	},
 } satisfies Action<typeof routes.chat>

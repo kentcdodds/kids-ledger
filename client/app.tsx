@@ -323,26 +323,24 @@ export function App(handle: Handle) {
 				</nav>
 				<div mix={css(routeContentShellCss)}>
 					<Router
-						setup={{
-							routes: clientRoutes,
-							fallback: (
-								<section>
-									<h2
-										mix={css({
-											fontSize: typography.fontSize.lg,
-											fontWeight: typography.fontWeight.semibold,
-											marginBottom: spacing.sm,
-											color: colors.text,
-										})}
-									>
-										Not Found
-									</h2>
-									<p mix={css({ color: colors.textMuted })}>
-										That route does not exist.
-									</p>
-								</section>
-							),
-						}}
+						routes={clientRoutes}
+						fallback={
+							<section>
+								<h2
+									mix={css({
+										fontSize: typography.fontSize.lg,
+										fontWeight: typography.fontWeight.semibold,
+										marginBottom: spacing.sm,
+										color: colors.text,
+									})}
+								>
+									Not Found
+								</h2>
+								<p mix={css({ color: colors.textMuted })}>
+									That route does not exist.
+								</p>
+							</section>
+						}
 					/>
 				</div>
 				<footer
@@ -408,7 +406,7 @@ export function App(handle: Handle) {
 								boxShadow: `0 2px 0 0 ${colors.border}`,
 								cursor: 'pointer',
 							}),
-							on('click', () => {
+							on<HTMLElement>('click', () => {
 								requestTiltPermission?.()
 							}),
 						]}

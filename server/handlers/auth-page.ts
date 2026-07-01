@@ -6,7 +6,7 @@ import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
 export function createAuthPageHandler() {
 	return {
 		middleware: [],
-		async action({ request }: { request: Request }) {
+		async handler({ request }: { request: Request }) {
 			const url = new URL(request.url)
 			const authSession = await readAuthSessionState(request)
 			if (authSession.session) {

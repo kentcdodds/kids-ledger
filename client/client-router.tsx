@@ -4,7 +4,7 @@ type RouteDefinition = {
 	Component: (...args: Array<any>) => any
 }
 
-type RouterSetup = {
+type RouterProps = {
 	routes: Record<string, RouteDefinition>
 	fallback?: JSX.Element
 }
@@ -247,8 +247,10 @@ function ensureRouter() {
 
 export function listenToRouterNavigation(handle: Handle, listener: () => void) {
 	ensureRouter()
-	handle.on(routerEvents, {
-		navigate: () => listener(),
+	const onNavigate = () => listener()
+	routerEvents.addEventListener('navigate', onNavigate)
+	handle.signal.addEventListener('abort', () => {
+		routerEvents.removeEventListener('navigate', onNavigate)
 	})
 }
 
@@ -277,18 +279,19 @@ export function navigate(to: string) {
 	notify()
 }
 
-export function Router(handle: Handle, setup: RouterSetup) {
+export function Router(handle: Handle<RouterProps>) {
 	listenToRouterNavigation(handle, () => {
 		void handle.update()
 	})
 
 	return () => {
+		const { fallback, routes } = handle.props
 		const path = getPathname()
-		const routeElement = matchRoute(path, setup.routes)
+		const routeElement = matchRoute(path, routes)
 		if (routeElement) {
 			const RouteComponent = routeElement.Component
 			return <RouteComponent />
 		}
-		return setup.fallback ?? null
+		return fallback ?? null
 	}
 }

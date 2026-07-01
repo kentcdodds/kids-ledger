@@ -5,7 +5,7 @@ import { type routes } from '#server/routes.ts'
 
 export const oauthAuthorizePage = {
 	middleware: [],
-	async action() {
+	async handler() {
 		return render(Layout({ title: 'Authorize App' }))
 	},
 } satisfies Action<typeof routes.oauthAuthorize>

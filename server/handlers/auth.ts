@@ -31,7 +31,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 
 	return {
 		middleware: [],
-		async action({ request, url }) {
+		async handler({ request, url }) {
 			const parsedBody = await parseJsonBody(request, authRequestSchema)
 			if (!parsedBody.ok && parsedBody.error === 'invalid_json') {
 				return Response.json(

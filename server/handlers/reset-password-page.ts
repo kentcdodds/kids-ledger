@@ -5,7 +5,7 @@ import { type routes } from '#server/routes.ts'
 
 export const resetPasswordPage = {
 	middleware: [],
-	async action({ url }) {
+	async handler({ url }) {
 		const title = url.searchParams.get('token')
 			? 'Set New Password'
 			: 'Reset Password'

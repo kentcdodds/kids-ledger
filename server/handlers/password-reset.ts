@@ -74,7 +74,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 
 	return {
 		middleware: [],
-		async action({ request, url }) {
+		async handler({ request, url }) {
 			const parsed = await parseJsonBody(request, resetRequestSchema)
 			if (!parsed.ok && parsed.error === 'invalid_json') {
 				return Response.json(
@@ -187,7 +187,7 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 
 	return {
 		middleware: [],
-		async action({ request, url }) {
+		async handler({ request, url }) {
 			const parsed = await parseJsonBody(request, resetConfirmSchema)
 			if (!parsed.ok && parsed.error === 'invalid_json') {
 				return Response.json(
