@@ -60,7 +60,6 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 
 	#database: D1Database
 	#transactions = new Set<string>()
-	#transactionCounter = 0
 
 	constructor(
 		database: D1Database,
@@ -73,7 +72,7 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 			returning: options?.capabilities?.returning ?? true,
 			savepoints: options?.capabilities?.savepoints ?? false,
 			upsert: options?.capabilities?.upsert ?? true,
-			transactionalDdl: options?.capabilities?.transactionalDdl ?? true,
+			transactionalDdl: options?.capabilities?.transactionalDdl ?? false,
 			migrationLock: options?.capabilities?.migrationLock ?? false,
 		}
 	}
@@ -107,7 +106,9 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 		}
 		const prepared = this.#database
 			.prepare(statement.text)
-			.bind(...statement.values) as unknown as D1PreparedQuery
+			.bind(
+				...normalizeStatementValues(statement.values),
+			) as unknown as D1PreparedQuery
 
 		const shouldReadRows = shouldReadOperation(request.operation)
 
@@ -202,29 +203,17 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 	}
 
 	async beginTransaction(
-		options?: TransactionOptions,
+		_options?: TransactionOptions,
 	): Promise<TransactionToken> {
-		if (options?.isolationLevel === 'read uncommitted') {
-			await this.#database.exec('PRAGMA read_uncommitted = true')
-		}
-
-		await this.#database.exec('BEGIN')
-		this.#transactionCounter += 1
-		const token = { id: 'tx_' + String(this.#transactionCounter) }
-		this.#transactions.add(token.id)
-		return token
+		throw new Error('D1DataTableAdapter transactions are not supported')
 	}
 
-	async commitTransaction(token: TransactionToken): Promise<void> {
-		this.#assertTransaction(token)
-		await this.#database.exec('COMMIT')
-		this.#transactions.delete(token.id)
+	async commitTransaction(_token: TransactionToken): Promise<void> {
+		throw new Error('D1DataTableAdapter transactions are not supported')
 	}
 
-	async rollbackTransaction(token: TransactionToken): Promise<void> {
-		this.#assertTransaction(token)
-		await this.#database.exec('ROLLBACK')
-		this.#transactions.delete(token.id)
+	async rollbackTransaction(_token: TransactionToken): Promise<void> {
+		throw new Error('D1DataTableAdapter transactions are not supported')
 	}
 
 	async createSavepoint(
@@ -274,7 +263,10 @@ function shouldReadOperation(operation: DataManipulationOperation) {
 	}
 
 	if (operation.kind === 'raw') {
-		return /^\s*(?:select|pragma|with)\b/i.test(operation.sql.text)
+		return (
+			/^\s*(?:select|pragma|with)\b/i.test(operation.sql.text) ||
+			/\breturning\b/i.test(operation.sql.text)
+		)
 	}
 
 	return hasReturningClause(operation)
@@ -298,6 +290,10 @@ function normalizeRows(rows: Array<Record<string, unknown>>) {
 		}
 		return { ...row }
 	})
+}
+
+function normalizeStatementValues(values: Array<unknown>) {
+	return values.map((value) => (value === undefined ? null : value))
 }
 
 function normalizeCountRows(rows: Array<Record<string, unknown>>) {
@@ -960,6 +956,9 @@ function pushValue(context: SqliteCompileContext, value: unknown) {
 }
 
 function normalizeBoundValue(value: unknown) {
+	if (value === undefined) {
+		return null
+	}
 	if (typeof value === 'boolean') {
 		return value ? 1 : 0
 	}

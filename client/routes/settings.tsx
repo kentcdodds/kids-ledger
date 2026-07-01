@@ -183,6 +183,7 @@ export function SettingsRoute(handle: Handle) {
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
 	let newAccountColorsByKidId: Record<number, string> = {}
 	let newAccountApyBasisPointsByKidId: Record<number, number> = {}
+	let newAccountApyDraftByKidId: Record<number, string> = {}
 	let editingKidTransactionModalCss: {
 		kidId: number
 		kidName: string
@@ -288,6 +289,13 @@ export function SettingsRoute(handle: Handle) {
 
 	function getCreateAccountApyBasisPoints(kidId: number) {
 		return newAccountApyBasisPointsByKidId[kidId] ?? 0
+	}
+
+	function getCreateAccountApyDraft(kidId: number) {
+		return (
+			newAccountApyDraftByKidId[kidId] ??
+			formatApyPercentInputValue(getCreateAccountApyBasisPoints(kidId))
+		)
 	}
 
 	function formatApyPercentInputValue(apyBasisPoints: number) {
@@ -1109,9 +1117,7 @@ export function SettingsRoute(handle: Handle) {
 											step="0.01"
 											aria-label="New account APY percent"
 											data-create-account-apy={kid.id}
-											value={formatApyPercentInputValue(
-												getCreateAccountApyBasisPoints(kid.id),
-											)}
+											value={getCreateAccountApyDraft(kid.id)}
 											mix={[
 												css(inputCss),
 												on<HTMLElement, 'input'>('input', (event) => {
@@ -1119,6 +1125,8 @@ export function SettingsRoute(handle: Handle) {
 														!(event.currentTarget instanceof HTMLInputElement)
 													)
 														return
+													newAccountApyDraftByKidId[kid.id] =
+														event.currentTarget.value
 													const apyBasisPoints = parseApyPercentToBasisPoints(
 														event.currentTarget.value,
 													)
@@ -1195,6 +1203,8 @@ export function SettingsRoute(handle: Handle) {
 													apyBasisPoints,
 													colorToken: getCreateAccountColor(kid.id),
 												})
+												newAccountApyDraftByKidId[kid.id] =
+													formatApyPercentInputValue(0)
 												nameInput.value = ''
 												await refreshSettings()
 											}),

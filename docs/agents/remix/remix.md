@@ -42,7 +42,6 @@ Top-level package exports used or documented in this repo include:
 - `remix/fs`
 - `remix/headers`
 - `remix/html-template`
-- `remix/interaction`
 - `remix/lazy-file`
 - `remix/logger-middleware`
 - `remix/method-override-middleware`
@@ -66,8 +65,6 @@ Plus adapter/data helper subpaths and utility subpaths:
   `remix/data-table-sqlite`
 - `remix/fetch-router/routes`
 - `remix/ui/jsx-runtime`, `remix/ui/jsx-dev-runtime`, `remix/ui/server`
-- `remix/interaction/form`, `remix/interaction/keys`,
-  `remix/interaction/popover`, `remix/interaction/press`
 - `remix/response/compress`, `remix/response/file`, `remix/response/html`,
   `remix/response/redirect`
 - `remix/route-pattern/specificity`
