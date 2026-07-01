@@ -1114,7 +1114,7 @@ export function SettingsRoute(handle: Handle) {
 											)}
 											mix={[
 												css(inputCss),
-												on<HTMLElement, 'change'>('change', (event) => {
+												on<HTMLElement, 'input'>('input', (event) => {
 													if (
 														!(event.currentTarget instanceof HTMLInputElement)
 													)
