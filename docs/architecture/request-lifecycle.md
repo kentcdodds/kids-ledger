@@ -47,8 +47,8 @@ from their existing handlers.
 
 Document renders also load route data through `server/route-loader-data.ts` when
 the current route has server-readable data. The resulting loader-data envelope
-is passed to `client/app-root.tsx`, stored by `client/route-loader-data.tsx`, and
-consumed by route components during hydration.
+is passed to `client/app-root.tsx`, stored by `client/route-loader-data.tsx`,
+and consumed by route components during hydration.
 
 Client-side navigations preload the matching route's `loader` export before the
 router commits the new URL. If a loader succeeds, the data is stored as
