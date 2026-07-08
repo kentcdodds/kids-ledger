@@ -197,6 +197,39 @@ test('oauth authorize redirects to loopback callback with code after login', asy
 	}
 })
 
+test('oauth authorize preserves query error with loader data', async ({
+	baseURL,
+	page,
+}) => {
+	if (!baseURL) {
+		throw new Error('Playwright baseURL is required for OAuth test.')
+	}
+
+	const redirectUri = `${baseURL}/oauth/callback`
+	const clientId = await registerOAuthClient(page.request, redirectUri)
+	const codeVerifier = createCodeVerifier()
+	const codeChallenge = await createCodeChallenge(codeVerifier)
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: clientId,
+		redirect_uri: redirectUri,
+		scope: 'profile email',
+		state: 'playwright-oauth-query-error',
+		code_challenge: codeChallenge,
+		code_challenge_method: 'S256',
+		error_description: 'Access was denied',
+	})
+
+	await page.goto(`/oauth/authorize?${authorizeParams.toString()}`)
+
+	await expect(page.getByText('Access was denied')).toBeVisible()
+	await expect(
+		page.getByText(
+			'oauth-ui-playwright-client wants to access your kids-ledger account.',
+		),
+	).toBeVisible()
+})
+
 test('oauth login link preserves authorize params through login', async ({
 	page,
 }) => {

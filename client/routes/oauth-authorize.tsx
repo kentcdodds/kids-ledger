@@ -109,10 +109,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 
 		try {
 			const data = await fetchOAuthAuthorizeLoaderData(readRouterSearch(handle))
-			applyOAuthAuthorizeData(data)
-			if (queryError && !data.error) {
-				message = { type: 'error', text: queryError }
-			}
+			applyOAuthAuthorizeData(data, queryError)
 		} catch {
 			info = null
 			status = 'error'
@@ -137,7 +134,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		handle.update()
 	}
 
-	function applyOAuthAuthorizeData(data: OAuthAuthorizeLoaderData) {
+	function applyOAuthAuthorizeData(
+		data: OAuthAuthorizeLoaderData,
+		queryError = readQueryError(),
+	) {
 		session = data.session
 		sessionStatus = 'ready'
 		if (data.error || !data.info) {
@@ -151,7 +151,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		}
 		info = data.info
 		status = 'ready'
-		message = null
+		message = queryError ? { type: 'error', text: queryError } : null
 	}
 
 	function applyRouteLoaderData(currentSearch: string) {
