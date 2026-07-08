@@ -253,16 +253,21 @@ export function HomeRoute(handle: Handle) {
 		handle.update()
 	}
 
-	handle.queueTask(async () => {
-		const nextAppSession = readAppSession(handle)
-		if (nextAppSession.status === 'ready' && nextAppSession.session === null) {
-			status = 'error'
-			needsLogin = true
-			handle.update()
-			return
-		}
-		await refreshDashboard()
-	})
+	if (typeof window !== 'undefined') {
+		handle.queueTask(async () => {
+			const nextAppSession = readAppSession(handle)
+			if (
+				nextAppSession.status === 'ready' &&
+				nextAppSession.session === null
+			) {
+				status = 'error'
+				needsLogin = true
+				handle.update()
+				return
+			}
+			await refreshDashboard()
+		})
+	}
 	handle.queueTask(() => {
 		return () => {
 			clearCloseModalTimeout()
