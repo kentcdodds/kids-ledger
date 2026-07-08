@@ -1,4 +1,10 @@
-import { type Handle } from 'remix/ui'
+import { addEventListeners, type Handle } from 'remix/ui'
+import { createMultiMatcher } from 'remix/route-pattern/match'
+import {
+	readRouterPathname,
+	readRouterUrl,
+	readSsrRouterUrl,
+} from './router-location.tsx'
 
 type RouteDefinition = {
 	Component: (...args: Array<any>) => any
@@ -7,6 +13,7 @@ type RouteDefinition = {
 type RouterProps = {
 	routes: Record<string, RouteDefinition>
 	fallback?: JSX.Element
+	notFound?: boolean
 }
 
 type FormMethod = 'get' | 'post'
@@ -19,26 +26,41 @@ type FormSubmitDetails = {
 }
 
 export const routerEvents = new EventTarget()
+const clientRouteOrigin = 'https://kids-ledger.local'
+const routeMatchers = new WeakMap<
+	Record<string, RouteDefinition>,
+	ReturnType<typeof createRouteMatcher>
+>()
 let routerInitialized = false
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
 }
 
-function matchPathname(pattern: string, pathname: string) {
-	return new URLPattern({ pathname: pattern }).test({ pathname })
+function createRouteMatcher(routes: Record<string, RouteDefinition>) {
+	const matcher = createMultiMatcher<RouteDefinition>()
+	for (const [pattern, routeElement] of Object.entries(routes)) {
+		matcher.add(pattern, routeElement)
+	}
+	return matcher
 }
 
-function matchRoute(
+function getRouteMatcher(routes: Record<string, RouteDefinition>) {
+	const existing = routeMatchers.get(routes)
+	if (existing) return existing
+	const matcher = createRouteMatcher(routes)
+	routeMatchers.set(routes, matcher)
+	return matcher
+}
+
+export function matchRoute(
 	path: string,
 	routes: Record<string, RouteDefinition>,
 ): RouteDefinition | null {
-	for (const [pattern, routeElement] of Object.entries(routes)) {
-		if (!matchPathname(pattern, path)) continue
-		return routeElement
-	}
-
-	return null
+	return (
+		getRouteMatcher(routes).match(new URL(path, clientRouteOrigin))?.data ??
+		null
+	)
 }
 
 function shouldHandleClick(event: MouseEvent, anchor: HTMLAnchorElement) {
@@ -238,6 +260,7 @@ function handleDocumentSubmit(event: Event) {
 }
 
 function ensureRouter() {
+	if (typeof document === 'undefined') return
 	if (routerInitialized) return
 	routerInitialized = true
 	window.addEventListener('popstate', notify)
@@ -246,18 +269,26 @@ function ensureRouter() {
 }
 
 export function listenToRouterNavigation(
-	handle: Handle<any>,
+	handle: Pick<Handle, 'signal'>,
 	listener: () => void,
 ) {
+	if (typeof document === 'undefined') return
 	ensureRouter()
-	const onNavigate = () => listener()
-	routerEvents.addEventListener('navigate', onNavigate)
-	handle.signal.addEventListener('abort', () => {
-		routerEvents.removeEventListener('navigate', onNavigate)
+	addEventListeners(routerEvents, handle.signal, {
+		navigate() {
+			listener()
+		},
 	})
 }
 
-export function getPathname() {
+export function getPathname(handle?: Pick<Handle, 'context'>) {
+	if (handle) {
+		try {
+			return readRouterPathname(handle as Handle)
+		} catch {
+			// Router location context is unavailable outside the app tree.
+		}
+	}
 	if (typeof window === 'undefined') return '/'
 	return window.location.pathname
 }
@@ -283,13 +314,19 @@ export function navigate(to: string) {
 }
 
 export function Router(handle: Handle<RouterProps>) {
-	listenToRouterNavigation(handle, () => {
-		void handle.update()
-	})
+	if (typeof document !== 'undefined') {
+		listenToRouterNavigation(handle, () => {
+			void handle.update()
+		})
+	}
 
 	return () => {
 		const { fallback, routes } = handle.props
-		const path = getPathname()
+		if (handle.props.notFound && isOnSsrUrl(handle)) {
+			return fallback ?? null
+		}
+
+		const path = readRouterPathname(handle)
 		const routeElement = matchRoute(path, routes)
 		if (routeElement) {
 			const RouteComponent = routeElement.Component
@@ -297,4 +334,16 @@ export function Router(handle: Handle<RouterProps>) {
 		}
 		return fallback ?? null
 	}
+}
+
+function normalizeHref(href: string) {
+	const url = new URL(href, clientRouteOrigin)
+	return `${url.pathname}${url.search}${url.hash}`
+}
+
+function isOnSsrUrl(handle: Pick<Handle, 'context'>) {
+	return (
+		normalizeHref(readRouterUrl(handle)) ===
+		normalizeHref(readSsrRouterUrl(handle))
+	)
 }

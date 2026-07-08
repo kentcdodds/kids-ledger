@@ -46,6 +46,15 @@ resource setup.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
 
+## SSR and hydration notes
+
+- HTML document routes stream through `server/ssr-render.tsx` /
+  `server/ssr-document.tsx`; avoid adding new loading-only document shells.
+- The browser hydrates `client/app-root.tsx` through `remix/ui` `clientEntry`
+  and `run()`.
+- Keep route URL reads inside `client/router-location.tsx` context when code
+  must work during both SSR and client navigation.
+
 ## Seed test account
 
 Use this script to ensure a known login exists in any environment:

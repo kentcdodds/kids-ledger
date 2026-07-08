@@ -1,4 +1,5 @@
 import { css, on, type Handle } from 'remix/ui'
+import { readAppSession } from '#client/app-session.tsx'
 import {
 	createTransaction,
 	createTransfer,
@@ -75,9 +76,14 @@ function getInterestPreviewText(account: KidAccount) {
 }
 
 export function HomeRoute(handle: Handle) {
-	let status: 'loading' | 'ready' | 'error' = 'loading'
+	const appSession = readAppSession(handle)
+	const isLoggedOutSsr =
+		appSession.status === 'ready' && appSession.session === null
+	let status: 'loading' | 'ready' | 'error' = isLoggedOutSsr
+		? 'error'
+		: 'loading'
 	let errorMessage = ''
-	let needsLogin = false
+	let needsLogin = isLoggedOutSsr
 	let kids: Array<KidSummary> = []
 	let familyBalance = 0
 	let quickAmounts: Array<number> = []
@@ -248,6 +254,13 @@ export function HomeRoute(handle: Handle) {
 	}
 
 	handle.queueTask(async () => {
+		const nextAppSession = readAppSession(handle)
+		if (nextAppSession.status === 'ready' && nextAppSession.session === null) {
+			status = 'error'
+			needsLogin = true
+			handle.update()
+			return
+		}
 		await refreshDashboard()
 	})
 	handle.queueTask(() => {

@@ -314,119 +314,122 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						{message.text}
 					</p>
 				) : null}
-				<form
-					mix={[
-						css({
-							display: 'grid',
-							gap: spacing.md,
-							padding: spacing.lg,
-							borderRadius: radius.xl,
-							border: `3px solid ${colors.border}`,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.md,
-							opacity: formReady ? 1 : 0.7,
-						}),
-						on<HTMLElement, 'submit'>('submit', handleSubmit),
-					]}
-				>
-					{!isLoggedIn && isSessionReady ? (
-						<>
-							<label mix={css({ display: 'grid', gap: spacing.xs })}>
-								<span
-									mix={css({
-										color: colors.text,
-										fontWeight: typography.fontWeight.medium,
-										fontSize: typography.fontSize.sm,
-									})}
-								>
-									Email
-								</span>
-								<input
-									type="email"
-									name="email"
-									required
-									autoComplete="email"
-									placeholder="you@example.com"
-									disabled={actionsDisabled}
-									mix={css({
-										...inputCss,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									})}
-								/>
-							</label>
-							<label mix={css({ display: 'grid', gap: spacing.xs })}>
-								<span
-									mix={css({
-										color: colors.text,
-										fontWeight: typography.fontWeight.medium,
-										fontSize: typography.fontSize.sm,
-									})}
-								>
-									Password
-								</span>
-								<input
-									type="password"
-									name="password"
-									required
-									autoComplete="current-password"
-									placeholder="Enter your password"
-									disabled={actionsDisabled}
-									mix={css({
-										...inputCss,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									})}
-								/>
-							</label>
-						</>
-					) : null}
-					<div
-						mix={css({ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' })}
+				{formReady ? (
+					<form
+						mix={[
+							css({
+								display: 'grid',
+								gap: spacing.md,
+								padding: spacing.lg,
+								borderRadius: radius.xl,
+								border: `3px solid ${colors.border}`,
+								backgroundColor: colors.surface,
+								boxShadow: shadows.md,
+							}),
+							on<HTMLElement, 'submit'>('submit', handleSubmit),
+						]}
 					>
-						<button
-							type="submit"
-							disabled={actionsDisabled}
-							mix={css({
-								...buttonCss,
-								padding: `${spacing.sm} ${spacing.lg}`,
-								borderRadius: radius.full,
-								fontSize: typography.fontSize.base,
-								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
-								opacity: actionsDisabled ? 0.7 : 1,
-							})}
+						{!isLoggedIn && isSessionReady ? (
+							<>
+								<label mix={css({ display: 'grid', gap: spacing.xs })}>
+									<span
+										mix={css({
+											color: colors.text,
+											fontWeight: typography.fontWeight.medium,
+											fontSize: typography.fontSize.sm,
+										})}
+									>
+										Email
+									</span>
+									<input
+										type="email"
+										name="email"
+										required
+										autoComplete="email"
+										placeholder="you@example.com"
+										disabled={actionsDisabled}
+										mix={css({
+											...inputCss,
+											fontSize: typography.fontSize.base,
+											fontFamily: typography.fontFamily,
+										})}
+									/>
+								</label>
+								<label mix={css({ display: 'grid', gap: spacing.xs })}>
+									<span
+										mix={css({
+											color: colors.text,
+											fontWeight: typography.fontWeight.medium,
+											fontSize: typography.fontSize.sm,
+										})}
+									>
+										Password
+									</span>
+									<input
+										type="password"
+										name="password"
+										required
+										autoComplete="current-password"
+										placeholder="Enter your password"
+										disabled={actionsDisabled}
+										mix={css({
+											...inputCss,
+											fontSize: typography.fontSize.base,
+											fontFamily: typography.fontFamily,
+										})}
+									/>
+								</label>
+							</>
+						) : null}
+						<div
+							mix={css({ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' })}
 						>
-							{authorizeLabel}
-						</button>
-						<button
-							type="button"
-							disabled={actionsDisabled}
-							mix={[
-								css({
+							<button
+								type="submit"
+								disabled={actionsDisabled}
+								mix={css({
 									...buttonCss,
 									padding: `${spacing.sm} ${spacing.lg}`,
 									borderRadius: radius.full,
-									border: `2px solid ${colors.border}`,
-									backgroundColor: colors.surface,
-									color: colors.text,
 									fontSize: typography.fontSize.base,
 									cursor: actionsDisabled ? 'not-allowed' : 'pointer',
 									opacity: actionsDisabled ? 0.7 : 1,
-									boxShadow: `0 4px 0 0 ${colors.border}`,
-									'&:active': actionsDisabled
-										? undefined
-										: {
-												transform: 'translateY(4px)',
-												boxShadow: `0 0 0 0 ${colors.border}`,
-											},
-								}),
-								on<HTMLElement, 'click'>('click', () => submitDecision('deny')),
-							]}
-						>
-							Deny
-						</button>
-					</div>
-				</form>
+								})}
+							>
+								{authorizeLabel}
+							</button>
+							<button
+								type="button"
+								disabled={actionsDisabled}
+								mix={[
+									css({
+										...buttonCss,
+										padding: `${spacing.sm} ${spacing.lg}`,
+										borderRadius: radius.full,
+										border: `2px solid ${colors.border}`,
+										backgroundColor: colors.surface,
+										color: colors.text,
+										fontSize: typography.fontSize.base,
+										cursor: actionsDisabled ? 'not-allowed' : 'pointer',
+										opacity: actionsDisabled ? 0.7 : 1,
+										boxShadow: `0 4px 0 0 ${colors.border}`,
+										'&:active': actionsDisabled
+											? undefined
+											: {
+													transform: 'translateY(4px)',
+													boxShadow: `0 0 0 0 ${colors.border}`,
+												},
+									}),
+									on<HTMLElement, 'click'>('click', () =>
+										submitDecision('deny'),
+									),
+								]}
+							>
+								Deny
+							</button>
+						</div>
+					</form>
+				) : null}
 				<a
 					href="/"
 					mix={css({
