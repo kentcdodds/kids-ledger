@@ -57,6 +57,12 @@ render after navigation. Successful ledger mutations dispatch a route-data
 revalidation event so the active route can reload its loader data without a full
 document refresh.
 
+The router also emits `navigationstart` and `navigationend` events for
+user-initiated navigations. `client/navigation-progress.tsx` listens to those
+events at the app shell level and renders a delayed top progress bar for
+loader-backed navigations, form redirect chains, and browser back/forward
+navigations.
+
 Loader data is consume-once per route/data key. Because consumption mutates a
 route component's closure state during render, successful consumption schedules
 one corrective follow-up render with `handle.queueTask(() => handle.update())`.

@@ -2,6 +2,7 @@ import { css, on, type Handle } from 'remix/ui'
 import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
 import { AppSessionProvider } from './app-session.tsx'
+import { NavigationProgress } from './navigation-progress.tsx'
 import {
 	readRouterPathname,
 	readRouterSearch,
@@ -294,6 +295,7 @@ export function App(handle: Handle<AppProps>) {
 					},
 				})}
 			>
+				<NavigationProgress />
 				<nav
 					mix={css({
 						display: 'flex',

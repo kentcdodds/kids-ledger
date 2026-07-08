@@ -410,6 +410,17 @@ export function HomeRoute(handle: Handle) {
 	return () => {
 		const currentHref = readRouterUrl(handle)
 		const appliedRouteData = applyRouteLoaderData(currentHref)
+		const currentAppSession = readAppSession(handle)
+		if (
+			status === 'error' &&
+			needsLogin &&
+			currentAppSession.status === 'ready' &&
+			currentAppSession.session !== null
+		) {
+			status = 'loading'
+			needsLogin = false
+			errorMessage = ''
+		}
 		if (
 			typeof window !== 'undefined' &&
 			status === 'loading' &&
