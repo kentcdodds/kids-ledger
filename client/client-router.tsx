@@ -1,12 +1,26 @@
-import { type Handle } from 'remix/ui'
+import { addEventListeners, type Handle } from 'remix/ui'
+import { createMultiMatcher } from 'remix/route-pattern/match'
+import {
+	readRouterPathname,
+	readRouterUrl,
+	readSsrRouterUrl,
+} from './router-location.tsx'
+import {
+	clearPreloadedNavigationData,
+	routeDataEvents,
+	setPreloadedNavigationData,
+	type ClientRouteLoader,
+} from './route-loader-data.tsx'
 
 type RouteDefinition = {
 	Component: (...args: Array<any>) => any
+	loader?: ClientRouteLoader
 }
 
 type RouterProps = {
 	routes: Record<string, RouteDefinition>
 	fallback?: JSX.Element
+	notFound?: boolean
 }
 
 type FormMethod = 'get' | 'post'
@@ -19,26 +33,43 @@ type FormSubmitDetails = {
 }
 
 export const routerEvents = new EventTarget()
+const clientRouteOrigin = 'https://kids-ledger.local'
+const routeMatchers = new WeakMap<
+	Record<string, RouteDefinition>,
+	ReturnType<typeof createRouteMatcher>
+>()
 let routerInitialized = false
+let activeRoutes: Record<string, RouteDefinition> | null = null
+let activeLoaderController: AbortController | null = null
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
 }
 
-function matchPathname(pattern: string, pathname: string) {
-	return new URLPattern({ pathname: pattern }).test({ pathname })
+function createRouteMatcher(routes: Record<string, RouteDefinition>) {
+	const matcher = createMultiMatcher<RouteDefinition>()
+	for (const [pattern, routeElement] of Object.entries(routes)) {
+		matcher.add(pattern, routeElement)
+	}
+	return matcher
 }
 
-function matchRoute(
+function getRouteMatcher(routes: Record<string, RouteDefinition>) {
+	const existing = routeMatchers.get(routes)
+	if (existing) return existing
+	const matcher = createRouteMatcher(routes)
+	routeMatchers.set(routes, matcher)
+	return matcher
+}
+
+export function matchRoute(
 	path: string,
 	routes: Record<string, RouteDefinition>,
 ): RouteDefinition | null {
-	for (const [pattern, routeElement] of Object.entries(routes)) {
-		if (!matchPathname(pattern, path)) continue
-		return routeElement
-	}
-
-	return null
+	return (
+		getRouteMatcher(routes).match(new URL(path, clientRouteOrigin))?.data ??
+		null
+	)
 }
 
 function shouldHandleClick(event: MouseEvent, anchor: HTMLAnchorElement) {
@@ -65,7 +96,7 @@ function handleDocumentClick(event: MouseEvent) {
 
 	event.preventDefault()
 	const destination = new URL(anchor.href, window.location.href)
-	navigate(`${destination.pathname}${destination.search}${destination.hash}`)
+	void navigateToUrl(destination)
 }
 
 function getFormSubmitter(event: SubmitEvent) {
@@ -166,15 +197,16 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-function navigateWithRefreshForSamePath(destination: URL) {
+async function navigateWithRefreshForSamePath(destination: URL) {
 	if (
 		getPathWithSearchAndHashFromUrl(destination) ===
 		getCurrentPathWithSearchAndHash()
 	) {
+		await preloadRouteData(destination)
 		notify()
 		return
 	}
-	navigate(destination.toString())
+	await navigateToUrl(destination)
 }
 
 async function submitFormThroughRouter(details: FormSubmitDetails) {
@@ -205,13 +237,15 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 
 	const response = await fetch(details.action.toString(), init)
 	if (response.redirected) {
-		navigateWithRefreshForSamePath(new URL(response.url, window.location.href))
+		await navigateWithRefreshForSamePath(
+			new URL(response.url, window.location.href),
+		)
 		return
 	}
 
 	const location = response.headers.get('Location')
 	if (location) {
-		navigateWithRefreshForSamePath(new URL(location, details.action))
+		await navigateWithRefreshForSamePath(new URL(location, details.action))
 		return
 	}
 
@@ -237,27 +271,93 @@ function handleDocumentSubmit(event: Event) {
 	})
 }
 
-function ensureRouter() {
-	if (routerInitialized) return
-	routerInitialized = true
-	window.addEventListener('popstate', notify)
-	document.addEventListener('click', handleDocumentClick)
-	document.addEventListener('submit', handleDocumentSubmit)
+async function preloadRouteData(destination: URL) {
+	if (!activeRoutes) return
+	activeLoaderController?.abort()
+	const routeElement = matchRoute(destination.pathname, activeRoutes)
+	if (!routeElement?.loader) {
+		clearPreloadedNavigationData()
+		return
+	}
+	const controller = new AbortController()
+	activeLoaderController = controller
+	try {
+		const data = await routeElement.loader({
+			url: destination,
+			signal: controller.signal,
+		})
+		if (controller.signal.aborted) return
+		if (data && Object.keys(data).length > 0) {
+			setPreloadedNavigationData(
+				getPathWithSearchAndHashFromUrl(destination),
+				data,
+			)
+		} else {
+			clearPreloadedNavigationData()
+		}
+	} catch (error) {
+		if (!controller.signal.aborted) {
+			console.error('Route loader failed', error)
+			clearPreloadedNavigationData()
+		}
+	} finally {
+		if (activeLoaderController === controller) {
+			activeLoaderController = null
+		}
+	}
 }
 
-export function listenToRouterNavigation(
-	handle: Handle<any>,
-	listener: () => void,
-) {
-	ensureRouter()
-	const onNavigate = () => listener()
-	routerEvents.addEventListener('navigate', onNavigate)
-	handle.signal.addEventListener('abort', () => {
-		routerEvents.removeEventListener('navigate', onNavigate)
+async function revalidateCurrentRouteData() {
+	if (typeof window === 'undefined') return
+	await preloadRouteData(new URL(window.location.href))
+	notify()
+}
+
+function handlePopstate() {
+	notify()
+	void preloadRouteData(new URL(window.location.href)).then(() => {
+		notify()
 	})
 }
 
-export function getPathname() {
+function handleRouteDataRevalidation() {
+	void revalidateCurrentRouteData()
+}
+
+function ensureRouter(routes?: Record<string, RouteDefinition>) {
+	if (typeof document === 'undefined') return
+	if (routes) {
+		activeRoutes = routes
+	}
+	if (routerInitialized) return
+	routerInitialized = true
+	window.addEventListener('popstate', handlePopstate)
+	document.addEventListener('click', handleDocumentClick)
+	document.addEventListener('submit', handleDocumentSubmit)
+	routeDataEvents.addEventListener('revalidate', handleRouteDataRevalidation)
+}
+
+export function listenToRouterNavigation(
+	handle: Pick<Handle, 'signal'>,
+	listener: () => void,
+) {
+	if (typeof document === 'undefined') return
+	ensureRouter()
+	addEventListeners(routerEvents, handle.signal, {
+		navigate() {
+			listener()
+		},
+	})
+}
+
+export function getPathname(handle?: Pick<Handle, 'context'>) {
+	if (handle) {
+		try {
+			return readRouterPathname(handle as Handle)
+		} catch {
+			// Router location context is unavailable outside the app tree.
+		}
+	}
 	if (typeof window === 'undefined') return '/'
 	return window.location.pathname
 }
@@ -275,21 +375,33 @@ export function navigate(to: string) {
 		return
 	}
 
+	void navigateToUrl(destination)
+}
+
+async function navigateToUrl(destination: URL) {
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
 
+	await preloadRouteData(destination)
 	window.history.pushState({}, '', nextPath)
 	notify()
 }
 
 export function Router(handle: Handle<RouterProps>) {
-	listenToRouterNavigation(handle, () => {
-		void handle.update()
-	})
+	if (typeof document !== 'undefined') {
+		ensureRouter(handle.props.routes)
+		listenToRouterNavigation(handle, () => {
+			void handle.update()
+		})
+	}
 
 	return () => {
 		const { fallback, routes } = handle.props
-		const path = getPathname()
+		if (handle.props.notFound && isOnSsrUrl(handle)) {
+			return fallback ?? null
+		}
+
+		const path = readRouterPathname(handle)
 		const routeElement = matchRoute(path, routes)
 		if (routeElement) {
 			const RouteComponent = routeElement.Component
@@ -297,4 +409,16 @@ export function Router(handle: Handle<RouterProps>) {
 		}
 		return fallback ?? null
 	}
+}
+
+function normalizeHref(href: string) {
+	const url = new URL(href, clientRouteOrigin)
+	return `${url.pathname}${url.search}${url.hash}`
+}
+
+function isOnSsrUrl(handle: Pick<Handle, 'context'>) {
+	return (
+		normalizeHref(readRouterUrl(handle)) ===
+		normalizeHref(readSsrRouterUrl(handle))
+	)
 }

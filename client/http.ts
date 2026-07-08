@@ -1,7 +1,10 @@
 export async function parseJsonOrNull<T = unknown>(
 	response: Response,
 ): Promise<T | null> {
-	return response.json().catch(() => null)
+	return response.json().then(
+		(value) => value as T,
+		() => null,
+	)
 }
 
 export function getErrorMessage(payload: unknown, fallback: string) {

@@ -1,5 +1,10 @@
 import { css, on, type Handle } from 'remix/ui'
 import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
+import { readRouterUrl } from '#client/router-location.tsx'
+import {
 	archiveAccount,
 	archiveKid,
 	createAccount,
@@ -175,9 +180,14 @@ type SettingsState =
 			quickAmounts: Array<number>
 	  }
 
+export const loader: ClientRouteLoader = async () => {
+	return { settings: await fetchSettings() }
+}
+
 export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
 	let isRefreshing = false
+	let settingsRefreshInFlight = false
 	let isReordering = false
 	let newKidName = ''
 	let newKidEmoji: string = getRandomDefaultKidEmoji()
@@ -211,7 +221,29 @@ export function SettingsRoute(handle: Handle) {
 		closeTransactionModalCssTimeoutId = null
 	}
 
+	function applySettingsPayload(
+		payload: Awaited<ReturnType<typeof fetchSettings>>,
+	) {
+		state = {
+			status: 'ready',
+			message: '',
+			kids: payload.settings.kids.filter((kid) => !kid.isArchived),
+			archived: payload.settings.archived,
+			quickAmounts: payload.settings.quickAmounts,
+		}
+	}
+
+	function applyRouteLoaderData(currentHref: string) {
+		const payload = tryConsumeRouteLoaderData(handle, 'settings', currentHref)
+		if (!payload) return false
+		applySettingsPayload(payload)
+		isRefreshing = false
+		return true
+	}
+
 	async function refreshSettings() {
+		if (settingsRefreshInFlight) return
+		settingsRefreshInFlight = true
 		const hadReadyData = state.status === 'ready'
 		isRefreshing = hadReadyData
 		if (!hadReadyData) {
@@ -220,13 +252,7 @@ export function SettingsRoute(handle: Handle) {
 		handle.update()
 		try {
 			const payload = await fetchSettings()
-			state = {
-				status: 'ready',
-				message: '',
-				kids: payload.settings.kids.filter((kid) => !kid.isArchived),
-				archived: payload.settings.archived,
-				quickAmounts: payload.settings.quickAmounts,
-			}
+			applySettingsPayload(payload)
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to load settings.'
@@ -240,13 +266,11 @@ export function SettingsRoute(handle: Handle) {
 				}
 			}
 		}
+		settingsRefreshInFlight = false
 		isRefreshing = false
 		handle.update()
 	}
 
-	handle.queueTask(async () => {
-		await refreshSettings()
-	})
 	handle.queueTask(() => {
 		return () => {
 			clearCloseTransactionModalCssTimeout()
@@ -594,1233 +618,1268 @@ export function SettingsRoute(handle: Handle) {
 		}
 	}
 
-	return () => (
-		<section mix={css({ display: 'grid', gap: spacing.lg })}>
-			<header mix={css({ display: 'grid', gap: spacing.xs })}>
-				<h1 mix={css({ margin: 0, color: colors.text })}>Household Settings</h1>
-				<p mix={css({ margin: 0, color: colors.textMuted })}>
-					Manage kids and accounts. Use arrow buttons to reorder.
-				</p>
-			</header>
+	return () => {
+		const currentHref = readRouterUrl(handle)
+		const appliedRouteData = applyRouteLoaderData(currentHref)
+		if (
+			typeof window !== 'undefined' &&
+			state.status === 'loading' &&
+			!appliedRouteData &&
+			!settingsRefreshInFlight
+		) {
+			handle.queueTask(refreshSettings)
+		}
 
-			{state.status === 'loading' ? (
-				<p mix={css({ color: colors.textMuted })}>Loading settings...</p>
-			) : null}
-			{state.status === 'error' ? (
-				<p mix={css({ color: colors.error })}>{state.message}</p>
-			) : null}
-			{isRefreshing ? (
-				<p mix={css({ margin: 0, color: colors.textMuted })}>
-					Saving changes...
-				</p>
-			) : null}
+		return (
+			<section mix={css({ display: 'grid', gap: spacing.lg })}>
+				<header mix={css({ display: 'grid', gap: spacing.xs })}>
+					<h1 mix={css({ margin: 0, color: colors.text })}>
+						Household Settings
+					</h1>
+					<p mix={css({ margin: 0, color: colors.textMuted })}>
+						Manage kids and accounts. Use arrow buttons to reorder.
+					</p>
+				</header>
 
-			{state.status === 'ready' ? (
-				<>
-					<section
-						mix={css({
-							display: 'grid',
-							gap: spacing.sm,
-							padding: spacing.md,
-							border: `3px solid ${colors.border}`,
-							borderRadius: radius.xl,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.md,
-						})}
-					>
-						<h2 mix={css({ margin: 0, color: colors.text })}>Add kid</h2>
-						<div
+				{state.status === 'loading' ? (
+					<p mix={css({ color: colors.textMuted })}>Loading settings...</p>
+				) : null}
+				{state.status === 'error' ? (
+					<p mix={css({ color: colors.error })}>{state.message}</p>
+				) : null}
+				{isRefreshing ? (
+					<p mix={css({ margin: 0, color: colors.textMuted })}>
+						Saving changes...
+					</p>
+				) : null}
+
+				{state.status === 'ready' ? (
+					<>
+						<section
 							mix={css({
 								display: 'grid',
-								gridTemplateColumns: '4rem 1fr auto',
 								gap: spacing.sm,
-								[mq.mobile]: {
-									gridTemplateColumns: '4rem 1fr',
-									'& > button': {
-										gridColumn: '1 / -1',
-									},
-								},
+								padding: spacing.md,
+								border: `3px solid ${colors.border}`,
+								borderRadius: radius.xl,
+								backgroundColor: colors.surface,
+								boxShadow: shadows.md,
 							})}
 						>
-							<input
-								value={newKidEmoji}
-								mix={[
-									css({
-										...inputCss,
-										fontSize: typography.fontSize.xl,
-										fontWeight: typography.fontWeight.bold,
-										textAlign: 'center',
-									}),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										newKidEmoji = normalizeKidEmoji(event.currentTarget.value)
-										handle.update()
-									}),
-								]}
-								aria-label="Kid emoji"
-							/>
-							<input
-								value={newKidName}
-								mix={[
-									css({
-										...inputCss,
-										fontSize: typography.fontSize.xl,
-										fontWeight: typography.fontWeight.bold,
-									}),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										newKidName = event.currentTarget.value
-										handle.update()
-									}),
-								]}
-								placeholder="Kid name"
-							/>
-							<button
-								type="button"
-								mix={[
-									css(buttonCss),
-									on<HTMLElement, 'click'>(
-										'click',
-										() => void handleCreateKid(),
-									),
-								]}
-							>
-								Add
-							</button>
-						</div>
-					</section>
-
-					<section mix={css({ display: 'grid', gap: spacing.md })}>
-						{state.kids.map((kid, kidIndex) => (
-							<article
-								key={kid.id}
+							<h2 mix={css({ margin: 0, color: colors.text })}>Add kid</h2>
+							<div
 								mix={css({
 									display: 'grid',
+									gridTemplateColumns: '4rem 1fr auto',
 									gap: spacing.sm,
-									padding: spacing.lg,
-									border: `3px solid ${colors.border}`,
-									borderRadius: radius.xl,
-									backgroundColor: colors.surface,
-									boxShadow: shadows.md,
+									[mq.mobile]: {
+										gridTemplateColumns: '4rem 1fr',
+										'& > button': {
+											gridColumn: '1 / -1',
+										},
+									},
 								})}
 							>
-								<header
+								<input
+									value={newKidEmoji}
+									mix={[
+										css({
+											...inputCss,
+											fontSize: typography.fontSize.xl,
+											fontWeight: typography.fontWeight.bold,
+											textAlign: 'center',
+										}),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											newKidEmoji = normalizeKidEmoji(event.currentTarget.value)
+											handle.update()
+										}),
+									]}
+									aria-label="Kid emoji"
+								/>
+								<input
+									value={newKidName}
+									mix={[
+										css({
+											...inputCss,
+											fontSize: typography.fontSize.xl,
+											fontWeight: typography.fontWeight.bold,
+										}),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											newKidName = event.currentTarget.value
+											handle.update()
+										}),
+									]}
+									placeholder="Kid name"
+								/>
+								<button
+									type="button"
+									mix={[
+										css(buttonCss),
+										on<HTMLElement, 'click'>(
+											'click',
+											() => void handleCreateKid(),
+										),
+									]}
+								>
+									Add
+								</button>
+							</div>
+						</section>
+
+						<section mix={css({ display: 'grid', gap: spacing.md })}>
+							{state.kids.map((kid, kidIndex) => (
+								<article
+									key={kid.id}
 									mix={css({
 										display: 'grid',
-										gridTemplateColumns: 'auto 4rem 1fr auto',
 										gap: spacing.sm,
-										alignItems: 'center',
-										[mq.mobile]: {
-											gridTemplateColumns: 'auto 4rem 1fr auto',
-											'& [data-kid-actions]': {
-												gridColumn: '1 / -1',
-											},
-										},
+										padding: spacing.lg,
+										border: `3px solid ${colors.border}`,
+										borderRadius: radius.xl,
+										backgroundColor: colors.surface,
+										boxShadow: shadows.md,
 									})}
 								>
-									<div mix={css(reorderControlsCss)}>
-										<button
-											type="button"
-											data-reorder-scope="kid"
-											data-reorder-kid-id={kid.id}
-											data-reorder-direction="up"
-											aria-label={`Move ${kid.name} up`}
-											disabled={kidIndex === 0 || isReordering}
-											mix={[
-												css(reorderButtonCss),
-												on<HTMLElement, 'click'>(
-													'click',
-													() => void handleKidMove(kid.id, -1),
-												),
-											]}
-										>
-											↑
-										</button>
-										<button
-											type="button"
-											data-reorder-scope="kid"
-											data-reorder-kid-id={kid.id}
-											data-reorder-direction="down"
-											aria-label={`Move ${kid.name} down`}
-											disabled={
-												kidIndex === state.kids.length - 1 || isReordering
-											}
-											mix={[
-												css(reorderButtonCss),
-												on<HTMLElement, 'click'>(
-													'click',
-													() => void handleKidMove(kid.id, 1),
-												),
-											]}
-										>
-											↓
-										</button>
-									</div>
-									<input
-										defaultValue={kid.emoji}
-										aria-label={`${kid.name} emoji`}
-										data-kid-emoji={kid.id}
-										mix={[
-											css({
-												...inputCss,
-												fontSize: typography.fontSize.xl,
-												fontWeight: typography.fontWeight.bold,
-												textAlign: 'center',
-											}),
-											on<HTMLElement, 'input'>('input', (event) => {
-												const input = event.currentTarget as HTMLInputElement
-												input.value = normalizeKidEmoji(input.value)
-											}),
-											on<HTMLElement, 'blur'>('blur', async (e) => {
-												const input = e.currentTarget as HTMLInputElement
-												const emoji = normalizeKidEmoji(input.value)
-												input.value = emoji
-												const nameInput = document.querySelector(
-													`input[data-kid-name="${kid.id}"]`,
-												) as HTMLInputElement
-												const name = nameInput?.value || kid.name
-												if (name === kid.name && emoji === kid.emoji) {
-													return
-												}
-												await updateKid({
-													kidId: kid.id,
-													name,
-													emoji,
-												})
-												await refreshSettings()
-											}),
-										]}
-									/>
-									<input
-										defaultValue={kid.name}
-										aria-label={`${kid.name} name`}
-										data-kid-name={kid.id}
-										mix={[
-											css({
-												...inputCss,
-												fontSize: typography.fontSize.xl,
-												fontWeight: typography.fontWeight.bold,
-											}),
-											on<HTMLElement, 'blur'>('blur', async (e) => {
-												const name =
-													(e.currentTarget as HTMLInputElement).value ||
-													kid.name
-												const emojiInput = document.querySelector(
-													`input[data-kid-emoji="${kid.id}"]`,
-												) as HTMLInputElement
-												const emoji = emojiInput?.value || kid.emoji
-												if (name === kid.name && emoji === kid.emoji) {
-													return
-												}
-												await updateKid({
-													kidId: kid.id,
-													name,
-													emoji,
-												})
-												await refreshSettings()
-											}),
-										]}
-									/>
-									<div
-										data-kid-actions
+									<header
 										mix={css({
-											display: 'flex',
-											gap: spacing.xs,
-											flexWrap: 'wrap',
-											justifyContent: 'flex-end',
+											display: 'grid',
+											gridTemplateColumns: 'auto 4rem 1fr auto',
+											gap: spacing.sm,
+											alignItems: 'center',
+											[mq.mobile]: {
+												gridTemplateColumns: 'auto 4rem 1fr auto',
+												'& [data-kid-actions]': {
+													gridColumn: '1 / -1',
+												},
+											},
 										})}
 									>
-										<button
-											type="button"
-											aria-label={`Customize ${kid.name}'s transaction modal`}
-											title="Customize transaction modal"
+										<div mix={css(reorderControlsCss)}>
+											<button
+												type="button"
+												data-reorder-scope="kid"
+												data-reorder-kid-id={kid.id}
+												data-reorder-direction="up"
+												aria-label={`Move ${kid.name} up`}
+												disabled={kidIndex === 0 || isReordering}
+												mix={[
+													css(reorderButtonCss),
+													on<HTMLElement, 'click'>(
+														'click',
+														() => void handleKidMove(kid.id, -1),
+													),
+												]}
+											>
+												↑
+											</button>
+											<button
+												type="button"
+												data-reorder-scope="kid"
+												data-reorder-kid-id={kid.id}
+												data-reorder-direction="down"
+												aria-label={`Move ${kid.name} down`}
+												disabled={
+													kidIndex === state.kids.length - 1 || isReordering
+												}
+												mix={[
+													css(reorderButtonCss),
+													on<HTMLElement, 'click'>(
+														'click',
+														() => void handleKidMove(kid.id, 1),
+													),
+												]}
+											>
+												↓
+											</button>
+										</div>
+										<input
+											defaultValue={kid.emoji}
+											aria-label={`${kid.name} emoji`}
+											data-kid-emoji={kid.id}
 											mix={[
-												css(transactionModalIconButtonCss),
-												on<HTMLElement, 'click'>('click', () => {
-													openTransactionModalCssEditor(kid)
+												css({
+													...inputCss,
+													fontSize: typography.fontSize.xl,
+													fontWeight: typography.fontWeight.bold,
+													textAlign: 'center',
 												}),
-											]}
-										>
-											<SettingsIcon />
-										</button>
-										<button
-											type="button"
-											aria-label={`Archive ${kid.name}`}
-											mix={[
-												css(archiveIconButtonCss),
-												on<HTMLElement, 'click'>('click', async () => {
-													await archiveKid(kid.id)
+												on<HTMLElement, 'input'>('input', (event) => {
+													const input = event.currentTarget as HTMLInputElement
+													input.value = normalizeKidEmoji(input.value)
+												}),
+												on<HTMLElement, 'blur'>('blur', async (e) => {
+													const input = e.currentTarget as HTMLInputElement
+													const emoji = normalizeKidEmoji(input.value)
+													input.value = emoji
+													const nameInput = document.querySelector(
+														`input[data-kid-name="${kid.id}"]`,
+													) as HTMLInputElement
+													const name = nameInput?.value || kid.name
+													if (name === kid.name && emoji === kid.emoji) {
+														return
+													}
+													await updateKid({
+														kidId: kid.id,
+														name,
+														emoji,
+													})
 													await refreshSettings()
 												}),
 											]}
+										/>
+										<input
+											defaultValue={kid.name}
+											aria-label={`${kid.name} name`}
+											data-kid-name={kid.id}
+											mix={[
+												css({
+													...inputCss,
+													fontSize: typography.fontSize.xl,
+													fontWeight: typography.fontWeight.bold,
+												}),
+												on<HTMLElement, 'blur'>('blur', async (e) => {
+													const name =
+														(e.currentTarget as HTMLInputElement).value ||
+														kid.name
+													const emojiInput = document.querySelector(
+														`input[data-kid-emoji="${kid.id}"]`,
+													) as HTMLInputElement
+													const emoji = emojiInput?.value || kid.emoji
+													if (name === kid.name && emoji === kid.emoji) {
+														return
+													}
+													await updateKid({
+														kidId: kid.id,
+														name,
+														emoji,
+													})
+													await refreshSettings()
+												}),
+											]}
+										/>
+										<div
+											data-kid-actions
+											mix={css({
+												display: 'flex',
+												gap: spacing.xs,
+												flexWrap: 'wrap',
+												justifyContent: 'flex-end',
+											})}
 										>
-											<TrashIcon />
-										</button>
-									</div>
-								</header>
-								<p mix={css({ margin: 0, color: colors.textMuted })}>
-									Total: {formatCents(kid.totalBalanceCents)}
-								</p>
-								<div
-									mix={css({
-										display: 'flex',
-										flexDirection: 'column',
-										backgroundColor: colors.surface,
-										borderRadius: radius.lg,
-										border:
-											kid.accounts.length > 0
-												? `2px solid ${colors.border}`
-												: 'none',
-										overflow: 'hidden',
-									})}
-								>
-									{kid.accounts.map((account, index) => {
-										const textColors = getAccountTextColors(account.colorToken)
-										return (
-											<div
-												key={account.id}
-												mix={css({
-													display: 'grid',
-													gridTemplateColumns: 'auto 1fr auto auto auto',
-													rowGap: spacing.xs,
-													columnGap: spacing.sm,
-													alignItems: 'center',
-													padding: spacing.md,
-													background: getAccountGradientBackground(
-														account.colorToken,
-													),
-													borderBottom:
-														index < kid.accounts.length - 1
-															? `1px solid ${colors.border}`
-															: 'none',
-													[mq.mobile]: {
-														gridTemplateColumns: 'auto 1fr auto auto',
-													},
-												})}
+											<button
+												type="button"
+												aria-label={`Customize ${kid.name}'s transaction modal`}
+												title="Customize transaction modal"
+												mix={[
+													css(transactionModalIconButtonCss),
+													on<HTMLElement, 'click'>('click', () => {
+														openTransactionModalCssEditor(kid)
+													}),
+												]}
 											>
-												<div mix={css(reorderControlsCss)}>
-													<button
-														type="button"
-														data-reorder-scope="account"
-														data-reorder-kid-id={kid.id}
-														data-reorder-account-id={account.id}
-														data-reorder-direction="up"
-														aria-label={`Move ${account.name} up`}
-														disabled={index === 0 || isReordering}
-														mix={[
-															css(reorderButtonCss),
-															on(
-																'click',
-																() =>
-																	void handleAccountMove(
-																		kid.id,
-																		account.id,
-																		-1,
-																	),
-															),
-														]}
-													>
-														↑
-													</button>
-													<button
-														type="button"
-														data-reorder-scope="account"
-														data-reorder-kid-id={kid.id}
-														data-reorder-account-id={account.id}
-														data-reorder-direction="down"
-														aria-label={`Move ${account.name} down`}
-														disabled={
-															index === kid.accounts.length - 1 || isReordering
-														}
-														mix={[
-															css(reorderButtonCss),
-															on(
-																'click',
-																() =>
-																	void handleAccountMove(kid.id, account.id, 1),
-															),
-														]}
-													>
-														↓
-													</button>
-												</div>
+												<SettingsIcon />
+											</button>
+											<button
+												type="button"
+												aria-label={`Archive ${kid.name}`}
+												mix={[
+													css(archiveIconButtonCss),
+													on<HTMLElement, 'click'>('click', async () => {
+														await archiveKid(kid.id)
+														await refreshSettings()
+													}),
+												]}
+											>
+												<TrashIcon />
+											</button>
+										</div>
+									</header>
+									<p mix={css({ margin: 0, color: colors.textMuted })}>
+										Total: {formatCents(kid.totalBalanceCents)}
+									</p>
+									<div
+										mix={css({
+											display: 'flex',
+											flexDirection: 'column',
+											backgroundColor: colors.surface,
+											borderRadius: radius.lg,
+											border:
+												kid.accounts.length > 0
+													? `2px solid ${colors.border}`
+													: 'none',
+											overflow: 'hidden',
+										})}
+									>
+										{kid.accounts.map((account, index) => {
+											const textColors = getAccountTextColors(
+												account.colorToken,
+											)
+											return (
 												<div
+													key={account.id}
 													mix={css({
 														display: 'grid',
-														gap: 2,
+														gridTemplateColumns: 'auto 1fr auto auto auto',
+														rowGap: spacing.xs,
+														columnGap: spacing.sm,
+														alignItems: 'center',
+														padding: spacing.md,
+														background: getAccountGradientBackground(
+															account.colorToken,
+														),
+														borderBottom:
+															index < kid.accounts.length - 1
+																? `1px solid ${colors.border}`
+																: 'none',
 														[mq.mobile]: {
-															gridColumn: '2 / -1',
-															gridRow: '1',
+															gridTemplateColumns: 'auto 1fr auto auto',
 														},
 													})}
 												>
-													<input
-														defaultValue={account.name}
-														aria-label={`${account.name} name`}
-														data-account-name={account.id}
-														mix={[
-															css({
-																...inputCss,
-																backgroundColor: 'transparent',
-																border: '2px solid transparent',
-																boxShadow: 'none',
-																fontWeight: 'bold',
-																color: textColors.text,
-																padding: spacing.xs,
-																'&:focus': {
-																	...inputCss['&:focus'],
-																	backgroundColor: colors.surface,
-																	color: colors.text,
-																},
-															}),
-															on<HTMLElement, 'blur'>(
-																'blur',
-																() => void saveAccountDraft(account),
-															),
-														]}
-													/>
-													<span
+													<div mix={css(reorderControlsCss)}>
+														<button
+															type="button"
+															data-reorder-scope="account"
+															data-reorder-kid-id={kid.id}
+															data-reorder-account-id={account.id}
+															data-reorder-direction="up"
+															aria-label={`Move ${account.name} up`}
+															disabled={index === 0 || isReordering}
+															mix={[
+																css(reorderButtonCss),
+																on(
+																	'click',
+																	() =>
+																		void handleAccountMove(
+																			kid.id,
+																			account.id,
+																			-1,
+																		),
+																),
+															]}
+														>
+															↑
+														</button>
+														<button
+															type="button"
+															data-reorder-scope="account"
+															data-reorder-kid-id={kid.id}
+															data-reorder-account-id={account.id}
+															data-reorder-direction="down"
+															aria-label={`Move ${account.name} down`}
+															disabled={
+																index === kid.accounts.length - 1 ||
+																isReordering
+															}
+															mix={[
+																css(reorderButtonCss),
+																on(
+																	'click',
+																	() =>
+																		void handleAccountMove(
+																			kid.id,
+																			account.id,
+																			1,
+																		),
+																),
+															]}
+														>
+															↓
+														</button>
+													</div>
+													<div
 														mix={css({
-															color: textColors.muted,
-															fontSize: typography.fontSize.sm,
+															display: 'grid',
+															gap: 2,
+															[mq.mobile]: {
+																gridColumn: '2 / -1',
+																gridRow: '1',
+															},
 														})}
 													>
-														{formatCents(account.balanceCents)} ·{' '}
-														{formatApyLabel(account.apyBasisPoints)}
-													</span>
-												</div>
-												<label
-													mix={css({
-														display: 'grid',
-														gap: 2,
-														color: textColors.muted,
-														fontSize: typography.fontSize.sm,
-														[mq.mobile]: {
-															gridColumn: '2 / 4',
-															gridRow: '3',
-														},
-													})}
-												>
-													<span>APY</span>
-													<input
-														type="number"
-														min="0"
-														step="0.01"
-														aria-label={`${account.name} APY percent`}
-														data-account-apy={account.id}
-														defaultValue={formatApyPercentInputValue(
-															account.apyBasisPoints,
-														)}
+														<input
+															defaultValue={account.name}
+															aria-label={`${account.name} name`}
+															data-account-name={account.id}
+															mix={[
+																css({
+																	...inputCss,
+																	backgroundColor: 'transparent',
+																	border: '2px solid transparent',
+																	boxShadow: 'none',
+																	fontWeight: 'bold',
+																	color: textColors.text,
+																	padding: spacing.xs,
+																	'&:focus': {
+																		...inputCss['&:focus'],
+																		backgroundColor: colors.surface,
+																		color: colors.text,
+																	},
+																}),
+																on<HTMLElement, 'blur'>(
+																	'blur',
+																	() => void saveAccountDraft(account),
+																),
+															]}
+														/>
+														<span
+															mix={css({
+																color: textColors.muted,
+																fontSize: typography.fontSize.sm,
+															})}
+														>
+															{formatCents(account.balanceCents)} ·{' '}
+															{formatApyLabel(account.apyBasisPoints)}
+														</span>
+													</div>
+													<label
+														mix={css({
+															display: 'grid',
+															gap: 2,
+															color: textColors.muted,
+															fontSize: typography.fontSize.sm,
+															[mq.mobile]: {
+																gridColumn: '2 / 4',
+																gridRow: '3',
+															},
+														})}
+													>
+														<span>APY</span>
+														<input
+															type="number"
+															min="0"
+															step="0.01"
+															aria-label={`${account.name} APY percent`}
+															data-account-apy={account.id}
+															defaultValue={formatApyPercentInputValue(
+																account.apyBasisPoints,
+															)}
+															mix={[
+																css({
+																	...inputCss,
+																	backgroundColor: colors.surface,
+																	color: colors.text,
+																	colorScheme: 'light dark',
+																}),
+																on<HTMLElement, 'blur'>(
+																	'blur',
+																	() => void saveAccountDraft(account),
+																),
+															]}
+														/>
+													</label>
+													<select
+														aria-label={`${account.name} color`}
+														data-account-color={account.id}
 														mix={[
 															css({
 																...inputCss,
 																backgroundColor: colors.surface,
 																color: colors.text,
 																colorScheme: 'light dark',
+																[mq.mobile]: {
+																	gridColumn: '2 / 4',
+																	gridRow: '2',
+																},
 															}),
-															on<HTMLElement, 'blur'>(
-																'blur',
+															on<HTMLElement, 'change'>(
+																'change',
 																() => void saveAccountDraft(account),
 															),
 														]}
-													/>
-												</label>
-												<select
-													aria-label={`${account.name} color`}
-													data-account-color={account.id}
-													mix={[
-														css({
-															...inputCss,
-															backgroundColor: colors.surface,
-															color: colors.text,
-															colorScheme: 'light dark',
-															[mq.mobile]: {
-																gridColumn: '2 / 4',
-																gridRow: '2',
-															},
-														}),
-														on<HTMLElement, 'change'>(
-															'change',
-															() => void saveAccountDraft(account),
-														),
-													]}
-												>
-													{accountColorTokens.map((color) => (
-														<option
-															key={color}
-															value={color}
-															selected={account.colorToken === color}
-														>
-															{color}
-														</option>
-													))}
-												</select>
-												<button
-													type="button"
-													aria-label={`Archive ${account.name}`}
-													mix={[
-														css({
-															...archiveIconButtonCss,
-															[mq.mobile]: {
-																gridColumn: '4',
-																gridRow: '2',
-																justifySelf: 'end',
-															},
-														}),
-														on<HTMLElement, 'click'>('click', async () => {
-															await archiveAccount(account.id)
-															await refreshSettings()
-														}),
-													]}
-												>
-													<TrashIcon />
-												</button>
-											</div>
-										)
-									})}
-								</div>
-								<div
-									mix={css({
-										display: 'grid',
-										gridTemplateColumns: '1fr auto auto auto',
-										gap: spacing.sm,
-										padding: spacing.md,
-										border: `2px dashed ${colors.border}`,
-										borderRadius: radius.lg,
-										background: getAccountGradientBackground(
-											getCreateAccountColor(kid.id),
-										),
-										[mq.mobile]: {
-											gridTemplateColumns: '1fr',
-										},
-									})}
-								>
-									<input
-										data-create-account-name={kid.id}
-										placeholder="New account name"
-										mix={css(inputCss)}
-									/>
-									<label
+													>
+														{accountColorTokens.map((color) => (
+															<option
+																key={color}
+																value={color}
+																selected={account.colorToken === color}
+															>
+																{color}
+															</option>
+														))}
+													</select>
+													<button
+														type="button"
+														aria-label={`Archive ${account.name}`}
+														mix={[
+															css({
+																...archiveIconButtonCss,
+																[mq.mobile]: {
+																	gridColumn: '4',
+																	gridRow: '2',
+																	justifySelf: 'end',
+																},
+															}),
+															on<HTMLElement, 'click'>('click', async () => {
+																await archiveAccount(account.id)
+																await refreshSettings()
+															}),
+														]}
+													>
+														<TrashIcon />
+													</button>
+												</div>
+											)
+										})}
+									</div>
+									<div
 										mix={css({
 											display: 'grid',
-											gap: spacing.xs,
-											color: colors.text,
-											fontSize: typography.fontSize.sm,
+											gridTemplateColumns: '1fr auto auto auto',
+											gap: spacing.sm,
+											padding: spacing.md,
+											border: `2px dashed ${colors.border}`,
+											borderRadius: radius.lg,
+											background: getAccountGradientBackground(
+												getCreateAccountColor(kid.id),
+											),
+											[mq.mobile]: {
+												gridTemplateColumns: '1fr',
+											},
 										})}
 									>
-										<span>APY</span>
 										<input
-											type="number"
-											min="0"
-											step="0.01"
-											aria-label="New account APY percent"
-											data-create-account-apy={kid.id}
-											value={getCreateAccountApyDraft(kid.id)}
+											data-create-account-name={kid.id}
+											placeholder="New account name"
+											mix={css(inputCss)}
+										/>
+										<label
+											mix={css({
+												display: 'grid',
+												gap: spacing.xs,
+												color: colors.text,
+												fontSize: typography.fontSize.sm,
+											})}
+										>
+											<span>APY</span>
+											<input
+												type="number"
+												min="0"
+												step="0.01"
+												aria-label="New account APY percent"
+												data-create-account-apy={kid.id}
+												value={getCreateAccountApyDraft(kid.id)}
+												mix={[
+													css(inputCss),
+													on<HTMLElement, 'input'>('input', (event) => {
+														if (
+															!(event.currentTarget instanceof HTMLInputElement)
+														)
+															return
+														newAccountApyDraftByKidId[kid.id] =
+															event.currentTarget.value
+														const apyBasisPoints = parseApyPercentToBasisPoints(
+															event.currentTarget.value,
+														)
+														if (apyBasisPoints !== null) {
+															event.currentTarget.setCustomValidity('')
+															newAccountApyBasisPointsByKidId[kid.id] =
+																apyBasisPoints
+														}
+														handle.update()
+													}),
+												]}
+											/>
+										</label>
+										<select
+											data-create-account-color={kid.id}
+											value={getCreateAccountColor(kid.id)}
 											mix={[
 												css(inputCss),
-												on<HTMLElement, 'input'>('input', (event) => {
+												on<HTMLElement, 'change'>('change', (event) => {
 													if (
-														!(event.currentTarget instanceof HTMLInputElement)
+														!(event.currentTarget instanceof HTMLSelectElement)
 													)
 														return
-													newAccountApyDraftByKidId[kid.id] =
+													newAccountColorsByKidId[kid.id] =
 														event.currentTarget.value
-													const apyBasisPoints = parseApyPercentToBasisPoints(
-														event.currentTarget.value,
-													)
-													if (apyBasisPoints !== null) {
-														event.currentTarget.setCustomValidity('')
-														newAccountApyBasisPointsByKidId[kid.id] =
-															apyBasisPoints
-													}
 													handle.update()
 												}),
 											]}
-										/>
-									</label>
-									<select
-										data-create-account-color={kid.id}
-										value={getCreateAccountColor(kid.id)}
-										mix={[
-											css(inputCss),
-											on<HTMLElement, 'change'>('change', (event) => {
-												if (!(event.currentTarget instanceof HTMLSelectElement))
-													return
-												newAccountColorsByKidId[kid.id] =
-													event.currentTarget.value
-												handle.update()
-											}),
-										]}
-									>
-										{accountColorTokens.map((color) => (
-											<option key={color} value={color}>
-												{color}
-											</option>
-										))}
-									</select>
-									<button
-										type="button"
-										mix={[
-											css(buttonCss),
-											on<HTMLElement, 'click'>('click', async () => {
-												const nameInput = document.querySelector(
-													`input[data-create-account-name="${kid.id}"]`,
-												)
-												const colorSelect = document.querySelector(
-													`select[data-create-account-color="${kid.id}"]`,
-												)
-												const apyInput = document.querySelector(
-													`input[data-create-account-apy="${kid.id}"]`,
-												)
-												if (
-													!(nameInput instanceof HTMLInputElement) ||
-													!(colorSelect instanceof HTMLSelectElement) ||
-													!(apyInput instanceof HTMLInputElement)
-												) {
-													return
-												}
-												const accountName = nameInput.value.trim()
-												if (!accountName) return
-												const apyBasisPoints = parseApyPercentToBasisPoints(
-													apyInput.value,
-												)
-												if (apyBasisPoints === null) {
-													apyInput.setCustomValidity(
-														'Enter a valid APY percent between 0 and 1000.',
-													)
-													apyInput.reportValidity()
-													notify(
-														'Enter a valid APY percent between 0 and 1000.',
-													)
-													return
-												}
-												apyInput.setCustomValidity('')
-												await createAccount({
-													kidId: kid.id,
-													name: accountName,
-													apyBasisPoints,
-													colorToken: getCreateAccountColor(kid.id),
-												})
-												newAccountApyDraftByKidId[kid.id] =
-													formatApyPercentInputValue(0)
-												nameInput.value = ''
-												await refreshSettings()
-											}),
-										]}
-									>
-										Add account
-									</button>
-								</div>
-							</article>
-						))}
-					</section>
-
-					<section
-						mix={css({
-							display: 'grid',
-							gap: spacing.sm,
-							padding: spacing.md,
-							border: `3px solid ${colors.border}`,
-							borderRadius: radius.xl,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.md,
-						})}
-					>
-						<h2 mix={css({ margin: 0, color: colors.text })}>Quick amounts</h2>
-
-						<div
-							mix={css({ display: 'flex', flexWrap: 'wrap', gap: spacing.sm })}
-						>
-							{state.quickAmounts.map((amount) => (
-								<div
-									key={amount}
-									mix={css({
-										display: 'flex',
-										alignItems: 'center',
-										gap: spacing.xs,
-										padding: `${spacing.xs} ${spacing.sm}`,
-										backgroundColor: colors.primarySoft,
-										borderRadius: radius.full,
-										border: `2px solid ${colors.primarySoftStrong}`,
-										fontWeight: typography.fontWeight.bold,
-									})}
-								>
-									<span>{formatCents(amount)}</span>
-									<button
-										type="button"
-										mix={[
-											css({
-												background: 'none',
-												border: 'none',
-												cursor: 'pointer',
-												color: colors.textMuted,
-												display: 'flex',
-												alignItems: 'center',
-												justifyContent: 'center',
-												padding: 0,
-												fontSize: typography.fontSize.lg,
-												lineHeight: 1,
-												'&:hover': { color: colors.error },
-											}),
-											on<HTMLElement, 'click'>('click', async () => {
-												if (state.status !== 'ready') return
-												const newAmounts = state.quickAmounts.filter(
-													(a) => a !== amount,
-												)
-												await setQuickAmounts(newAmounts)
-												await refreshSettings()
-											}),
-										]}
-										aria-label={`Remove ${formatCents(amount)}`}
-									>
-										×
-									</button>
-								</div>
-							))}
-						</div>
-
-						<form
-							data-router-skip
-							mix={[
-								css({
-									display: 'grid',
-									gridTemplateColumns: '1fr auto',
-									gap: spacing.sm,
-									marginTop: spacing.sm,
-									[mq.mobile]: {
-										gridTemplateColumns: '1fr',
-									},
-								}),
-								on<HTMLElement, 'submit'>('submit', async (event) => {
-									event.preventDefault()
-									if (state.status !== 'ready') return
-									if (!(event.currentTarget instanceof HTMLFormElement)) return
-									const input =
-										event.currentTarget.elements.namedItem('newAmount')
-									if (!(input instanceof HTMLInputElement)) return
-
-									const val = Number(input.value)
-									if (Number.isFinite(val) && val > 0) {
-										const cents = Math.round(val * 100)
-										if (!state.quickAmounts.includes(cents)) {
-											const newAmounts = [...state.quickAmounts, cents].sort(
-												(a, b) => a - b,
-											)
-											await setQuickAmounts(newAmounts)
-											await refreshSettings()
-										}
-										input.value = ''
-									}
-								}),
-							]}
-						>
-							<input
-								name="newAmount"
-								type="number"
-								step="0.01"
-								min="0.01"
-								placeholder="New amount (e.g. 5.00)"
-								mix={css(inputCss)}
-							/>
-							<button type="submit" mix={css(buttonCss)}>
-								Add
-							</button>
-						</form>
-					</section>
-
-					<section
-						mix={css({
-							display: 'grid',
-							gap: spacing.xs,
-							padding: spacing.md,
-							border: `3px solid ${colors.border}`,
-							borderRadius: radius.xl,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.md,
-						})}
-					>
-						<h2 mix={css({ margin: 0, color: colors.text })}>
-							How account APY works
-						</h2>
-						<p mix={css({ margin: 0, color: colors.textMuted })}>
-							APY means annual percentage yield. Set it per account to earn
-							monthly interest automatically: on the first day of each month,
-							Kids Ledger snapshots that account&apos;s balance, converts the
-							APY to a monthly compound rate, and records a Monthly interest
-							transaction when the rounded payout is positive.
-						</p>
-					</section>
-
-					<section
-						mix={css({
-							display: 'grid',
-							gap: spacing.md,
-							padding: spacing.md,
-							border: `3px solid ${colors.error}`,
-							borderRadius: radius.xl,
-							backgroundColor: 'color-mix(in srgb, #dc2626 5%, transparent)',
-							boxShadow: shadows.md,
-						})}
-					>
-						<h2 mix={css({ margin: 0, color: colors.error })}>Danger Zone</h2>
-
-						<div mix={css({ display: 'grid', gap: spacing.sm })}>
-							<h3
-								mix={css({
-									margin: 0,
-									color: colors.text,
-									fontSize: typography.fontSize.lg,
-								})}
-							>
-								Archive management
-							</h3>
-							{state.archived.kids.length === 0 &&
-							state.archived.accounts.length === 0 ? (
-								<div
-									mix={css({
-										display: 'flex',
-										flexDirection: 'column',
-										alignItems: 'center',
-										gap: spacing.sm,
-										padding: spacing.xl,
-										color: colors.textMuted,
-									})}
-								>
-									<span mix={css({ fontSize: '2rem' })}>📭</span>
-									<p mix={css({ margin: 0 })}>No archived records.</p>
-								</div>
-							) : null}
-							{state.archived.kids.map((kid) => (
-								<div key={kid.id} mix={css(archivedRowCss)}>
-									<span>
-										{kid.emoji} {kid.name}
-									</span>
-									<div mix={css(archivedRowActionsCss)}>
+										>
+											{accountColorTokens.map((color) => (
+												<option key={color} value={color}>
+													{color}
+												</option>
+											))}
+										</select>
 										<button
 											type="button"
 											mix={[
 												css(buttonCss),
 												on<HTMLElement, 'click'>('click', async () => {
-													try {
-														await unarchiveKid(kid.id)
-														await refreshSettings()
-													} catch (error) {
-														notify(
-															error instanceof Error
-																? error.message
-																: 'Could not unarchive kid.',
-														)
+													const nameInput = document.querySelector(
+														`input[data-create-account-name="${kid.id}"]`,
+													)
+													const colorSelect = document.querySelector(
+														`select[data-create-account-color="${kid.id}"]`,
+													)
+													const apyInput = document.querySelector(
+														`input[data-create-account-apy="${kid.id}"]`,
+													)
+													if (
+														!(nameInput instanceof HTMLInputElement) ||
+														!(colorSelect instanceof HTMLSelectElement) ||
+														!(apyInput instanceof HTMLInputElement)
+													) {
+														return
 													}
-												}),
-											]}
-										>
-											Unarchive
-										</button>
-										<button
-											type="button"
-											mix={[
-												css(dangerButtonCss),
-												on<HTMLElement, 'click'>('click', async () => {
-													await deleteKid(kid.id)
+													const accountName = nameInput.value.trim()
+													if (!accountName) return
+													const apyBasisPoints = parseApyPercentToBasisPoints(
+														apyInput.value,
+													)
+													if (apyBasisPoints === null) {
+														apyInput.setCustomValidity(
+															'Enter a valid APY percent between 0 and 1000.',
+														)
+														apyInput.reportValidity()
+														notify(
+															'Enter a valid APY percent between 0 and 1000.',
+														)
+														return
+													}
+													apyInput.setCustomValidity('')
+													await createAccount({
+														kidId: kid.id,
+														name: accountName,
+														apyBasisPoints,
+														colorToken: getCreateAccountColor(kid.id),
+													})
+													newAccountApyDraftByKidId[kid.id] =
+														formatApyPercentInputValue(0)
+													nameInput.value = ''
 													await refreshSettings()
 												}),
 											]}
 										>
-											Delete forever
+											Add account
 										</button>
 									</div>
-								</div>
+								</article>
 							))}
-							{state.archived.accounts.map((account) => (
-								<div key={account.id} mix={css(archivedRowCss)}>
-									<span>
-										{account.kidName} · {account.name}
-									</span>
-									<div mix={css(archivedRowActionsCss)}>
-										<button
-											type="button"
-											mix={[
-												css(buttonCss),
-												on<HTMLElement, 'click'>('click', async () => {
-													try {
-														await unarchiveAccount(account.id)
-														await refreshSettings()
-													} catch (error) {
-														notify(
-															error instanceof Error
-																? error.message
-																: 'Could not unarchive account.',
-														)
-													}
-												}),
-											]}
-										>
-											Unarchive
-										</button>
-										<button
-											type="button"
-											mix={[
-												css(dangerButtonCss),
-												on<HTMLElement, 'click'>('click', async () => {
-													await deleteAccount(account.id)
-													await refreshSettings()
-												}),
-											]}
-										>
-											Delete forever
-										</button>
-									</div>
-								</div>
-							))}
-						</div>
+						</section>
 
-						<div
+						<section
 							mix={css({
 								display: 'grid',
 								gap: spacing.sm,
-								paddingTop: spacing.md,
-								borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)`,
+								padding: spacing.md,
+								border: `3px solid ${colors.border}`,
+								borderRadius: radius.xl,
+								backgroundColor: colors.surface,
+								boxShadow: shadows.md,
 							})}
 						>
-							<h3
-								mix={css({
-									margin: 0,
-									color: colors.text,
-									fontSize: typography.fontSize.lg,
-								})}
-							>
-								Data export
-							</h3>
-							<a
-								href="/ledger/export/json"
-								mix={css({
-									color: colors.error,
-									fontWeight: typography.fontWeight.bold,
-								})}
-							>
-								Download JSON backup
-							</a>
-						</div>
-					</section>
+							<h2 mix={css({ margin: 0, color: colors.text })}>
+								Quick amounts
+							</h2>
 
-					{editingKidTransactionModalCss ? (
-						<div
-							mix={[
-								css({
-									position: 'fixed',
-									inset: 0,
-									backgroundColor: 'rgba(0, 0, 0, 0.45)',
-									display: 'grid',
-									placeItems: 'center',
-									padding: spacing.md,
-									zIndex: 1000,
-									pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
-									animation: transactionModalCssClosing
-										? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
-										: 'modal-backdrop-in 180ms ease-out forwards',
-									[mq.mobile]: {
-										padding: 0,
-										placeItems: 'stretch',
-									},
-								}),
-								on<HTMLElement, 'click'>('click', (event) => {
-									if (event.target === event.currentTarget) {
-										closeTransactionModalCssEditor()
-									}
-								}),
-							]}
-						>
-							<section
-								role="dialog"
-								aria-modal="true"
-								aria-labelledby="kid-transaction-modal-css-title"
+							<div
+								mix={css({
+									display: 'flex',
+									flexWrap: 'wrap',
+									gap: spacing.sm,
+								})}
+							>
+								{state.quickAmounts.map((amount) => (
+									<div
+										key={amount}
+										mix={css({
+											display: 'flex',
+											alignItems: 'center',
+											gap: spacing.xs,
+											padding: `${spacing.xs} ${spacing.sm}`,
+											backgroundColor: colors.primarySoft,
+											borderRadius: radius.full,
+											border: `2px solid ${colors.primarySoftStrong}`,
+											fontWeight: typography.fontWeight.bold,
+										})}
+									>
+										<span>{formatCents(amount)}</span>
+										<button
+											type="button"
+											mix={[
+												css({
+													background: 'none',
+													border: 'none',
+													cursor: 'pointer',
+													color: colors.textMuted,
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													padding: 0,
+													fontSize: typography.fontSize.lg,
+													lineHeight: 1,
+													'&:hover': { color: colors.error },
+												}),
+												on<HTMLElement, 'click'>('click', async () => {
+													if (state.status !== 'ready') return
+													const newAmounts = state.quickAmounts.filter(
+														(a) => a !== amount,
+													)
+													await setQuickAmounts(newAmounts)
+													await refreshSettings()
+												}),
+											]}
+											aria-label={`Remove ${formatCents(amount)}`}
+										>
+											×
+										</button>
+									</div>
+								))}
+							</div>
+
+							<form
+								data-router-skip
 								mix={[
 									css({
-										width: 'min(42rem, 100%)',
-										maxHeight: '85dvh',
-										overflow: 'auto',
 										display: 'grid',
-										gap: spacing.md,
-										padding: spacing.lg,
-										borderRadius: radius.xl,
-										border: `3px solid ${colors.border}`,
-										backgroundColor: colors.surface,
-										boxShadow: shadows.lg,
-										animation: transactionModalCssClosing
-											? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
-											: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+										gridTemplateColumns: '1fr auto',
+										gap: spacing.sm,
+										marginTop: spacing.sm,
 										[mq.mobile]: {
-											width: '100%',
-											maxHeight: '100dvh',
-											minHeight: '100dvh',
-											borderRadius: 0,
-											border: 'none',
-											gap: spacing.sm,
-											padding: spacing.md,
+											gridTemplateColumns: '1fr',
 										},
 									}),
-									on<HTMLElement, 'keydown'>(
-										'keydown',
-										handleTransactionModalCssKeydown,
-									),
+									on<HTMLElement, 'submit'>('submit', async (event) => {
+										event.preventDefault()
+										if (state.status !== 'ready') return
+										if (!(event.currentTarget instanceof HTMLFormElement))
+											return
+										const input =
+											event.currentTarget.elements.namedItem('newAmount')
+										if (!(input instanceof HTMLInputElement)) return
+
+										const val = Number(input.value)
+										if (Number.isFinite(val) && val > 0) {
+											const cents = Math.round(val * 100)
+											if (!state.quickAmounts.includes(cents)) {
+												const newAmounts = [...state.quickAmounts, cents].sort(
+													(a, b) => a - b,
+												)
+												await setQuickAmounts(newAmounts)
+												await refreshSettings()
+											}
+											input.value = ''
+										}
+									}),
 								]}
 							>
-								<header
+								<input
+									name="newAmount"
+									type="number"
+									step="0.01"
+									min="0.01"
+									placeholder="New amount (e.g. 5.00)"
+									mix={css(inputCss)}
+								/>
+								<button type="submit" mix={css(buttonCss)}>
+									Add
+								</button>
+							</form>
+						</section>
+
+						<section
+							mix={css({
+								display: 'grid',
+								gap: spacing.xs,
+								padding: spacing.md,
+								border: `3px solid ${colors.border}`,
+								borderRadius: radius.xl,
+								backgroundColor: colors.surface,
+								boxShadow: shadows.md,
+							})}
+						>
+							<h2 mix={css({ margin: 0, color: colors.text })}>
+								How account APY works
+							</h2>
+							<p mix={css({ margin: 0, color: colors.textMuted })}>
+								APY means annual percentage yield. Set it per account to earn
+								monthly interest automatically: on the first day of each month,
+								Kids Ledger snapshots that account&apos;s balance, converts the
+								APY to a monthly compound rate, and records a Monthly interest
+								transaction when the rounded payout is positive.
+							</p>
+						</section>
+
+						<section
+							mix={css({
+								display: 'grid',
+								gap: spacing.md,
+								padding: spacing.md,
+								border: `3px solid ${colors.error}`,
+								borderRadius: radius.xl,
+								backgroundColor: 'color-mix(in srgb, #dc2626 5%, transparent)',
+								boxShadow: shadows.md,
+							})}
+						>
+							<h2 mix={css({ margin: 0, color: colors.error })}>Danger Zone</h2>
+
+							<div mix={css({ display: 'grid', gap: spacing.sm })}>
+								<h3
 									mix={css({
-										display: 'flex',
-										justifyContent: 'space-between',
+										margin: 0,
+										color: colors.text,
+										fontSize: typography.fontSize.lg,
 									})}
 								>
-									<div mix={css({ display: 'grid', gap: spacing.xs })}>
-										<h3
-											id="kid-transaction-modal-css-title"
-											mix={css({ margin: 0, color: colors.text })}
-										>
-											Customize {editingKidTransactionModalCss.kidName}&apos;s
-											transaction modal
-										</h3>
-										<p mix={css({ margin: 0, color: colors.textMuted })}>
-											Enter declarations or full CSS rules. When this kid&apos;s
-											transaction modal is open on Home, the styles apply to the
-											whole page.
-										</p>
-									</div>
-									<button
-										type="button"
-										mix={[
-											css(buttonCss),
-											on<HTMLElement, 'click'>(
-												'click',
-												closeTransactionModalCssEditor,
-											),
-										]}
-										disabled={transactionModalCssSaving}
-									>
-										Close
-									</button>
-								</header>
-								<section mix={css({ display: 'grid', gap: spacing.sm })}>
-									<strong mix={css({ color: colors.text })}>
-										Live preview
-									</strong>
-									<p mix={css({ margin: 0, color: colors.textMuted })}>
-										Updates in real time as you type.
-									</p>
-									{transactionModalCssDraft.trim() ? (
-										<style data-kid-transaction-modal-preview-css>
-											{buildTransactionModalCss(transactionModalCssDraft)}
-										</style>
-									) : null}
-									<section
-										data-kid-transaction-modal-preview
+									Archive management
+								</h3>
+								{state.archived.kids.length === 0 &&
+								state.archived.accounts.length === 0 ? (
+									<div
 										mix={css({
-											width: 'min(30rem, 100%)',
+											display: 'flex',
+											flexDirection: 'column',
+											alignItems: 'center',
+											gap: spacing.sm,
+											padding: spacing.xl,
+											color: colors.textMuted,
+										})}
+									>
+										<span mix={css({ fontSize: '2rem' })}>📭</span>
+										<p mix={css({ margin: 0 })}>No archived records.</p>
+									</div>
+								) : null}
+								{state.archived.kids.map((kid) => (
+									<div key={kid.id} mix={css(archivedRowCss)}>
+										<span>
+											{kid.emoji} {kid.name}
+										</span>
+										<div mix={css(archivedRowActionsCss)}>
+											<button
+												type="button"
+												mix={[
+													css(buttonCss),
+													on<HTMLElement, 'click'>('click', async () => {
+														try {
+															await unarchiveKid(kid.id)
+															await refreshSettings()
+														} catch (error) {
+															notify(
+																error instanceof Error
+																	? error.message
+																	: 'Could not unarchive kid.',
+															)
+														}
+													}),
+												]}
+											>
+												Unarchive
+											</button>
+											<button
+												type="button"
+												mix={[
+													css(dangerButtonCss),
+													on<HTMLElement, 'click'>('click', async () => {
+														await deleteKid(kid.id)
+														await refreshSettings()
+													}),
+												]}
+											>
+												Delete forever
+											</button>
+										</div>
+									</div>
+								))}
+								{state.archived.accounts.map((account) => (
+									<div key={account.id} mix={css(archivedRowCss)}>
+										<span>
+											{account.kidName} · {account.name}
+										</span>
+										<div mix={css(archivedRowActionsCss)}>
+											<button
+												type="button"
+												mix={[
+													css(buttonCss),
+													on<HTMLElement, 'click'>('click', async () => {
+														try {
+															await unarchiveAccount(account.id)
+															await refreshSettings()
+														} catch (error) {
+															notify(
+																error instanceof Error
+																	? error.message
+																	: 'Could not unarchive account.',
+															)
+														}
+													}),
+												]}
+											>
+												Unarchive
+											</button>
+											<button
+												type="button"
+												mix={[
+													css(dangerButtonCss),
+													on<HTMLElement, 'click'>('click', async () => {
+														await deleteAccount(account.id)
+														await refreshSettings()
+													}),
+												]}
+											>
+												Delete forever
+											</button>
+										</div>
+									</div>
+								))}
+							</div>
+
+							<div
+								mix={css({
+									display: 'grid',
+									gap: spacing.sm,
+									paddingTop: spacing.md,
+									borderTop: `1px solid color-mix(in srgb, #dc2626 20%, transparent)`,
+								})}
+							>
+								<h3
+									mix={css({
+										margin: 0,
+										color: colors.text,
+										fontSize: typography.fontSize.lg,
+									})}
+								>
+									Data export
+								</h3>
+								<a
+									href="/ledger/export/json"
+									mix={css({
+										color: colors.error,
+										fontWeight: typography.fontWeight.bold,
+									})}
+								>
+									Download JSON backup
+								</a>
+							</div>
+						</section>
+
+						{editingKidTransactionModalCss ? (
+							<div
+								mix={[
+									css({
+										position: 'fixed',
+										inset: 0,
+										backgroundColor: 'rgba(0, 0, 0, 0.45)',
+										display: 'grid',
+										placeItems: 'center',
+										padding: spacing.md,
+										zIndex: 1000,
+										pointerEvents: transactionModalCssClosing ? 'none' : 'auto',
+										animation: transactionModalCssClosing
+											? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+											: 'modal-backdrop-in 180ms ease-out forwards',
+										[mq.mobile]: {
+											padding: 0,
+											placeItems: 'stretch',
+										},
+									}),
+									on<HTMLElement, 'click'>('click', (event) => {
+										if (event.target === event.currentTarget) {
+											closeTransactionModalCssEditor()
+										}
+									}),
+								]}
+							>
+								<section
+									role="dialog"
+									aria-modal="true"
+									aria-labelledby="kid-transaction-modal-css-title"
+									mix={[
+										css({
+											width: 'min(42rem, 100%)',
+											maxHeight: '85dvh',
+											overflow: 'auto',
 											display: 'grid',
 											gap: spacing.md,
-											padding: spacing.md,
-											fontFamily: 'var(--font-family)',
+											padding: spacing.lg,
 											borderRadius: radius.xl,
 											border: `3px solid ${colors.border}`,
 											backgroundColor: colors.surface,
 											boxShadow: shadows.lg,
+											animation: transactionModalCssClosing
+												? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+												: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+											[mq.mobile]: {
+												width: '100%',
+												maxHeight: '100dvh',
+												minHeight: '100dvh',
+												borderRadius: 0,
+												border: 'none',
+												gap: spacing.sm,
+												padding: spacing.md,
+											},
+										}),
+										on<HTMLElement, 'keydown'>(
+											'keydown',
+											handleTransactionModalCssKeydown,
+										),
+									]}
+								>
+									<header
+										mix={css({
+											display: 'flex',
+											justifyContent: 'space-between',
 										})}
 									>
-										<header
+										<div mix={css({ display: 'grid', gap: spacing.xs })}>
+											<h3
+												id="kid-transaction-modal-css-title"
+												mix={css({ margin: 0, color: colors.text })}
+											>
+												Customize {editingKidTransactionModalCss.kidName}&apos;s
+												transaction modal
+											</h3>
+											<p mix={css({ margin: 0, color: colors.textMuted })}>
+												Enter declarations or full CSS rules. When this
+												kid&apos;s transaction modal is open on Home, the styles
+												apply to the whole page.
+											</p>
+										</div>
+										<button
+											type="button"
+											mix={[
+												css(buttonCss),
+												on<HTMLElement, 'click'>(
+													'click',
+													closeTransactionModalCssEditor,
+												),
+											]}
+											disabled={transactionModalCssSaving}
+										>
+											Close
+										</button>
+									</header>
+									<section mix={css({ display: 'grid', gap: spacing.sm })}>
+										<strong mix={css({ color: colors.text })}>
+											Live preview
+										</strong>
+										<p mix={css({ margin: 0, color: colors.textMuted })}>
+											Updates in real time as you type.
+										</p>
+										{transactionModalCssDraft.trim() ? (
+											<style data-kid-transaction-modal-preview-css>
+												{buildTransactionModalCss(transactionModalCssDraft)}
+											</style>
+										) : null}
+										<section
+											data-kid-transaction-modal-preview
 											mix={css({
-												display: 'flex',
-												justifyContent: 'space-between',
+												width: 'min(30rem, 100%)',
+												display: 'grid',
+												gap: spacing.md,
+												padding: spacing.md,
+												fontFamily: 'var(--font-family)',
+												borderRadius: radius.xl,
+												border: `3px solid ${colors.border}`,
+												backgroundColor: colors.surface,
+												boxShadow: shadows.lg,
 											})}
 										>
-											<div>
-												<h3 mix={css({ margin: 0, color: colors.text })}>
-													{editingKidTransactionModalCss.kidEmoji}{' '}
-													{editingKidTransactionModalCss.kidName}
-												</h3>
-												<p mix={css({ margin: 0, color: colors.textMuted })}>
-													Spending · $12.50
-												</p>
+											<header
+												mix={css({
+													display: 'flex',
+													justifyContent: 'space-between',
+												})}
+											>
+												<div>
+													<h3 mix={css({ margin: 0, color: colors.text })}>
+														{editingKidTransactionModalCss.kidEmoji}{' '}
+														{editingKidTransactionModalCss.kidName}
+													</h3>
+													<p mix={css({ margin: 0, color: colors.textMuted })}>
+														Spending · $12.50
+													</p>
+												</div>
+												<span mix={css({ color: colors.textMuted })}>
+													Close
+												</span>
+											</header>
+											<label mix={css({ display: 'grid', gap: spacing.xs })}>
+												<span mix={css({ color: colors.text })}>Amount</span>
+												<input
+													type="text"
+													value="5.00"
+													readOnly
+													mix={css(inputCss)}
+												/>
+											</label>
+											<div
+												mix={css({
+													display: 'grid',
+													gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+													gap: spacing.xs,
+												})}
+											>
+												<button type="button" mix={css(buttonCss)}>
+													$1.00
+												</button>
+												<button type="button" mix={css(buttonCss)}>
+													$5.00
+												</button>
+												<button type="button" mix={css(buttonCss)}>
+													$10.00
+												</button>
 											</div>
-											<span mix={css({ color: colors.textMuted })}>Close</span>
-										</header>
-										<label mix={css({ display: 'grid', gap: spacing.xs })}>
-											<span mix={css({ color: colors.text })}>Amount</span>
-											<input
-												type="text"
-												value="5.00"
-												readOnly
-												mix={css(inputCss)}
-											/>
-										</label>
+										</section>
+									</section>
+									<label mix={css({ display: 'grid', gap: spacing.xs })}>
+										<span mix={css({ color: colors.text })}>
+											Custom CSS declarations
+										</span>
+										<textarea
+											id="kid-transaction-modal-css-input"
+											value={transactionModalCssDraft}
+											mix={[
+												css({
+													...inputCss,
+													fontFamily:
+														'ui-monospace, SFMono-Regular, Menlo, monospace',
+													resize: 'vertical',
+													minHeight: '8rem',
+												}),
+												on<HTMLElement, 'input'>('input', (event) => {
+													if (
+														!(
+															event.currentTarget instanceof HTMLTextAreaElement
+														)
+													)
+														return
+													transactionModalCssDraft = event.currentTarget.value
+													transactionModalCssSaveError = null
+													handle.update()
+												}),
+											]}
+											rows={6}
+										/>
+									</label>
+									<section mix={css({ display: 'grid', gap: spacing.xs })}>
+										<strong mix={css({ color: colors.text })}>
+											Supported CSS variables
+										</strong>
 										<div
 											mix={css({
-												display: 'grid',
-												gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+												display: 'flex',
+												flexWrap: 'wrap',
 												gap: spacing.xs,
 											})}
 										>
-											<button type="button" mix={css(buttonCss)}>
-												$1.00
-											</button>
-											<button type="button" mix={css(buttonCss)}>
-												$5.00
-											</button>
-											<button type="button" mix={css(buttonCss)}>
-												$10.00
-											</button>
+											{transactionModalCssVariables.map((cssVariable) => (
+												<code
+													key={cssVariable}
+													mix={css({
+														padding: `${spacing.xs} ${spacing.sm}`,
+														border: `1px solid ${colors.border}`,
+														borderRadius: radius.full,
+														backgroundColor: colors.primarySoftest,
+													})}
+												>
+													{cssVariable}
+												</code>
+											))}
 										</div>
 									</section>
-								</section>
-								<label mix={css({ display: 'grid', gap: spacing.xs })}>
-									<span mix={css({ color: colors.text })}>
-										Custom CSS declarations
-									</span>
-									<textarea
-										id="kid-transaction-modal-css-input"
-										value={transactionModalCssDraft}
-										mix={[
-											css({
-												...inputCss,
-												fontFamily:
-													'ui-monospace, SFMono-Regular, Menlo, monospace',
-												resize: 'vertical',
-												minHeight: '8rem',
-											}),
-											on<HTMLElement, 'input'>('input', (event) => {
-												if (
-													!(event.currentTarget instanceof HTMLTextAreaElement)
-												)
-													return
-												transactionModalCssDraft = event.currentTarget.value
-												transactionModalCssSaveError = null
-												handle.update()
-											}),
-										]}
-										rows={6}
-									/>
-								</label>
-								<section mix={css({ display: 'grid', gap: spacing.xs })}>
-									<strong mix={css({ color: colors.text })}>
-										Supported CSS variables
-									</strong>
+									<div mix={css({ display: 'grid', gap: spacing.xs })}>
+										<strong mix={css({ color: colors.text })}>
+											Font example
+										</strong>
+										<pre
+											mix={css({
+												margin: 0,
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												border: `2px solid ${colors.border}`,
+												backgroundColor: colors.primarySoftest,
+												color: colors.text,
+												overflowX: 'auto',
+											})}
+										>
+											{transactionModalCssFontExample}
+										</pre>
+									</div>
+									<div mix={css({ display: 'grid', gap: spacing.xs })}>
+										<strong mix={css({ color: colors.text })}>
+											Google Fonts example
+										</strong>
+										<pre
+											mix={css({
+												margin: 0,
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												border: `2px solid ${colors.border}`,
+												backgroundColor: colors.primarySoftest,
+												color: colors.text,
+												overflowX: 'auto',
+											})}
+										>
+											{transactionModalCssGoogleFontExample}
+										</pre>
+									</div>
+									{transactionModalCssSaveError ? (
+										<p mix={css({ margin: 0, color: colors.error })}>
+											{transactionModalCssSaveError}
+										</p>
+									) : null}
 									<div
 										mix={css({
 											display: 'flex',
+											justifyContent: 'flex-end',
+											gap: spacing.sm,
 											flexWrap: 'wrap',
-											gap: spacing.xs,
 										})}
 									>
-										{transactionModalCssVariables.map((cssVariable) => (
-											<code
-												key={cssVariable}
-												mix={css({
-													padding: `${spacing.xs} ${spacing.sm}`,
-													border: `1px solid ${colors.border}`,
-													borderRadius: radius.full,
-													backgroundColor: colors.primarySoftest,
-												})}
-											>
-												{cssVariable}
-											</code>
-										))}
+										<button
+											type="button"
+											mix={[
+												css(buttonCss),
+												on<HTMLElement, 'click'>(
+													'click',
+													closeTransactionModalCssEditor,
+												),
+											]}
+											disabled={transactionModalCssSaving}
+										>
+											Cancel
+										</button>
+										<button
+											type="button"
+											mix={[
+												css(buttonCss),
+												on<HTMLElement, 'click'>(
+													'click',
+													() => void saveTransactionModalCss(),
+												),
+											]}
+											disabled={transactionModalCssSaving}
+										>
+											{transactionModalCssSaving ? 'Saving...' : 'Save CSS'}
+										</button>
 									</div>
 								</section>
-								<div mix={css({ display: 'grid', gap: spacing.xs })}>
-									<strong mix={css({ color: colors.text })}>
-										Font example
-									</strong>
-									<pre
-										mix={css({
-											margin: 0,
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `2px solid ${colors.border}`,
-											backgroundColor: colors.primarySoftest,
-											color: colors.text,
-											overflowX: 'auto',
-										})}
-									>
-										{transactionModalCssFontExample}
-									</pre>
-								</div>
-								<div mix={css({ display: 'grid', gap: spacing.xs })}>
-									<strong mix={css({ color: colors.text })}>
-										Google Fonts example
-									</strong>
-									<pre
-										mix={css({
-											margin: 0,
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `2px solid ${colors.border}`,
-											backgroundColor: colors.primarySoftest,
-											color: colors.text,
-											overflowX: 'auto',
-										})}
-									>
-										{transactionModalCssGoogleFontExample}
-									</pre>
-								</div>
-								{transactionModalCssSaveError ? (
-									<p mix={css({ margin: 0, color: colors.error })}>
-										{transactionModalCssSaveError}
-									</p>
-								) : null}
-								<div
-									mix={css({
-										display: 'flex',
-										justifyContent: 'flex-end',
-										gap: spacing.sm,
-										flexWrap: 'wrap',
-									})}
-								>
-									<button
-										type="button"
-										mix={[
-											css(buttonCss),
-											on<HTMLElement, 'click'>(
-												'click',
-												closeTransactionModalCssEditor,
-											),
-										]}
-										disabled={transactionModalCssSaving}
-									>
-										Cancel
-									</button>
-									<button
-										type="button"
-										mix={[
-											css(buttonCss),
-											on<HTMLElement, 'click'>(
-												'click',
-												() => void saveTransactionModalCss(),
-											),
-										]}
-										disabled={transactionModalCssSaving}
-									>
-										{transactionModalCssSaving ? 'Saving...' : 'Save CSS'}
-									</button>
-								</div>
-							</section>
-						</div>
-					) : null}
+							</div>
+						) : null}
 
-					{state.message ? (
-						<p
-							mix={css({
-								margin: 0,
-								color: colors.textMuted,
-								textAlign: 'center',
-							})}
-						>
-							{state.message}
-						</p>
-					) : null}
-				</>
-			) : null}
-		</section>
-	)
+						{state.message ? (
+							<p
+								mix={css({
+									margin: 0,
+									color: colors.textMuted,
+									textAlign: 'center',
+								})}
+							>
+								{state.message}
+							</p>
+						) : null}
+					</>
+				) : null}
+			</section>
+		)
+	}
 }
 
 export const Component = SettingsRoute

@@ -1,10 +1,8 @@
 import { createRouter } from 'remix/fetch-router'
 import { type AppEnv } from '#types/env-schema.ts'
-import { account } from './handlers/account.ts'
+import { createSsrAuthPageHandler } from './handlers/auth-page.ts'
 import { createAuthHandler } from './handlers/auth.ts'
-import { chat } from './handlers/chat.ts'
 import { createHealthHandler } from './handlers/health.ts'
-import { history } from './handlers/history.ts'
 import {
 	createAccountArchiveHandler,
 	createAccountCreateHandler,
@@ -26,45 +24,76 @@ import {
 	createTransactionCreateHandler,
 	createTransferCreateHandler,
 } from './handlers/ledger-api.ts'
-import { home } from './handlers/home.ts'
-import { login } from './handlers/login.ts'
 import { logout } from './handlers/logout.ts'
-import { oauthAuthorizePage } from './handlers/oauth-authorize-page.ts'
-import { oauthCallbackPage } from './handlers/oauth-callback-page.ts'
 import {
 	createPasswordResetConfirmHandler,
 	createPasswordResetRequestHandler,
 } from './handlers/password-reset.ts'
-import { resetPasswordPage } from './handlers/reset-password-page.ts'
 import { session } from './handlers/session.ts'
-import { settings } from './handlers/settings.ts'
-import { signup } from './handlers/signup.ts'
-import { Layout } from './layout.ts'
-import { render } from './render.ts'
+import { createProtectedPageHandler } from './protected-page.ts'
 import { routes } from './routes.ts'
+import { renderAppPage } from './ssr-render.tsx'
 
 export function createAppRouter(appEnv: AppEnv) {
+	function createPageHandler(title: string | null = null) {
+		return {
+			middleware: [],
+			async handler({ request }: { request: Request }) {
+				return renderAppPage({ request, appEnv, title })
+			},
+		}
+	}
+
+	const resetPasswordPage = {
+		middleware: [],
+		async handler({ request, url }: { request: Request; url: URL }) {
+			const title = url.searchParams.get('token')
+				? 'Set New Password'
+				: 'Reset Password'
+			return renderAppPage({ request, appEnv, title })
+		},
+	}
+
+	const oauthCallbackPage = {
+		middleware: [],
+		async handler({ request, url }: { request: Request; url: URL }) {
+			const title =
+				url.searchParams.get('error') ||
+				url.searchParams.get('error_description')
+					? 'Authorization Failed'
+					: 'Authorization Complete'
+			const status = title === 'Authorization Failed' ? 400 : 200
+			return renderAppPage({ request, appEnv, title, status })
+		},
+	}
+
 	const router = createRouter({
 		middleware: [],
-		async defaultHandler() {
-			return render(Layout({ title: 'Not Found' }))
+		async defaultHandler({ request }) {
+			return renderAppPage({
+				request,
+				appEnv,
+				title: 'Not Found',
+				notFound: true,
+				status: 404,
+			})
 		},
 	})
 
-	router.map(routes.home, home)
-	router.map(routes.about, home)
-	router.map(routes.chat, chat)
+	router.map(routes.home, createPageHandler())
+	router.map(routes.about, createPageHandler('About'))
+	router.map(routes.chat, createProtectedPageHandler(appEnv, 'Chat'))
 	router.map(routes.health, createHealthHandler(appEnv))
-	router.map(routes.login, login)
-	router.map(routes.signup, signup)
+	router.map(routes.login, createSsrAuthPageHandler(appEnv))
+	router.map(routes.signup, createSsrAuthPageHandler(appEnv))
 	router.map(routes.resetPassword, resetPasswordPage)
-	router.map(routes.oauthAuthorize, oauthAuthorizePage)
+	router.map(routes.oauthAuthorize, createPageHandler('Authorize App'))
 	router.map(routes.oauthCallback, oauthCallbackPage)
-	router.map(routes.account, account)
-	router.map(routes.history, history)
-	router.map(routes.settings, settings)
-	router.map(routes.privacyPolicy, home)
-	router.map(routes.termsOfService, home)
+	router.map(routes.account, createProtectedPageHandler(appEnv, 'Account'))
+	router.map(routes.history, createProtectedPageHandler(appEnv, 'History'))
+	router.map(routes.settings, createProtectedPageHandler(appEnv, 'Settings'))
+	router.map(routes.privacyPolicy, createPageHandler('Privacy Policy'))
+	router.map(routes.termsOfService, createPageHandler('Terms of Service'))
 	router.map(routes.auth, createAuthHandler(appEnv))
 	router.map(routes.session, session)
 	router.map(routes.logout, logout)

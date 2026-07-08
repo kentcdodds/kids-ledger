@@ -1,6 +1,11 @@
 import { css, on, type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
+import { readRouterSearch } from '#client/router-location.tsx'
+import {
 	fetchSessionInfo,
 	type SessionInfo,
 	type SessionStatus,
@@ -13,6 +18,7 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { type OAuthAuthorizeLoaderData } from '#shared/route-loader-data.ts'
 
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }
@@ -22,10 +28,49 @@ type OAuthAuthorizeInfo = {
 type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
 type OAuthAuthorizeMessage = { type: 'error' | 'info'; text: string }
 
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+function getSearchParams(handle: Handle) {
+	return new URLSearchParams(readRouterSearch(handle))
+}
+
+async function fetchOAuthAuthorizeLoaderData(
+	search: string,
+	signal?: AbortSignal,
+): Promise<OAuthAuthorizeLoaderData> {
+	const [infoResponse, session] = await Promise.all([
+		fetch(`/oauth/authorize-info${search}`, {
+			headers: { Accept: 'application/json' },
+			credentials: 'include',
+			signal,
+		}),
+		fetchSessionInfo(signal),
+	])
+	const payload = await parseJsonOrNull<{
+		ok?: boolean
+		error?: string
+		client?: OAuthAuthorizeInfo['client']
+		scopes?: OAuthAuthorizeInfo['scopes']
+	}>(infoResponse)
+	if (!infoResponse.ok || !payload?.ok || !payload.client) {
+		return {
+			info: null,
+			session,
+			error: getErrorMessage(payload, 'Unable to load authorization details.'),
+		}
+	}
+	return {
+		info: {
+			client: payload.client,
+			scopes: Array.isArray(payload.scopes) ? payload.scopes : [],
+		},
+		session,
+		error: null,
+	}
+}
+
+export const loader: ClientRouteLoader = async ({ url, signal }) => {
+	return {
+		oauthAuthorize: await fetchOAuthAuthorizeLoaderData(url.search, signal),
+	}
 }
 
 export function OAuthAuthorizeRoute(handle: Handle) {
@@ -36,6 +81,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	let lastSearch = ''
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
+	let infoRefreshInFlight = false
+	let sessionRefreshInFlight = false
 
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
@@ -43,7 +90,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	function readQueryError() {
-		const params = getSearchParams()
+		const params = getSearchParams(handle)
 		const description = params.get('error_description')
 		if (description) return description
 		const error = params.get('error')
@@ -51,6 +98,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	async function loadInfo() {
+		if (infoRefreshInFlight) return
+		infoRefreshInFlight = true
 		status = 'loading'
 
 		const queryError = readQueryError()
@@ -59,47 +108,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		}
 
 		try {
-			const query = typeof window === 'undefined' ? '' : window.location.search
-			const response = await fetch(`/oauth/authorize-info${query}`, {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = await parseJsonOrNull<{
-				ok?: boolean
-				error?: string
-				client?: OAuthAuthorizeInfo['client']
-				scopes?: OAuthAuthorizeInfo['scopes']
-			}>(response)
-			if (!response.ok || !payload?.ok) {
-				const errorText = getErrorMessage(
-					payload,
-					'Unable to load authorization details.',
-				)
-				info = null
-				status = 'error'
-				message = { type: 'error', text: errorText }
-				handle.update()
-				return
-			}
-			if (!payload.client || !Array.isArray(payload.scopes)) {
-				info = null
-				status = 'error'
-				message = {
-					type: 'error',
-					text: 'Unable to load authorization details.',
-				}
-				handle.update()
-				return
-			}
-			info = {
-				client: payload.client,
-				scopes: payload.scopes,
-			}
-			status = 'ready'
-			if (!queryError) {
-				message = null
-			}
-			handle.update()
+			const data = await fetchOAuthAuthorizeLoaderData(readRouterSearch(handle))
+			applyOAuthAuthorizeData(data, queryError)
 		} catch {
 			info = null
 			status = 'error'
@@ -107,18 +117,52 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				type: 'error',
 				text: 'Unable to load authorization details.',
 			}
-			handle.update()
 		}
+		infoRefreshInFlight = false
+		handle.update()
 	}
 
 	async function loadSession() {
-		if (sessionStatus !== 'idle') return
+		if (sessionStatus !== 'idle' || sessionRefreshInFlight) return
+		sessionRefreshInFlight = true
 		sessionStatus = 'loading'
 
 		session = await fetchSessionInfo()
 
 		sessionStatus = 'ready'
+		sessionRefreshInFlight = false
 		handle.update()
+	}
+
+	function applyOAuthAuthorizeData(
+		data: OAuthAuthorizeLoaderData,
+		queryError = readQueryError(),
+	) {
+		session = data.session
+		sessionStatus = 'ready'
+		if (data.error || !data.info) {
+			info = null
+			status = 'error'
+			message = {
+				type: 'error',
+				text: data.error ?? 'Unable to load authorization details.',
+			}
+			return
+		}
+		info = data.info
+		status = 'ready'
+		message = queryError ? { type: 'error', text: queryError } : null
+	}
+
+	function applyRouteLoaderData(currentSearch: string) {
+		const data = tryConsumeRouteLoaderData(
+			handle,
+			'oauthAuthorize',
+			`/oauth/authorize${currentSearch}`,
+		)
+		if (!data) return false
+		applyOAuthAuthorizeData(data)
+		return true
 	}
 
 	async function submitDecision(
@@ -198,13 +242,18 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	return () => {
-		const currentSearch =
-			typeof window === 'undefined' ? '' : window.location.search
+		const currentSearch = readRouterSearch(handle)
 		if (currentSearch !== lastSearch) {
 			lastSearch = currentSearch
-			void loadInfo()
+			if (!applyRouteLoaderData(currentSearch)) {
+				void loadInfo()
+			}
 		}
-		if (sessionStatus === 'idle') {
+		if (
+			sessionStatus === 'idle' &&
+			!infoRefreshInFlight &&
+			!sessionRefreshInFlight
+		) {
 			void loadSession()
 		}
 
@@ -314,119 +363,122 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						{message.text}
 					</p>
 				) : null}
-				<form
-					mix={[
-						css({
-							display: 'grid',
-							gap: spacing.md,
-							padding: spacing.lg,
-							borderRadius: radius.xl,
-							border: `3px solid ${colors.border}`,
-							backgroundColor: colors.surface,
-							boxShadow: shadows.md,
-							opacity: formReady ? 1 : 0.7,
-						}),
-						on<HTMLElement, 'submit'>('submit', handleSubmit),
-					]}
-				>
-					{!isLoggedIn && isSessionReady ? (
-						<>
-							<label mix={css({ display: 'grid', gap: spacing.xs })}>
-								<span
-									mix={css({
-										color: colors.text,
-										fontWeight: typography.fontWeight.medium,
-										fontSize: typography.fontSize.sm,
-									})}
-								>
-									Email
-								</span>
-								<input
-									type="email"
-									name="email"
-									required
-									autoComplete="email"
-									placeholder="you@example.com"
-									disabled={actionsDisabled}
-									mix={css({
-										...inputCss,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									})}
-								/>
-							</label>
-							<label mix={css({ display: 'grid', gap: spacing.xs })}>
-								<span
-									mix={css({
-										color: colors.text,
-										fontWeight: typography.fontWeight.medium,
-										fontSize: typography.fontSize.sm,
-									})}
-								>
-									Password
-								</span>
-								<input
-									type="password"
-									name="password"
-									required
-									autoComplete="current-password"
-									placeholder="Enter your password"
-									disabled={actionsDisabled}
-									mix={css({
-										...inputCss,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									})}
-								/>
-							</label>
-						</>
-					) : null}
-					<div
-						mix={css({ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' })}
+				{formReady ? (
+					<form
+						mix={[
+							css({
+								display: 'grid',
+								gap: spacing.md,
+								padding: spacing.lg,
+								borderRadius: radius.xl,
+								border: `3px solid ${colors.border}`,
+								backgroundColor: colors.surface,
+								boxShadow: shadows.md,
+							}),
+							on<HTMLElement, 'submit'>('submit', handleSubmit),
+						]}
 					>
-						<button
-							type="submit"
-							disabled={actionsDisabled}
-							mix={css({
-								...buttonCss,
-								padding: `${spacing.sm} ${spacing.lg}`,
-								borderRadius: radius.full,
-								fontSize: typography.fontSize.base,
-								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
-								opacity: actionsDisabled ? 0.7 : 1,
-							})}
+						{!isLoggedIn && isSessionReady ? (
+							<>
+								<label mix={css({ display: 'grid', gap: spacing.xs })}>
+									<span
+										mix={css({
+											color: colors.text,
+											fontWeight: typography.fontWeight.medium,
+											fontSize: typography.fontSize.sm,
+										})}
+									>
+										Email
+									</span>
+									<input
+										type="email"
+										name="email"
+										required
+										autoComplete="email"
+										placeholder="you@example.com"
+										disabled={actionsDisabled}
+										mix={css({
+											...inputCss,
+											fontSize: typography.fontSize.base,
+											fontFamily: typography.fontFamily,
+										})}
+									/>
+								</label>
+								<label mix={css({ display: 'grid', gap: spacing.xs })}>
+									<span
+										mix={css({
+											color: colors.text,
+											fontWeight: typography.fontWeight.medium,
+											fontSize: typography.fontSize.sm,
+										})}
+									>
+										Password
+									</span>
+									<input
+										type="password"
+										name="password"
+										required
+										autoComplete="current-password"
+										placeholder="Enter your password"
+										disabled={actionsDisabled}
+										mix={css({
+											...inputCss,
+											fontSize: typography.fontSize.base,
+											fontFamily: typography.fontFamily,
+										})}
+									/>
+								</label>
+							</>
+						) : null}
+						<div
+							mix={css({ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' })}
 						>
-							{authorizeLabel}
-						</button>
-						<button
-							type="button"
-							disabled={actionsDisabled}
-							mix={[
-								css({
+							<button
+								type="submit"
+								disabled={actionsDisabled}
+								mix={css({
 									...buttonCss,
 									padding: `${spacing.sm} ${spacing.lg}`,
 									borderRadius: radius.full,
-									border: `2px solid ${colors.border}`,
-									backgroundColor: colors.surface,
-									color: colors.text,
 									fontSize: typography.fontSize.base,
 									cursor: actionsDisabled ? 'not-allowed' : 'pointer',
 									opacity: actionsDisabled ? 0.7 : 1,
-									boxShadow: `0 4px 0 0 ${colors.border}`,
-									'&:active': actionsDisabled
-										? undefined
-										: {
-												transform: 'translateY(4px)',
-												boxShadow: `0 0 0 0 ${colors.border}`,
-											},
-								}),
-								on<HTMLElement, 'click'>('click', () => submitDecision('deny')),
-							]}
-						>
-							Deny
-						</button>
-					</div>
-				</form>
+								})}
+							>
+								{authorizeLabel}
+							</button>
+							<button
+								type="button"
+								disabled={actionsDisabled}
+								mix={[
+									css({
+										...buttonCss,
+										padding: `${spacing.sm} ${spacing.lg}`,
+										borderRadius: radius.full,
+										border: `2px solid ${colors.border}`,
+										backgroundColor: colors.surface,
+										color: colors.text,
+										fontSize: typography.fontSize.base,
+										cursor: actionsDisabled ? 'not-allowed' : 'pointer',
+										opacity: actionsDisabled ? 0.7 : 1,
+										boxShadow: `0 4px 0 0 ${colors.border}`,
+										'&:active': actionsDisabled
+											? undefined
+											: {
+													transform: 'translateY(4px)',
+													boxShadow: `0 0 0 0 ${colors.border}`,
+												},
+									}),
+									on<HTMLElement, 'click'>('click', () =>
+										submitDecision('deny'),
+									),
+								]}
+							>
+								Deny
+							</button>
+						</div>
+					</form>
+				) : null}
 				<a
 					href="/"
 					mix={css({

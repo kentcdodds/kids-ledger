@@ -1,4 +1,5 @@
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
+import { requestRouteDataRevalidation } from '#client/route-loader-data.tsx'
 
 export type KidAccount = {
 	id: number
@@ -59,6 +60,28 @@ export type LedgerTransactionsPage = {
 	endPageCursor: string | null
 }
 
+export type LedgerSettings = {
+	kids: Array<KidSummary>
+	archived: {
+		kids: Array<{
+			id: number
+			name: string
+			emoji: string
+			sortOrder: number
+		}>
+		accounts: Array<{
+			id: number
+			name: string
+			apyBasisPoints: number
+			colorToken: string
+			sortOrder: number
+			kidId: number
+			kidName: string
+		}>
+	}
+	quickAmounts: Array<number>
+}
+
 async function parseApiResponse<T>(response: Response): Promise<T> {
 	const payload = await parseJsonOrNull(response)
 	if (!response.ok || payload === null) {
@@ -76,7 +99,9 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body),
 	})
-	return parseApiResponse<T>(response)
+	const payload = await parseApiResponse<T>(response)
+	requestRouteDataRevalidation()
+	return payload
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -97,27 +122,7 @@ export async function fetchDashboard() {
 export async function fetchSettings() {
 	return getJson<{
 		ok: true
-		settings: {
-			kids: Array<KidSummary>
-			archived: {
-				kids: Array<{
-					id: number
-					name: string
-					emoji: string
-					sortOrder: number
-				}>
-				accounts: Array<{
-					id: number
-					name: string
-					apyBasisPoints: number
-					colorToken: string
-					sortOrder: number
-					kidId: number
-					kidName: string
-				}>
-			}
-			quickAmounts: Array<number>
-		}
+		settings: LedgerSettings
 	}>('/ledger/settings')
 }
 

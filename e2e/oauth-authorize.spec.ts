@@ -128,11 +128,21 @@ test('oauth authorize page accepts valid credentials for logged-out user', async
 		code_challenge: codeChallenge,
 		code_challenge_method: 'S256',
 	})
+	const authorizePath = `/oauth/authorize?${authorizeParams.toString()}`
+	const ssrResponse = await page.request.get(authorizePath)
 
-	await page.goto(`/oauth/authorize?${authorizeParams.toString()}`)
+	expect(ssrResponse.ok()).toBe(true)
+
+	await page.goto(authorizePath)
 	await expect(
 		page.getByRole('heading', { name: 'Authorize access' }),
 	).toBeVisible()
+	await expect(
+		page.getByText(
+			'oauth-ui-playwright-client wants to access your kids-ledger account.',
+		),
+	).toBeVisible()
+	await expect(page.getByText('profile, email')).toBeVisible()
 	await expect(page.getByLabel('Email')).toBeVisible()
 
 	await page.getByLabel('Email').fill(user.email)
@@ -187,6 +197,39 @@ test('oauth authorize redirects to loopback callback with code after login', asy
 	}
 })
 
+test('oauth authorize preserves query error with loader data', async ({
+	baseURL,
+	page,
+}) => {
+	if (!baseURL) {
+		throw new Error('Playwright baseURL is required for OAuth test.')
+	}
+
+	const redirectUri = `${baseURL}/oauth/callback`
+	const clientId = await registerOAuthClient(page.request, redirectUri)
+	const codeVerifier = createCodeVerifier()
+	const codeChallenge = await createCodeChallenge(codeVerifier)
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: clientId,
+		redirect_uri: redirectUri,
+		scope: 'profile email',
+		state: 'playwright-oauth-query-error',
+		code_challenge: codeChallenge,
+		code_challenge_method: 'S256',
+		error_description: 'Access was denied',
+	})
+
+	await page.goto(`/oauth/authorize?${authorizeParams.toString()}`)
+
+	await expect(page.getByText('Access was denied')).toBeVisible()
+	await expect(
+		page.getByText(
+			'oauth-ui-playwright-client wants to access your kids-ledger account.',
+		),
+	).toBeVisible()
+})
+
 test('oauth login link preserves authorize params through login', async ({
 	page,
 }) => {
@@ -226,4 +269,25 @@ test('oauth login link preserves authorize params through login', async ({
 	} finally {
 		await callbackServer.close()
 	}
+})
+
+test('oauth callback SSR includes query details and callback title', async ({
+	page,
+}) => {
+	const callbackPath =
+		'/oauth/callback?code=playwright-callback-code&state=playwright-callback-state'
+	const response = await page.request.get(callbackPath)
+	const html = await response.text()
+
+	expect(response.ok()).toBe(true)
+	expect(html).toContain('<title>Authorization Complete | Kids Ledger</title>')
+	expect(html).toContain('playwright-callback-code')
+	expect(html).toContain('State: ')
+	expect(html).toContain('playwright-callback-state')
+
+	await page.goto(callbackPath)
+
+	await expect(page).toHaveTitle('Authorization Complete | Kids Ledger')
+	await expect(page.getByText('playwright-callback-code')).toBeVisible()
+	await expect(page.getByText('State: playwright-callback-state')).toBeVisible()
 })

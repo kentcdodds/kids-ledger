@@ -1,0 +1,14 @@
+{
+	"extends": "./tsconfig-worker.json",
+	"compilerOptions": {
+		"paths": {
+			"#client/app-root.tsx": ["../server/ssr-stubs/app-root.ts"],
+			"@modelcontextprotocol/sdk": [
+				"../node_modules/@modelcontextprotocol/sdk"
+			],
+			"@modelcontextprotocol/sdk/*": [
+				"../node_modules/@modelcontextprotocol/sdk/*"
+			]
+		}
+	}
+}

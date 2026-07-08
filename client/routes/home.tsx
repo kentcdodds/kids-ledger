@@ -1,4 +1,10 @@
 import { css, on, type Handle } from 'remix/ui'
+import { readAppSession } from '#client/app-session.tsx'
+import { readRouterUrl } from '#client/router-location.tsx'
+import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
 import {
 	createTransaction,
 	createTransfer,
@@ -74,10 +80,19 @@ function getInterestPreviewText(account: KidAccount) {
 	)} on ${formatPayoutDate(getNextMonthlyInterestPayoutDate())}`
 }
 
+export const loader: ClientRouteLoader = async () => {
+	return { dashboard: await fetchDashboard() }
+}
+
 export function HomeRoute(handle: Handle) {
-	let status: 'loading' | 'ready' | 'error' = 'loading'
+	const appSession = readAppSession(handle)
+	const isLoggedOutSsr =
+		appSession.status === 'ready' && appSession.session === null
+	let status: 'loading' | 'ready' | 'error' = isLoggedOutSsr
+		? 'error'
+		: 'loading'
 	let errorMessage = ''
-	let needsLogin = false
+	let needsLogin = isLoggedOutSsr
 	let kids: Array<KidSummary> = []
 	let familyBalance = 0
 	let quickAmounts: Array<number> = []
@@ -89,6 +104,29 @@ export function HomeRoute(handle: Handle) {
 	let transferModalOpener: HTMLButtonElement | null = null
 	let transferModalClosing = false
 	let closeTransferModalTimeoutId: number | null = null
+	let dashboardRefreshInFlight = false
+
+	function applyDashboard(
+		dashboard: Awaited<ReturnType<typeof fetchDashboard>>,
+	) {
+		kids = dashboard.kids
+		familyBalance = dashboard.familyBalanceCents
+		quickAmounts = dashboard.quickAmounts
+		status = 'ready'
+		errorMessage = ''
+		needsLogin = false
+	}
+
+	function applyRouteLoaderData(currentHref: string) {
+		const dashboard = tryConsumeRouteLoaderData(
+			handle,
+			'dashboard',
+			currentHref,
+		)
+		if (!dashboard) return false
+		applyDashboard(dashboard)
+		return true
+	}
 
 	function removeTransactionModalStyles() {
 		if (typeof document === 'undefined') return
@@ -228,28 +266,24 @@ export function HomeRoute(handle: Handle) {
 	}
 
 	async function refreshDashboard() {
+		if (dashboardRefreshInFlight) return
+		dashboardRefreshInFlight = true
 		status = 'loading'
 		needsLogin = false
 		handle.update()
 		try {
 			const dashboard = await fetchDashboard()
-			kids = dashboard.kids
-			familyBalance = dashboard.familyBalanceCents
-			quickAmounts = dashboard.quickAmounts
-			status = 'ready'
-			errorMessage = ''
+			applyDashboard(dashboard)
 		} catch (error) {
 			status = 'error'
 			errorMessage =
 				error instanceof Error ? error.message : 'Failed to load ledger data.'
 			needsLogin = isAuthError(errorMessage)
 		}
+		dashboardRefreshInFlight = false
 		handle.update()
 	}
 
-	handle.queueTask(async () => {
-		await refreshDashboard()
-	})
 	handle.queueTask(() => {
 		return () => {
 			clearCloseModalTimeout()
@@ -373,637 +407,629 @@ export function HomeRoute(handle: Handle) {
 		}
 	}
 
-	return () => (
-		<section mix={css({ display: 'grid', gap: spacing.lg })}>
-			{status === 'ready' ? (
-				<header
-					mix={css({
-						display: 'grid',
-						gap: spacing.sm,
-						justifyItems: 'center',
-						textAlign: 'center',
-					})}
-				>
-					<h1 mix={css({ margin: 0, color: colors.text })}>Family Ledger</h1>
-					<p mix={css({ margin: 0, color: colors.textMuted })}>
-						Family Total:{' '}
-						<strong mix={css({ color: colors.text })}>
-							{formatCents(familyBalance)}
-						</strong>
-					</p>
-				</header>
-			) : null}
+	return () => {
+		const currentHref = readRouterUrl(handle)
+		const appliedRouteData = applyRouteLoaderData(currentHref)
+		if (
+			typeof window !== 'undefined' &&
+			status === 'loading' &&
+			!appliedRouteData &&
+			!dashboardRefreshInFlight
+		) {
+			handle.queueTask(async () => {
+				const nextAppSession = readAppSession(handle)
+				if (
+					nextAppSession.status === 'ready' &&
+					nextAppSession.session === null
+				) {
+					status = 'error'
+					needsLogin = true
+					handle.update()
+					return
+				}
+				await refreshDashboard()
+			})
+		}
 
-			{status === 'loading' ? (
-				<p mix={css({ color: colors.textMuted })}>Loading your ledger...</p>
-			) : null}
-			{status === 'error' && needsLogin ? LoggedOutHome() : null}
-			{status === 'error' && !needsLogin ? (
-				<p mix={css({ color: colors.error })}>{errorMessage}</p>
-			) : null}
-			{status === 'ready' && kids.length === 0 ? (
-				<section
-					mix={css({
-						padding: spacing.lg,
-						border: `3px dashed ${colors.border}`,
-						borderRadius: radius.xl,
-						backgroundColor: colors.surface,
-						display: 'grid',
-						gap: spacing.sm,
-					})}
-				>
-					<h2 mix={css({ margin: 0, color: colors.text })}>No kids yet</h2>
-					<p mix={css({ margin: 0, color: colors.textMuted })}>
-						Open <a href="/settings">Settings</a> to add your first kid and
-						account.
-					</p>
-				</section>
-			) : null}
-
-			{kids.map((kid) => (
-				<article
-					key={kid.id}
-					mix={css({
-						display: 'grid',
-						gap: spacing.md,
-						padding: spacing.lg,
-						borderRadius: radius.xl,
-						border: `3px solid ${colors.border}`,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-					})}
-				>
+		return (
+			<section mix={css({ display: 'grid', gap: spacing.lg })}>
+				{status === 'ready' ? (
 					<header
 						mix={css({
-							display: 'flex',
-							justifyContent: 'space-between',
-							alignItems: 'center',
-							gap: spacing.md,
+							display: 'grid',
+							gap: spacing.sm,
+							justifyItems: 'center',
+							textAlign: 'center',
 						})}
 					>
-						<div>
-							<h2 mix={css({ margin: 0, color: colors.text })}>
-								{kid.emoji} {kid.name}
-							</h2>
-							<p mix={css({ margin: 0, color: colors.textMuted })}>
-								Total: {formatCents(kid.totalBalanceCents)}
-							</p>
-						</div>
+						<h1 mix={css({ margin: 0, color: colors.text })}>Family Ledger</h1>
+						<p mix={css({ margin: 0, color: colors.textMuted })}>
+							Family Total:{' '}
+							<strong mix={css({ color: colors.text })}>
+								{formatCents(familyBalance)}
+							</strong>
+						</p>
 					</header>
-					<div mix={css({ display: 'grid', gap: spacing.sm })}>
-						{kid.accounts.length === 0 ? (
-							<p mix={css({ margin: 0, color: colors.textMuted })}>
-								No accounts yet. <a href="/settings">Add one in settings.</a>
-							</p>
+				) : null}
+
+				{status === 'loading' ? (
+					<p mix={css({ color: colors.textMuted })}>Loading your ledger...</p>
+				) : null}
+				{status === 'error' && needsLogin ? LoggedOutHome() : null}
+				{status === 'error' && !needsLogin ? (
+					<p mix={css({ color: colors.error })}>{errorMessage}</p>
+				) : null}
+				{status === 'ready' && kids.length === 0 ? (
+					<section
+						mix={css({
+							padding: spacing.lg,
+							border: `3px dashed ${colors.border}`,
+							borderRadius: radius.xl,
+							backgroundColor: colors.surface,
+							display: 'grid',
+							gap: spacing.sm,
+						})}
+					>
+						<h2 mix={css({ margin: 0, color: colors.text })}>No kids yet</h2>
+						<p mix={css({ margin: 0, color: colors.textMuted })}>
+							Open <a href="/settings">Settings</a> to add your first kid and
+							account.
+						</p>
+					</section>
+				) : null}
+
+				{kids.map((kid) => (
+					<article
+						key={kid.id}
+						mix={css({
+							display: 'grid',
+							gap: spacing.md,
+							padding: spacing.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+						})}
+					>
+						<header
+							mix={css({
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								gap: spacing.md,
+							})}
+						>
+							<div>
+								<h2 mix={css({ margin: 0, color: colors.text })}>
+									{kid.emoji} {kid.name}
+								</h2>
+								<p mix={css({ margin: 0, color: colors.textMuted })}>
+									Total: {formatCents(kid.totalBalanceCents)}
+								</p>
+							</div>
+						</header>
+						<div mix={css({ display: 'grid', gap: spacing.sm })}>
+							{kid.accounts.length === 0 ? (
+								<p mix={css({ margin: 0, color: colors.textMuted })}>
+									No accounts yet. <a href="/settings">Add one in settings.</a>
+								</p>
+							) : null}
+							{kid.accounts.map((account) => {
+								const interestPreviewText = getInterestPreviewText(account)
+								return (
+									<article
+										key={account.id}
+										mix={css({
+											display: 'grid',
+											gridTemplateColumns: '1fr',
+											gap: spacing.sm,
+											alignItems: 'stretch',
+											padding: spacing.xs,
+											borderRadius: radius.lg,
+											background: getAccountGradientBackground(
+												account.colorToken,
+											),
+											color: '#ffffff',
+											boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
+											[mq.mobile]: {
+												gridTemplateColumns: '1fr',
+											},
+										})}
+									>
+										<button
+											type="button"
+											mix={[
+												css({
+													display: 'flex',
+													justifyContent: 'space-between',
+													alignItems: 'center',
+													gap: spacing.sm,
+													minWidth: 0,
+													padding: spacing.sm,
+													border: 'none',
+													borderRadius: radius.md,
+													background: 'transparent',
+													color: 'inherit',
+													cursor: 'pointer',
+													textAlign: 'left',
+													transition: `background-color ${transitions.fast}`,
+													'&:hover': {
+														backgroundColor: 'rgba(255,255,255,0.14)',
+													},
+												}),
+												on<HTMLElement, 'click'>('click', (event) => {
+													if (
+														!(event.currentTarget instanceof HTMLButtonElement)
+													)
+														return
+													openTransactionModal(
+														kid,
+														account,
+														event.currentTarget,
+													)
+												}),
+											]}
+										>
+											<span
+												mix={css({
+													display: 'grid',
+													gap: 2,
+													minWidth: 0,
+													fontWeight: typography.fontWeight.semibold,
+												})}
+											>
+												{account.name}
+												<span
+													mix={css({
+														fontSize: typography.fontSize.sm,
+														opacity: 0.9,
+													})}
+												>
+													Tap to add or remove money
+												</span>
+												{interestPreviewText ? (
+													<span
+														mix={css({
+															fontSize: typography.fontSize.sm,
+															fontWeight: typography.fontWeight.normal,
+															opacity: 0.9,
+														})}
+													>
+														{interestPreviewText}
+													</span>
+												) : null}
+											</span>
+											<strong
+												mix={css({
+													flexShrink: 0,
+													fontSize: typography.fontSize.lg,
+												})}
+											>
+												{formatCents(account.balanceCents)}
+											</strong>
+										</button>
+									</article>
+								)
+							})}
+						</div>
+					</article>
+				))}
+
+				{status === 'ready' ? (
+					<section
+						mix={css({
+							display: 'grid',
+							gap: spacing.sm,
+							padding: spacing.lg,
+							borderRadius: radius.xl,
+							border: `3px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							boxShadow: shadows.md,
+							textAlign: 'center',
+						})}
+					>
+						<h2 mix={css({ margin: 0, color: colors.text })}>
+							Move money around
+						</h2>
+						<p mix={css({ margin: 0, color: colors.textMuted })}>
+							Transfer between any two accounts. Same-kid accounts are suggested
+							first.
+						</p>
+						<button
+							type="button"
+							disabled={getTransferAccountOptions(kids).length < 2}
+							mix={[
+								css({
+									...buttonCss,
+									justifySelf: 'center',
+									minWidth: 'min(100%, 18rem)',
+									paddingInline: spacing.lg,
+								}),
+								on<HTMLElement, 'click'>('click', (event) => {
+									if (!(event.currentTarget instanceof HTMLButtonElement))
+										return
+									openTransferModal(event.currentTarget)
+								}),
+							]}
+						>
+							Transfer money
+						</button>
+					</section>
+				) : null}
+
+				{transactionState ? (
+					<div
+						mix={[
+							css({
+								position: 'fixed',
+								inset: 0,
+								backgroundColor: 'rgba(0, 0, 0, 0.45)',
+								display: 'grid',
+								placeItems: 'center',
+								padding: spacing.md,
+								zIndex: 1000,
+								pointerEvents: transactionModalClosing ? 'none' : 'auto',
+								animation: transactionModalClosing
+									? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+									: 'modal-backdrop-in 180ms ease-out forwards',
+								[mq.mobile]: {
+									padding: 0,
+									placeItems: 'stretch',
+								},
+							}),
+							on<HTMLElement, 'click'>('click', (event) => {
+								if (event.target === event.currentTarget) {
+									closeTransactionModal()
+								}
+							}),
+						]}
+					>
+						{transactionState.kid.transactionModalCss.trim() ? (
+							<style data-kid-transaction-modal-css>
+								{buildTransactionModalCss(
+									transactionState.kid.transactionModalCss,
+								)}
+							</style>
 						) : null}
-						{kid.accounts.map((account) => {
-							const interestPreviewText = getInterestPreviewText(account)
-							return (
-								<article
-									key={account.id}
+						<section
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="transaction-modal-title"
+							aria-describedby="transaction-modal-description"
+							data-kid-transaction-modal
+							mix={[
+								css({
+									width: 'min(30rem, 100%)',
+									maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
+									overflow: 'auto',
+									display: 'grid',
+									gap: spacing.md,
+									padding: spacing.lg,
+									fontFamily: typography.fontFamily,
+									borderRadius: radius.xl,
+									border: `3px solid ${colors.border}`,
+									backgroundColor: colors.surface,
+									boxShadow: shadows.lg,
+									animation: transactionModalClosing
+										? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+										: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+									[mq.mobile]: {
+										width: '100%',
+										maxHeight: '100dvh',
+										minHeight: '100dvh',
+										borderRadius: 0,
+										border: 'none',
+										gap: spacing.sm,
+										padding: spacing.md,
+									},
+								}),
+								on<HTMLElement, 'keydown'>(
+									'keydown',
+									handleTransactionModalKeydown,
+								),
+							]}
+						>
+							<header
+								mix={css({ display: 'flex', justifyContent: 'space-between' })}
+							>
+								<div>
+									<h3
+										id="transaction-modal-title"
+										mix={css({ margin: 0, color: colors.text })}
+									>
+										{transactionState.kid.emoji} {transactionState.kid.name}
+									</h3>
+									<p
+										id="transaction-modal-description"
+										mix={css({ margin: 0, color: colors.textMuted })}
+									>
+										{transactionState.account.name} ·{' '}
+										{formatCents(transactionState.account.balanceCents)}
+									</p>
+								</div>
+								<button
+									id="transaction-modal-close"
+									type="button"
+									mix={[
+										css({
+											border: 'none',
+											background: 'transparent',
+											color: colors.textMuted,
+											cursor: 'pointer',
+										}),
+										on<HTMLElement, 'click'>('click', closeTransactionModal),
+									]}
+								>
+									Close
+								</button>
+							</header>
+
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>Amount</span>
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									value={transactionState.amount}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											transactionState!.amount = event.currentTarget.value
+											transactionState!.error = null
+											handle.update()
+										}),
+									]}
+								/>
+							</label>
+
+							<div mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span
+									mix={css({
+										color: colors.textMuted,
+										fontSize: typography.fontSize.sm,
+									})}
+								>
+									Quick amounts
+								</span>
+								<div
 									mix={css({
 										display: 'grid',
-										gridTemplateColumns: '1fr',
-										gap: spacing.sm,
-										alignItems: 'stretch',
-										padding: spacing.xs,
-										borderRadius: radius.lg,
-										background: getAccountGradientBackground(
-											account.colorToken,
-										),
-										color: '#ffffff',
-										boxShadow: `0 4px 0 0 rgba(0,0,0,0.2)`,
-										[mq.mobile]: {
-											gridTemplateColumns: '1fr',
-										},
+										gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+										gap: spacing.xs,
 									})}
 								>
 									<button
 										type="button"
+										disabled={
+											Math.abs(transactionState!.account.balanceCents) === 0
+										}
 										mix={[
-											css({
-												display: 'flex',
-												justifyContent: 'space-between',
-												alignItems: 'center',
-												gap: spacing.sm,
-												minWidth: 0,
-												padding: spacing.sm,
-												border: 'none',
-												borderRadius: radius.md,
-												background: 'transparent',
-												color: 'inherit',
-												cursor: 'pointer',
-												textAlign: 'left',
-												transition: `background-color ${transitions.fast}`,
-												'&:hover': {
-													backgroundColor: 'rgba(255,255,255,0.14)',
-												},
-											}),
-											on<HTMLElement, 'click'>('click', (event) => {
-												if (!(event.currentTarget instanceof HTMLButtonElement))
-													return
-												openTransactionModal(kid, account, event.currentTarget)
-											}),
+											css(quickAmountButtonCss()),
+											on<HTMLElement, 'click'>('click', () =>
+												setTransactionAmountFromQuick(
+													Math.abs(transactionState!.account.balanceCents),
+												),
+											),
 										]}
 									>
-										<span
-											mix={css({
-												display: 'grid',
-												gap: 2,
-												minWidth: 0,
-												fontWeight: typography.fontWeight.semibold,
-											})}
-										>
-											{account.name}
-											<span
-												mix={css({
-													fontSize: typography.fontSize.sm,
-													opacity: 0.9,
-												})}
-											>
-												Tap to add or remove money
-											</span>
-											{interestPreviewText ? (
-												<span
-													mix={css({
-														fontSize: typography.fontSize.sm,
-														fontWeight: typography.fontWeight.normal,
-														opacity: 0.9,
-													})}
-												>
-													{interestPreviewText}
-												</span>
-											) : null}
-										</span>
-										<strong
-											mix={css({
-												flexShrink: 0,
-												fontSize: typography.fontSize.lg,
-											})}
-										>
-											{formatCents(account.balanceCents)}
-										</strong>
+										{`Current Total (${formatCents(
+											transactionState.account.balanceCents,
+										)})`}
 									</button>
-								</article>
-							)
-						})}
-					</div>
-				</article>
-			))}
-
-			{status === 'ready' ? (
-				<section
-					mix={css({
-						display: 'grid',
-						gap: spacing.sm,
-						padding: spacing.lg,
-						borderRadius: radius.xl,
-						border: `3px solid ${colors.border}`,
-						backgroundColor: colors.surface,
-						boxShadow: shadows.md,
-						textAlign: 'center',
-					})}
-				>
-					<h2 mix={css({ margin: 0, color: colors.text })}>
-						Move money around
-					</h2>
-					<p mix={css({ margin: 0, color: colors.textMuted })}>
-						Transfer between any two accounts. Same-kid accounts are suggested
-						first.
-					</p>
-					<button
-						type="button"
-						disabled={getTransferAccountOptions(kids).length < 2}
-						mix={[
-							css({
-								...buttonCss,
-								justifySelf: 'center',
-								minWidth: 'min(100%, 18rem)',
-								paddingInline: spacing.lg,
-							}),
-							on<HTMLElement, 'click'>('click', (event) => {
-								if (!(event.currentTarget instanceof HTMLButtonElement)) return
-								openTransferModal(event.currentTarget)
-							}),
-						]}
-					>
-						Transfer money
-					</button>
-				</section>
-			) : null}
-
-			{transactionState ? (
-				<div
-					mix={[
-						css({
-							position: 'fixed',
-							inset: 0,
-							backgroundColor: 'rgba(0, 0, 0, 0.45)',
-							display: 'grid',
-							placeItems: 'center',
-							padding: spacing.md,
-							zIndex: 1000,
-							pointerEvents: transactionModalClosing ? 'none' : 'auto',
-							animation: transactionModalClosing
-								? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
-								: 'modal-backdrop-in 180ms ease-out forwards',
-							[mq.mobile]: {
-								padding: 0,
-								placeItems: 'stretch',
-							},
-						}),
-						on<HTMLElement, 'click'>('click', (event) => {
-							if (event.target === event.currentTarget) {
-								closeTransactionModal()
-							}
-						}),
-					]}
-				>
-					{transactionState.kid.transactionModalCss.trim() ? (
-						<style data-kid-transaction-modal-css>
-							{buildTransactionModalCss(
-								transactionState.kid.transactionModalCss,
-							)}
-						</style>
-					) : null}
-					<section
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="transaction-modal-title"
-						aria-describedby="transaction-modal-description"
-						data-kid-transaction-modal
-						mix={[
-							css({
-								width: 'min(30rem, 100%)',
-								maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
-								overflow: 'auto',
-								display: 'grid',
-								gap: spacing.md,
-								padding: spacing.lg,
-								fontFamily: typography.fontFamily,
-								borderRadius: radius.xl,
-								border: `3px solid ${colors.border}`,
-								backgroundColor: colors.surface,
-								boxShadow: shadows.lg,
-								animation: transactionModalClosing
-									? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
-									: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-								[mq.mobile]: {
-									width: '100%',
-									maxHeight: '100dvh',
-									minHeight: '100dvh',
-									borderRadius: 0,
-									border: 'none',
-									gap: spacing.sm,
-									padding: spacing.md,
-								},
-							}),
-							on<HTMLElement, 'keydown'>(
-								'keydown',
-								handleTransactionModalKeydown,
-							),
-						]}
-					>
-						<header
-							mix={css({ display: 'flex', justifyContent: 'space-between' })}
-						>
-							<div>
-								<h3
-									id="transaction-modal-title"
-									mix={css({ margin: 0, color: colors.text })}
-								>
-									{transactionState.kid.emoji} {transactionState.kid.name}
-								</h3>
-								<p
-									id="transaction-modal-description"
-									mix={css({ margin: 0, color: colors.textMuted })}
-								>
-									{transactionState.account.name} ·{' '}
-									{formatCents(transactionState.account.balanceCents)}
-								</p>
+									{quickAmounts.map((amount) => (
+										<button
+											key={amount}
+											type="button"
+											mix={[
+												css(quickAmountButtonCss()),
+												on<HTMLElement, 'click'>('click', () =>
+													setTransactionAmountFromQuick(amount),
+												),
+											]}
+										>
+											{formatCents(amount)}
+										</button>
+									))}
+								</div>
 							</div>
-							<button
-								id="transaction-modal-close"
-								type="button"
-								mix={[
-									css({
-										border: 'none',
-										background: 'transparent',
-										color: colors.textMuted,
-										cursor: 'pointer',
-									}),
-									on<HTMLElement, 'click'>('click', closeTransactionModal),
-								]}
-							>
-								Close
-							</button>
-						</header>
 
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>Amount</span>
-							<input
-								type="number"
-								min="0"
-								step="0.01"
-								value={transactionState.amount}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										transactionState!.amount = event.currentTarget.value
-										transactionState!.error = null
-										handle.update()
-									}),
-								]}
-							/>
-						</label>
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>Note (optional)</span>
+								<input
+									type="text"
+									value={transactionState.note}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											transactionState!.note = event.currentTarget.value
+											handle.update()
+										}),
+									]}
+								/>
+							</label>
 
-						<div mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span
-								mix={css({
-									color: colors.textMuted,
-									fontSize: typography.fontSize.sm,
-								})}
-							>
-								Quick amounts
-							</span>
+							{transactionState.error ? (
+								<p mix={css({ margin: 0, color: colors.error })}>
+									{transactionState.error}
+								</p>
+							) : null}
+							{transactionState.warning ? (
+								<p mix={css({ margin: 0, color: '#b45309' })}>
+									{transactionState.warning}
+								</p>
+							) : null}
+
 							<div
 								mix={css({
 									display: 'grid',
 									gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-									gap: spacing.xs,
+									gap: spacing.sm,
 								})}
 							>
 								<button
 									type="button"
-									disabled={
-										Math.abs(transactionState!.account.balanceCents) === 0
-									}
 									mix={[
-										css(quickAmountButtonCss()),
-										on<HTMLElement, 'click'>('click', () =>
-											setTransactionAmountFromQuick(
-												Math.abs(transactionState!.account.balanceCents),
+										css({
+											...modalButtonCss(
+												colors.surface,
+												colors.text,
+												colors.border,
 											),
+											border: `2px solid ${colors.border}`,
+										}),
+										on<HTMLElement, 'click'>('click', closeTransactionModal),
+									]}
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									disabled={transactionState.status === 'saving'}
+									mix={[
+										css(modalButtonCss('#86efac', '#052e16', '#16a34a')),
+										on<HTMLElement, 'click'>(
+											'click',
+											() => void submitTransaction('add'),
 										),
 									]}
 								>
-									{`Current Total (${formatCents(
-										transactionState.account.balanceCents,
-									)})`}
+									Add
 								</button>
-								{quickAmounts.map((amount) => (
-									<button
-										key={amount}
-										type="button"
-										mix={[
-											css(quickAmountButtonCss()),
-											on<HTMLElement, 'click'>('click', () =>
-												setTransactionAmountFromQuick(amount),
-											),
-										]}
-									>
-										{formatCents(amount)}
-									</button>
-								))}
-							</div>
-						</div>
-
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>Note (optional)</span>
-							<input
-								type="text"
-								value={transactionState.note}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										transactionState!.note = event.currentTarget.value
-										handle.update()
-									}),
-								]}
-							/>
-						</label>
-
-						{transactionState.error ? (
-							<p mix={css({ margin: 0, color: colors.error })}>
-								{transactionState.error}
-							</p>
-						) : null}
-						{transactionState.warning ? (
-							<p mix={css({ margin: 0, color: '#b45309' })}>
-								{transactionState.warning}
-							</p>
-						) : null}
-
-						<div
-							mix={css({
-								display: 'grid',
-								gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-								gap: spacing.sm,
-							})}
-						>
-							<button
-								type="button"
-								mix={[
-									css({
-										...modalButtonCss(
-											colors.surface,
-											colors.text,
-											colors.border,
+								<button
+									type="button"
+									disabled={transactionState.status === 'saving'}
+									mix={[
+										css(modalButtonCss('#fecaca', '#450a0a', '#dc2626')),
+										on<HTMLElement, 'click'>(
+											'click',
+											() => void submitTransaction('remove'),
 										),
-										border: `2px solid ${colors.border}`,
-									}),
-									on<HTMLElement, 'click'>('click', closeTransactionModal),
-								]}
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								disabled={transactionState.status === 'saving'}
-								mix={[
-									css(modalButtonCss('#86efac', '#052e16', '#16a34a')),
-									on<HTMLElement, 'click'>(
-										'click',
-										() => void submitTransaction('add'),
-									),
-								]}
-							>
-								Add
-							</button>
-							<button
-								type="button"
-								disabled={transactionState.status === 'saving'}
-								mix={[
-									css(modalButtonCss('#fecaca', '#450a0a', '#dc2626')),
-									on<HTMLElement, 'click'>(
-										'click',
-										() => void submitTransaction('remove'),
-									),
-								]}
-							>
-								Remove
-							</button>
-						</div>
-					</section>
-				</div>
-			) : null}
+									]}
+								>
+									Remove
+								</button>
+							</div>
+						</section>
+					</div>
+				) : null}
 
-			{transferState ? (
-				<div
-					mix={[
-						css({
-							position: 'fixed',
-							inset: 0,
-							backgroundColor: 'rgba(0, 0, 0, 0.45)',
-							display: 'grid',
-							placeItems: 'center',
-							padding: spacing.md,
-							zIndex: 1000,
-							pointerEvents: transferModalClosing ? 'none' : 'auto',
-							animation: transferModalClosing
-								? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
-								: 'modal-backdrop-in 180ms ease-out forwards',
-							[mq.mobile]: {
-								padding: 0,
-								placeItems: 'stretch',
-							},
-						}),
-						on<HTMLElement, 'click'>('click', (event) => {
-							if (event.target === event.currentTarget) {
-								closeTransferModal()
-							}
-						}),
-					]}
-				>
-					<section
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="transfer-modal-title"
-						aria-describedby="transfer-modal-description"
+				{transferState ? (
+					<div
 						mix={[
 							css({
-								width: 'min(34rem, 100%)',
-								maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
-								overflow: 'auto',
+								position: 'fixed',
+								inset: 0,
+								backgroundColor: 'rgba(0, 0, 0, 0.45)',
 								display: 'grid',
-								gap: spacing.md,
-								padding: spacing.lg,
-								fontFamily: typography.fontFamily,
-								borderRadius: radius.xl,
-								border: `3px solid ${colors.border}`,
-								backgroundColor: colors.surface,
-								boxShadow: shadows.lg,
+								placeItems: 'center',
+								padding: spacing.md,
+								zIndex: 1000,
+								pointerEvents: transferModalClosing ? 'none' : 'auto',
 								animation: transferModalClosing
-									? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
-									: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+									? `modal-backdrop-out ${modalCloseAnimationDurationMs}ms ease-in forwards`
+									: 'modal-backdrop-in 180ms ease-out forwards',
 								[mq.mobile]: {
-									width: '100%',
-									maxHeight: '100dvh',
-									minHeight: '100dvh',
-									borderRadius: 0,
-									border: 'none',
-									gap: spacing.sm,
-									padding: spacing.md,
+									padding: 0,
+									placeItems: 'stretch',
 								},
 							}),
-							on<HTMLElement, 'keydown'>('keydown', handleTransferModalKeydown),
+							on<HTMLElement, 'click'>('click', (event) => {
+								if (event.target === event.currentTarget) {
+									closeTransferModal()
+								}
+							}),
 						]}
 					>
-						<header
-							mix={css({ display: 'flex', justifyContent: 'space-between' })}
-						>
-							<div>
-								<h3
-									id="transfer-modal-title"
-									mix={css({ margin: 0, color: colors.text })}
-								>
-									Transfer money
-								</h3>
-								<p
-									id="transfer-modal-description"
-									mix={css({ margin: 0, color: colors.textMuted })}
-								>
-									Move any amount from one account to another.
-								</p>
-							</div>
-							<button
-								id="transfer-modal-close"
-								type="button"
-								mix={[
-									css({
+						<section
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="transfer-modal-title"
+							aria-describedby="transfer-modal-description"
+							mix={[
+								css({
+									width: 'min(34rem, 100%)',
+									maxHeight: 'calc(100dvh - 2 * var(--spacing-md))',
+									overflow: 'auto',
+									display: 'grid',
+									gap: spacing.md,
+									padding: spacing.lg,
+									fontFamily: typography.fontFamily,
+									borderRadius: radius.xl,
+									border: `3px solid ${colors.border}`,
+									backgroundColor: colors.surface,
+									boxShadow: shadows.lg,
+									animation: transferModalClosing
+										? `modal-close ${modalCloseAnimationDurationMs}ms ease-in forwards`
+										: 'modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+									[mq.mobile]: {
+										width: '100%',
+										maxHeight: '100dvh',
+										minHeight: '100dvh',
+										borderRadius: 0,
 										border: 'none',
-										background: 'transparent',
-										color: colors.textMuted,
-										cursor: 'pointer',
-									}),
-									on<HTMLElement, 'click'>('click', closeTransferModal),
-								]}
+										gap: spacing.sm,
+										padding: spacing.md,
+									},
+								}),
+								on<HTMLElement, 'keydown'>(
+									'keydown',
+									handleTransferModalKeydown,
+								),
+							]}
+						>
+							<header
+								mix={css({ display: 'flex', justifyContent: 'space-between' })}
 							>
-								Close
-							</button>
-						</header>
-
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>From account</span>
-							<select
-								value={transferState.fromAccountId}
-								disabled={getTransferAccountOptions(kids).length === 0}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'change'>('change', (event) => {
-										if (!(event.currentTarget instanceof HTMLSelectElement))
-											return
-										setTransferSource(event.currentTarget.value)
-									}),
-								]}
-							>
-								{getTransferAccountGroups(kids).map((group) => (
-									<optgroup
-										key={group.kid.id}
-										label={`${group.kid.emoji} ${group.kid.name}`}
+								<div>
+									<h3
+										id="transfer-modal-title"
+										mix={css({ margin: 0, color: colors.text })}
 									>
-										{group.accounts.map((account) => (
-											<option key={account.id} value={String(account.id)}>
-												{account.name} ({formatCents(account.balanceCents)})
-											</option>
-										))}
-									</optgroup>
-								))}
-							</select>
-							<span
-								mix={css({
-									color: colors.textMuted,
-									fontSize: typography.fontSize.sm,
-								})}
-							>
-								{getSelectedTransferSourceBalanceLabel(transferState, kids)}
-							</span>
-						</label>
+										Transfer money
+									</h3>
+									<p
+										id="transfer-modal-description"
+										mix={css({ margin: 0, color: colors.textMuted })}
+									>
+										Move any amount from one account to another.
+									</p>
+								</div>
+								<button
+									id="transfer-modal-close"
+									type="button"
+									mix={[
+										css({
+											border: 'none',
+											background: 'transparent',
+											color: colors.textMuted,
+											cursor: 'pointer',
+										}),
+										on<HTMLElement, 'click'>('click', closeTransferModal),
+									]}
+								>
+									Close
+								</button>
+							</header>
 
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>To account</span>
-							<select
-								value={transferState.toAccountId}
-								disabled={
-									getTransferDestinationGroups(transferState, kids).length === 0
-								}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'change'>('change', (event) => {
-										if (!(event.currentTarget instanceof HTMLSelectElement))
-											return
-										transferState!.toAccountId = event.currentTarget.value
-										transferState!.error = null
-										handle.update()
-									}),
-								]}
-							>
-								{getTransferDestinationGroups(transferState, kids).map(
-									(group) => (
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>From account</span>
+								<select
+									value={transferState.fromAccountId}
+									disabled={getTransferAccountOptions(kids).length === 0}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'change'>('change', (event) => {
+											if (!(event.currentTarget instanceof HTMLSelectElement))
+												return
+											setTransferSource(event.currentTarget.value)
+										}),
+									]}
+								>
+									{getTransferAccountGroups(kids).map((group) => (
 										<optgroup
 											key={group.kid.id}
 											label={`${group.kid.emoji} ${group.kid.name}`}
@@ -1014,158 +1040,206 @@ export function HomeRoute(handle: Handle) {
 												</option>
 											))}
 										</optgroup>
-									),
-								)}
-							</select>
-							<span
-								mix={css({
-									color: colors.textMuted,
-									fontSize: typography.fontSize.sm,
-								})}
-							>
-								Accounts for{' '}
-								{getSelectedTransferSource(transferState, kids)?.kid.name ??
-									'the selected kid'}{' '}
-								are listed first; other kids are available below.
-							</span>
-						</label>
+									))}
+								</select>
+								<span
+									mix={css({
+										color: colors.textMuted,
+										fontSize: typography.fontSize.sm,
+									})}
+								>
+									{getSelectedTransferSourceBalanceLabel(transferState, kids)}
+								</span>
+							</label>
 
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>Amount</span>
-							<input
-								type="number"
-								min="0"
-								step="0.01"
-								value={transferState.amount}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										transferState!.amount = event.currentTarget.value
-										transferState!.error = null
-										handle.update()
-									}),
-								]}
-							/>
-						</label>
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>To account</span>
+								<select
+									value={transferState.toAccountId}
+									disabled={
+										getTransferDestinationGroups(transferState, kids).length ===
+										0
+									}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'change'>('change', (event) => {
+											if (!(event.currentTarget instanceof HTMLSelectElement))
+												return
+											transferState!.toAccountId = event.currentTarget.value
+											transferState!.error = null
+											handle.update()
+										}),
+									]}
+								>
+									{getTransferDestinationGroups(transferState, kids).map(
+										(group) => (
+											<optgroup
+												key={group.kid.id}
+												label={`${group.kid.emoji} ${group.kid.name}`}
+											>
+												{group.accounts.map((account) => (
+													<option key={account.id} value={String(account.id)}>
+														{account.name} ({formatCents(account.balanceCents)})
+													</option>
+												))}
+											</optgroup>
+										),
+									)}
+								</select>
+								<span
+									mix={css({
+										color: colors.textMuted,
+										fontSize: typography.fontSize.sm,
+									})}
+								>
+									Accounts for{' '}
+									{getSelectedTransferSource(transferState, kids)?.kid.name ??
+										'the selected kid'}{' '}
+									are listed first; other kids are available below.
+								</span>
+							</label>
 
-						<div mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span
-								mix={css({
-									color: colors.textMuted,
-									fontSize: typography.fontSize.sm,
-								})}
-							>
-								Quick amounts
-							</span>
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>Amount</span>
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									value={transferState.amount}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											transferState!.amount = event.currentTarget.value
+											transferState!.error = null
+											handle.update()
+										}),
+									]}
+								/>
+							</label>
+
+							<div mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span
+									mix={css({
+										color: colors.textMuted,
+										fontSize: typography.fontSize.sm,
+									})}
+								>
+									Quick amounts
+								</span>
+								<div
+									mix={css({
+										display: 'grid',
+										gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+										gap: spacing.xs,
+									})}
+								>
+									<button
+										type="button"
+										disabled={
+											getTransferAvailableBalanceCents(transferState, kids) ===
+											0
+										}
+										mix={[
+											css(quickAmountButtonCss()),
+											on<HTMLElement, 'click'>('click', () =>
+												setTransferAmountFromQuick(
+													getTransferAvailableBalanceCents(
+														transferState!,
+														kids,
+													),
+												),
+											),
+										]}
+									>
+										{`Current Total (${formatCents(
+											getTransferAvailableBalanceCents(transferState, kids),
+										)})`}
+									</button>
+									{quickAmounts.map((amount) => (
+										<button
+											key={amount}
+											type="button"
+											mix={[
+												css(quickAmountButtonCss()),
+												on<HTMLElement, 'click'>('click', () =>
+													setTransferAmountFromQuick(amount),
+												),
+											]}
+										>
+											{formatCents(amount)}
+										</button>
+									))}
+								</div>
+							</div>
+
+							<label mix={css({ display: 'grid', gap: spacing.xs })}>
+								<span mix={css({ color: colors.text })}>Note (optional)</span>
+								<input
+									type="text"
+									value={transferState.note}
+									mix={[
+										css(inputCss),
+										on<HTMLElement, 'input'>('input', (event) => {
+											if (!(event.currentTarget instanceof HTMLInputElement))
+												return
+											transferState!.note = event.currentTarget.value
+											handle.update()
+										}),
+									]}
+								/>
+							</label>
+
+							{transferState.error ? (
+								<p mix={css({ margin: 0, color: colors.error })}>
+									{transferState.error}
+								</p>
+							) : null}
+
 							<div
 								mix={css({
 									display: 'grid',
-									gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-									gap: spacing.xs,
+									gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+									gap: spacing.sm,
 								})}
 							>
 								<button
 									type="button"
-									disabled={
-										getTransferAvailableBalanceCents(transferState, kids) === 0
-									}
 									mix={[
-										css(quickAmountButtonCss()),
-										on<HTMLElement, 'click'>('click', () =>
-											setTransferAmountFromQuick(
-												getTransferAvailableBalanceCents(transferState!, kids),
+										css({
+											...modalButtonCss(
+												colors.surface,
+												colors.text,
+												colors.border,
 											),
+											border: `2px solid ${colors.border}`,
+										}),
+										on<HTMLElement, 'click'>('click', closeTransferModal),
+									]}
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									disabled={transferState.status === 'saving'}
+									mix={[
+										css(modalButtonCss('#bfdbfe', '#172554', '#2563eb')),
+										on<HTMLElement, 'click'>(
+											'click',
+											() => void submitTransfer(),
 										),
 									]}
 								>
-									{`Current Total (${formatCents(
-										getTransferAvailableBalanceCents(transferState, kids),
-									)})`}
+									Transfer
 								</button>
-								{quickAmounts.map((amount) => (
-									<button
-										key={amount}
-										type="button"
-										mix={[
-											css(quickAmountButtonCss()),
-											on<HTMLElement, 'click'>('click', () =>
-												setTransferAmountFromQuick(amount),
-											),
-										]}
-									>
-										{formatCents(amount)}
-									</button>
-								))}
 							</div>
-						</div>
-
-						<label mix={css({ display: 'grid', gap: spacing.xs })}>
-							<span mix={css({ color: colors.text })}>Note (optional)</span>
-							<input
-								type="text"
-								value={transferState.note}
-								mix={[
-									css(inputCss),
-									on<HTMLElement, 'input'>('input', (event) => {
-										if (!(event.currentTarget instanceof HTMLInputElement))
-											return
-										transferState!.note = event.currentTarget.value
-										handle.update()
-									}),
-								]}
-							/>
-						</label>
-
-						{transferState.error ? (
-							<p mix={css({ margin: 0, color: colors.error })}>
-								{transferState.error}
-							</p>
-						) : null}
-
-						<div
-							mix={css({
-								display: 'grid',
-								gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-								gap: spacing.sm,
-							})}
-						>
-							<button
-								type="button"
-								mix={[
-									css({
-										...modalButtonCss(
-											colors.surface,
-											colors.text,
-											colors.border,
-										),
-										border: `2px solid ${colors.border}`,
-									}),
-									on<HTMLElement, 'click'>('click', closeTransferModal),
-								]}
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								disabled={transferState.status === 'saving'}
-								mix={[
-									css(modalButtonCss('#bfdbfe', '#172554', '#2563eb')),
-									on<HTMLElement, 'click'>(
-										'click',
-										() => void submitTransfer(),
-									),
-								]}
-							>
-								Transfer
-							</button>
-						</div>
-					</section>
-				</div>
-			) : null}
-		</section>
-	)
+						</section>
+					</div>
+				) : null}
+			</section>
+		)
+	}
 }
 
 export const Component = HomeRoute

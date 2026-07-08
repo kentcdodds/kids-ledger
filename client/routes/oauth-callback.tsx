@@ -1,12 +1,10 @@
-import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
 import { css, type Handle } from 'remix/ui'
+import { readRouterSearch } from '#client/router-location.tsx'
+import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
 
-export function OAuthCallbackRoute(_handle: Handle) {
+export function OAuthCallbackRoute(handle: Handle) {
 	return () => {
-		const params =
-			typeof window === 'undefined'
-				? new URLSearchParams()
-				: new URLSearchParams(window.location.search)
+		const params = new URLSearchParams(readRouterSearch(handle))
 		const error = params.get('error')
 		const description = params.get('error_description')
 		const code = params.get('code')

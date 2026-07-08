@@ -20,6 +20,9 @@ export type KvNamespaceListEntry = {
 	title: string
 }
 
+const appDatabaseName = 'kids-ledger'
+const cloudflareAccountIdEnv = 'CLOUDFLARE_ACCOUNT_ID'
+
 export function fail(message: string): never {
 	console.error(message)
 	process.exit(1)
@@ -33,14 +36,18 @@ function renderArg(value: string) {
 
 export function runWrangler(
 	args: Array<string>,
-	options?: { input?: string; quiet?: boolean },
+	options?: {
+		input?: string
+		quiet?: boolean
+		env?: Record<string, string | undefined>
+	},
 ) {
 	const bunBin = process.execPath
 	const result = spawnSync(bunBin, ['x', 'wrangler', ...args], {
 		encoding: 'utf8',
 		stdio: 'pipe',
 		input: options?.input,
-		env: process.env,
+		env: { ...process.env, ...options?.env },
 	})
 
 	const status = result.status ?? 1
@@ -66,6 +73,66 @@ export function runWrangler(
 	return { status, stdout, stderr }
 }
 
+function parseAvailableAccountIds(output: string) {
+	return Array.from(output.matchAll(/`([0-9a-f]{32})`/g), (match) => match[1])
+		.filter((accountId): accountId is string => Boolean(accountId))
+		.filter((accountId, index, accountIds) => {
+			return accountIds.indexOf(accountId) === index
+		})
+}
+
+function parseD1ListOutput(stdout: string): Array<D1DatabaseListEntry> {
+	try {
+		return JSON.parse(stdout) as Array<D1DatabaseListEntry>
+	} catch {
+		fail('Could not parse JSON output from wrangler d1 list --json.')
+	}
+}
+
+function selectAccountFromD1ListFailure(output: string) {
+	const accountIds = parseAvailableAccountIds(output)
+	if (accountIds.length === 0) return null
+
+	const candidates: Array<{
+		accountId: string
+		databases: Array<D1DatabaseListEntry>
+	}> = []
+
+	for (const accountId of accountIds) {
+		const result = runWrangler(['d1', 'list', '--json'], {
+			env: { [cloudflareAccountIdEnv]: accountId },
+			quiet: true,
+		})
+		if (result.status !== 0) continue
+		const databases = parseD1ListOutput(result.stdout)
+		if (
+			databases.some((database) => {
+				return database.name === appDatabaseName
+			})
+		) {
+			candidates.push({ accountId, databases })
+		}
+	}
+
+	if (candidates.length !== 1) {
+		fail(
+			`Could not select a unique Cloudflare account from D1 databases. Set ${cloudflareAccountIdEnv} in CI.`,
+		)
+	}
+
+	const [candidate] = candidates
+	if (!candidate) {
+		fail(
+			`Could not select a Cloudflare account. Set ${cloudflareAccountIdEnv} in CI.`,
+		)
+	}
+	process.env[cloudflareAccountIdEnv] = candidate.accountId
+	console.error(
+		`Selected Cloudflare account from existing D1 database "${appDatabaseName}".`,
+	)
+	return candidate.databases
+}
+
 export function truncateWithSuffix(
 	base: string,
 	suffix: string,
@@ -82,13 +149,13 @@ export function truncateWithSuffix(
 export function listD1Databases(): Array<D1DatabaseListEntry> {
 	const result = runWrangler(['d1', 'list', '--json'], { quiet: true })
 	if (result.status !== 0) {
+		const selected = selectAccountFromD1ListFailure(
+			`${result.stdout}\n${result.stderr}`,
+		)
+		if (selected) return selected
 		fail('Failed to list D1 databases (wrangler d1 list --json).')
 	}
-	try {
-		return JSON.parse(result.stdout) as Array<D1DatabaseListEntry>
-	} catch {
-		fail('Could not parse JSON output from wrangler d1 list --json.')
-	}
+	return parseD1ListOutput(result.stdout)
 }
 
 export function listKvNamespaces(): Array<KvNamespaceListEntry> {

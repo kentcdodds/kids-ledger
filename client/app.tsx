@@ -1,6 +1,12 @@
 import { css, on, type Handle } from 'remix/ui'
 import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
+import { AppSessionProvider } from './app-session.tsx'
+import {
+	readRouterPathname,
+	readRouterSearch,
+	readRouterUrl,
+} from './router-location.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -9,9 +15,15 @@ import {
 import { buildAuthLink } from './auth-links.ts'
 import { colors, spacing, typography, mq } from './styles/tokens.ts'
 
-export function App(handle: Handle) {
-	let session: SessionInfo | null = null
-	let sessionStatus: SessionStatus = 'idle'
+type AppProps = {
+	embeddedSession?: SessionInfo | null
+	notFound?: boolean
+}
+
+export function App(handle: Handle<AppProps>) {
+	let session: SessionInfo | null = handle.props.embeddedSession ?? null
+	let sessionStatus: SessionStatus =
+		handle.props.embeddedSession !== undefined ? 'ready' : 'idle'
 	let sessionRefreshInFlight = false
 	let sessionRefreshQueued = false
 
@@ -44,22 +56,25 @@ export function App(handle: Handle) {
 	}
 
 	function syncDocumentTitle() {
-		if (typeof window === 'undefined') return
-		document.title = getClientDocumentTitle(new URL(window.location.href))
+		if (typeof document === 'undefined') return
+		document.title = getClientDocumentTitle(
+			new URL(readRouterUrl(handle), 'https://kids-ledger.local'),
+		)
 	}
 
-	let currentPath =
-		typeof window !== 'undefined' ? window.location.pathname : '/'
+	let currentPath = readRouterPathname(handle)
 
-	handle.queueTask(() => {
-		queueSessionRefresh()
-		syncDocumentTitle()
-	})
-	listenToRouterNavigation(handle, () => {
-		currentPath = window.location.pathname
-		queueSessionRefresh()
-		syncDocumentTitle()
-	})
+	if (typeof document !== 'undefined') {
+		handle.queueTask(() => {
+			queueSessionRefresh()
+			syncDocumentTitle()
+		})
+		listenToRouterNavigation(handle, () => {
+			currentPath = readRouterPathname(handle)
+			queueSessionRefresh()
+			syncDocumentTitle()
+		})
+	}
 
 	function getNavLinkCss(href: string) {
 		const isActive = currentPath === href
@@ -252,14 +267,14 @@ export function App(handle: Handle) {
 	})
 
 	return () => {
+		currentPath = readRouterPathname(handle)
 		const sessionEmail = session?.email ?? ''
 		const isSessionReady = sessionStatus === 'ready'
 		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
 		const showAuthLinks = isSessionReady && !isLoggedIn
 		const oauthRedirectTo =
-			typeof window !== 'undefined' &&
-			window.location.pathname === '/oauth/authorize'
-				? `${window.location.pathname}${window.location.search}`
+			currentPath === '/oauth/authorize'
+				? `${currentPath}${readRouterSearch(handle)}`
 				: null
 		const loginHref = buildAuthLink('/login', oauthRedirectTo)
 		const signupHref = buildAuthLink('/signup', oauthRedirectTo)
@@ -322,26 +337,29 @@ export function App(handle: Handle) {
 					) : null}
 				</nav>
 				<div mix={css(routeContentShellCss)}>
-					<Router
-						routes={clientRoutes}
-						fallback={
-							<section>
-								<h2
-									mix={css({
-										fontSize: typography.fontSize.lg,
-										fontWeight: typography.fontWeight.semibold,
-										marginBottom: spacing.sm,
-										color: colors.text,
-									})}
-								>
-									Not Found
-								</h2>
-								<p mix={css({ color: colors.textMuted })}>
-									That route does not exist.
-								</p>
-							</section>
-						}
-					/>
+					<AppSessionProvider session={session} status={sessionStatus}>
+						<Router
+							routes={clientRoutes}
+							notFound={handle.props.notFound}
+							fallback={
+								<section>
+									<h2
+										mix={css({
+											fontSize: typography.fontSize.lg,
+											fontWeight: typography.fontWeight.semibold,
+											marginBottom: spacing.sm,
+											color: colors.text,
+										})}
+									>
+										Not Found
+									</h2>
+									<p mix={css({ color: colors.textMuted })}>
+										That route does not exist.
+									</p>
+								</section>
+							}
+						/>
+					</AppSessionProvider>
 				</div>
 				<footer
 					mix={css({
