@@ -314,7 +314,10 @@ async function revalidateCurrentRouteData() {
 }
 
 function handlePopstate() {
-	void revalidateCurrentRouteData()
+	notify()
+	void preloadRouteData(new URL(window.location.href)).then(() => {
+		notify()
+	})
 }
 
 function handleRouteDataRevalidation() {
