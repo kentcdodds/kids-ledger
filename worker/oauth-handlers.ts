@@ -8,6 +8,7 @@ import { getEnv } from '#server/env.ts'
 import { toHex } from '#server/hex.ts'
 import { renderAppPage } from '#server/ssr-render.tsx'
 import { verifyUserCredentials } from '#server/verify-user-credentials.ts'
+import { type AppLoaderDataEnvelope } from '#shared/route-loader-data.ts'
 import { createDb } from './db.ts'
 import { wantsJson } from './utils.ts'
 
@@ -41,13 +42,54 @@ function renderSpaShell(
 	env: Env,
 	status = 200,
 	title = status >= 400 ? 'Authorization Failed' : 'Authorize App',
+	loaderData?: AppLoaderDataEnvelope | null,
 ) {
 	return renderAppPage({
 		request,
 		appEnv: getEnv(env),
 		status,
 		title,
+		loaderData,
 	})
+}
+
+function getRequestHref(request: Request) {
+	const url = new URL(request.url)
+	return `${url.pathname}${url.search}${url.hash}`
+}
+
+async function loadOAuthAuthorizeLoaderData(request: Request, env: Env) {
+	const appEnv = getEnv(env)
+	setAuthSessionSecret(appEnv.COOKIE_SECRET)
+	const [infoResponse, session] = await Promise.all([
+		handleAuthorizeInfo(request, env),
+		readAuthSession(request),
+	])
+	const payload = await infoResponse.json<{
+		ok?: boolean
+		error?: string
+		client?: { id: string; name: string }
+		scopes?: Array<string>
+	}>()
+	return {
+		href: getRequestHref(request),
+		data: {
+			oauthAuthorize: {
+				info:
+					infoResponse.ok && payload.ok && payload.client
+						? {
+								client: payload.client,
+								scopes: Array.isArray(payload.scopes) ? payload.scopes : [],
+							}
+						: null,
+				session: session ? { email: session.email } : null,
+				error:
+					infoResponse.ok && payload.ok
+						? null
+						: (payload.error ?? 'Unable to load authorization details.'),
+			},
+		},
+	} satisfies AppLoaderDataEnvelope
 }
 
 async function createUserId(email: string) {
@@ -187,7 +229,13 @@ export async function handleAuthorizeRequest(
 	env: Env,
 ): Promise<Response> {
 	if (request.method === 'GET') {
-		return renderSpaShell(request, env)
+		return renderSpaShell(
+			request,
+			env,
+			200,
+			'Authorize App',
+			await loadOAuthAuthorizeLoaderData(request, env),
+		)
 	}
 
 	if (request.method !== 'POST') {

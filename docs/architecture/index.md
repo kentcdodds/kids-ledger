@@ -19,6 +19,8 @@ This folder documents the important runtime architecture for `kids-ledger`.
 - SSR document rendering: `server/ssr-render.tsx` and `server/ssr-document.tsx`
 - Client hydration and navigation: `client/app-root.tsx`,
   `client/router-location.tsx`, and `client/client-router.tsx`
+- Route loader data: `server/route-loader-data.ts` and
+  `client/route-loader-data.tsx`
 - OAuth handlers: `worker/oauth-handlers.ts`
 - MCP auth checks: `worker/mcp-auth.ts`
 - Ledger domain service: `server/ledger/ledger-service.ts`

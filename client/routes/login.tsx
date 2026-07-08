@@ -2,6 +2,11 @@ import { css, on, type Handle } from 'remix/ui'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
+import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
+import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
 import {
@@ -21,15 +26,17 @@ type LoginFormSetup = {
 	initialMode?: AuthMode
 }
 
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+function getSearchParams(handle: Handle) {
+	return new URLSearchParams(readRouterSearch(handle))
 }
 
 function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	const path = mode === 'signup' ? '/signup' : '/login'
 	return buildAuthLink(path, redirectTo)
+}
+
+export const loader: ClientRouteLoader = async ({ signal }) => {
+	return { session: await fetchSessionInfo(signal) }
 }
 
 export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
@@ -39,9 +46,10 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
 	const redirectTo = normalizeRedirectTarget(
-		getSearchParams().get('redirectTo'),
+		getSearchParams(handle).get('redirectTo'),
 	)
 	const redirectTarget = redirectTo ?? '/account'
+	let sessionRefreshInFlight = false
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
@@ -58,21 +66,33 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		handle.update()
 	}
 
-	handle.queueTask(async (signal) => {
-		if (sessionStatus !== 'idle') return
-		sessionStatus = 'loading'
-
-		const session = await fetchSessionInfo(signal)
-		if (signal.aborted) return
+	function applySession(session: Awaited<ReturnType<typeof fetchSessionInfo>>) {
 		sessionEmail = session?.email ?? ''
-
 		sessionStatus = 'ready'
 		if (sessionEmail && typeof window !== 'undefined') {
 			window.location.assign(redirectTarget)
-			return
 		}
-		handle.update()
-	})
+	}
+
+	function applyRouteLoaderData(currentHref: string) {
+		const session = tryConsumeRouteLoaderData(handle, 'session', currentHref)
+		if (session === undefined) return false
+		applySession(session)
+		return true
+	}
+
+	async function loadSession(signal: AbortSignal) {
+		if (sessionStatus !== 'idle' || sessionRefreshInFlight) return
+		sessionRefreshInFlight = true
+		sessionStatus = 'loading'
+
+		const session = await fetchSessionInfo(signal)
+		if (!signal.aborted) {
+			applySession(session)
+			handle.update()
+		}
+		sessionRefreshInFlight = false
+	}
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
@@ -114,6 +134,15 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	}
 
 	return () => {
+		const currentHref = readRouterUrl(handle)
+		const appliedRouteData = applyRouteLoaderData(currentHref)
+		if (
+			sessionStatus === 'idle' &&
+			!appliedRouteData &&
+			!sessionRefreshInFlight
+		) {
+			handle.queueTask(loadSession)
+		}
 		const isSignup = mode === 'signup'
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'

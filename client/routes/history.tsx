@@ -5,8 +5,14 @@ import {
 	type LedgerTransaction,
 } from '#client/ledger-api.ts'
 import { listenToRouterNavigation, navigate } from '#client/client-router.tsx'
+import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
+import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
 import { formatCents } from '#client/money.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
+import { type HistoryLoaderData } from '#shared/route-loader-data.ts'
 import { getAccountGradientBackground } from '#client/styles/account-colors.ts'
 import { colors, mq, radius, shadows, spacing } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
@@ -31,9 +37,12 @@ type HistoryState = {
 
 const defaultHistoryPageSize = 50
 
-function getInitialQuery() {
-	if (typeof window === 'undefined') return new URLSearchParams()
-	return new URLSearchParams(window.location.search)
+function getQueryFromSearch(search: string) {
+	const query = new URLSearchParams(search)
+	if (!query.get('limit')) {
+		query.set('limit', String(defaultHistoryPageSize))
+	}
+	return query
 }
 
 function getPage(query: URLSearchParams) {
@@ -77,6 +86,15 @@ const disabledPaginationControlCss = {
 	transform: 'none',
 }
 
+export const loader: ClientRouteLoader = async ({ url }) => {
+	const query = getQueryFromSearch(url.search)
+	const [settings, transactions] = await Promise.all([
+		fetchSettings(),
+		fetchTransactions(query),
+	])
+	return { history: { settings, transactions } }
+}
+
 function getTransactionTextColors(colorToken: string) {
 	if (colorToken === 'sun') {
 		return {
@@ -93,10 +111,7 @@ function getTransactionTextColors(colorToken: string) {
 }
 
 export function HistoryRoute(handle: Handle) {
-	let query = getInitialQuery()
-	if (!query.get('limit')) {
-		query.set('limit', String(defaultHistoryPageSize))
-	}
+	let query = getQueryFromSearch(readRouterSearch(handle))
 	let state: HistoryState = {
 		status: 'loading',
 		errorMessage: '',
@@ -117,6 +132,7 @@ export function HistoryRoute(handle: Handle) {
 	const pendingRefreshDelay = createSpinDelay(() => {
 		handle.update()
 	})
+	let historyRefreshInFlight = false
 
 	function updateQuery(next: URLSearchParams) {
 		if (!next.get('limit')) {
@@ -140,6 +156,8 @@ export function HistoryRoute(handle: Handle) {
 	}
 
 	async function loadHistory() {
+		if (historyRefreshInFlight) return
+		historyRefreshInFlight = true
 		state = { ...state, status: 'loading', errorMessage: '' }
 		pendingRefreshDelay.setLoading(true)
 		handle.update()
@@ -185,23 +203,73 @@ export function HistoryRoute(handle: Handle) {
 			}
 		}
 		pendingRefreshDelay.setLoading(false)
+		historyRefreshInFlight = false
 		handle.update()
 	}
 
-	handle.queueTask(async () => {
-		await loadHistory()
-	})
-	listenToRouterNavigation(handle, () => {
-		const next = getInitialQuery()
-		if (!next.get('limit')) {
-			next.set('limit', String(defaultHistoryPageSize))
+	function applyHistoryData(data: HistoryLoaderData) {
+		const kidOptions = data.settings.settings.kids.map((kid) => ({
+			id: kid.id,
+			name: kid.name,
+		}))
+		const accountOptions = data.settings.settings.kids.flatMap((kid) =>
+			kid.accounts.map((account) => ({
+				id: account.id,
+				name: account.name,
+				kidName: kid.name,
+			})),
+		)
+		state = {
+			status: 'ready',
+			errorMessage: '',
+			transactions: data.transactions.transactions,
+			page: data.transactions.page,
+			pageSize: data.transactions.pageSize,
+			totalCount: data.transactions.totalCount,
+			totalPages: data.transactions.totalPages,
+			hasPreviousPage: data.transactions.hasPreviousPage,
+			hasNextPage: data.transactions.hasNextPage,
+			startCursor: data.transactions.startCursor,
+			endCursor: data.transactions.endCursor,
+			middleCursor: data.transactions.middleCursor,
+			endPageCursor: data.transactions.endPageCursor,
+			kidOptions,
+			accountOptions,
 		}
-		if (next.toString() === query.toString()) return
-		query = next
-		void loadHistory()
+		pendingRefreshDelay.setLoading(false)
+	}
+
+	function applyRouteLoaderData(currentHref: string) {
+		const data = tryConsumeRouteLoaderData(handle, 'history', currentHref)
+		if (!data) return false
+		applyHistoryData(data)
+		return true
+	}
+
+	listenToRouterNavigation(handle, () => {
+		void handle.update()
 	})
 
 	return () => {
+		const currentHref = readRouterUrl(handle)
+		const nextQuery = getQueryFromSearch(readRouterSearch(handle))
+		if (nextQuery.toString() !== query.toString()) {
+			query = nextQuery
+			state = {
+				...state,
+				status: state.transactions.length > 0 ? state.status : 'loading',
+				errorMessage: '',
+			}
+		}
+		const appliedRouteData = applyRouteLoaderData(currentHref)
+		if (
+			typeof window !== 'undefined' &&
+			!appliedRouteData &&
+			!historyRefreshInFlight &&
+			(state.status === 'loading' || pendingRefreshDelay.isShowing())
+		) {
+			handle.queueTask(loadHistory)
+		}
 		const showPendingRefresh =
 			state.transactions.length > 0 && pendingRefreshDelay.isShowing()
 		return (

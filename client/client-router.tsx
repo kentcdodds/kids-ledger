@@ -5,9 +5,16 @@ import {
 	readRouterUrl,
 	readSsrRouterUrl,
 } from './router-location.tsx'
+import {
+	clearPreloadedNavigationData,
+	routeDataEvents,
+	setPreloadedNavigationData,
+	type ClientRouteLoader,
+} from './route-loader-data.tsx'
 
 type RouteDefinition = {
 	Component: (...args: Array<any>) => any
+	loader?: ClientRouteLoader
 }
 
 type RouterProps = {
@@ -32,6 +39,8 @@ const routeMatchers = new WeakMap<
 	ReturnType<typeof createRouteMatcher>
 >()
 let routerInitialized = false
+let activeRoutes: Record<string, RouteDefinition> | null = null
+let activeLoaderController: AbortController | null = null
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
@@ -87,7 +96,7 @@ function handleDocumentClick(event: MouseEvent) {
 
 	event.preventDefault()
 	const destination = new URL(anchor.href, window.location.href)
-	navigate(`${destination.pathname}${destination.search}${destination.hash}`)
+	void navigateToUrl(destination)
 }
 
 function getFormSubmitter(event: SubmitEvent) {
@@ -188,15 +197,16 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-function navigateWithRefreshForSamePath(destination: URL) {
+async function navigateWithRefreshForSamePath(destination: URL) {
 	if (
 		getPathWithSearchAndHashFromUrl(destination) ===
 		getCurrentPathWithSearchAndHash()
 	) {
+		await preloadRouteData(destination)
 		notify()
 		return
 	}
-	navigate(destination.toString())
+	await navigateToUrl(destination)
 }
 
 async function submitFormThroughRouter(details: FormSubmitDetails) {
@@ -227,13 +237,15 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 
 	const response = await fetch(details.action.toString(), init)
 	if (response.redirected) {
-		navigateWithRefreshForSamePath(new URL(response.url, window.location.href))
+		await navigateWithRefreshForSamePath(
+			new URL(response.url, window.location.href),
+		)
 		return
 	}
 
 	const location = response.headers.get('Location')
 	if (location) {
-		navigateWithRefreshForSamePath(new URL(location, details.action))
+		await navigateWithRefreshForSamePath(new URL(location, details.action))
 		return
 	}
 
@@ -259,13 +271,67 @@ function handleDocumentSubmit(event: Event) {
 	})
 }
 
-function ensureRouter() {
+async function preloadRouteData(destination: URL) {
+	if (!activeRoutes) return
+	activeLoaderController?.abort()
+	const routeElement = matchRoute(destination.pathname, activeRoutes)
+	if (!routeElement?.loader) {
+		clearPreloadedNavigationData()
+		return
+	}
+	const controller = new AbortController()
+	activeLoaderController = controller
+	try {
+		const data = await routeElement.loader({
+			url: destination,
+			signal: controller.signal,
+		})
+		if (controller.signal.aborted) return
+		if (data && Object.keys(data).length > 0) {
+			setPreloadedNavigationData(
+				getPathWithSearchAndHashFromUrl(destination),
+				data,
+			)
+		} else {
+			clearPreloadedNavigationData()
+		}
+	} catch (error) {
+		if (!controller.signal.aborted) {
+			console.error('Route loader failed', error)
+			clearPreloadedNavigationData()
+		}
+	} finally {
+		if (activeLoaderController === controller) {
+			activeLoaderController = null
+		}
+	}
+}
+
+async function revalidateCurrentRouteData() {
+	if (typeof window === 'undefined') return
+	await preloadRouteData(new URL(window.location.href))
+	notify()
+}
+
+function handlePopstate() {
+	void revalidateCurrentRouteData()
+}
+
+function handleRouteDataRevalidation() {
+	void revalidateCurrentRouteData()
+}
+
+function ensureRouter(routes?: Record<string, RouteDefinition>) {
 	if (typeof document === 'undefined') return
+	if (routes) {
+		activeRoutes = routes
+	}
 	if (routerInitialized) return
 	routerInitialized = true
-	window.addEventListener('popstate', notify)
+	window.addEventListener('popstate', handlePopstate)
 	document.addEventListener('click', handleDocumentClick)
 	document.addEventListener('submit', handleDocumentSubmit)
+	routeDataEvents.addEventListener('revalidate', handleRouteDataRevalidation)
 }
 
 export function listenToRouterNavigation(
@@ -306,15 +372,21 @@ export function navigate(to: string) {
 		return
 	}
 
+	void navigateToUrl(destination)
+}
+
+async function navigateToUrl(destination: URL) {
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
 
+	await preloadRouteData(destination)
 	window.history.pushState({}, '', nextPath)
 	notify()
 }
 
 export function Router(handle: Handle<RouterProps>) {
 	if (typeof document !== 'undefined') {
+		ensureRouter(handle.props.routes)
 		listenToRouterNavigation(handle, () => {
 			void handle.update()
 		})

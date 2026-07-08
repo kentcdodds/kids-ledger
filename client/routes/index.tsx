@@ -11,6 +11,7 @@ import * as resetPassword from './reset-password.tsx'
 import * as settings from './settings.tsx'
 import * as signup from './signup.tsx'
 import * as termsOfService from './terms-of-service.tsx'
+import { type ClientRouteLoader } from '#client/route-loader-data.tsx'
 
 const appTitle = 'Kids Ledger'
 
@@ -22,6 +23,7 @@ type MetaData = {
 
 type RouteModule = {
 	Component: (...args: Array<any>) => any
+	loader?: ClientRouteLoader
 	getMetadata?: (args: { url: URL; params: RouteParams }) => MetaData
 }
 

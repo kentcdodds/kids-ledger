@@ -1,5 +1,9 @@
 import { css, on, type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
+import {
+	tryConsumeRouteLoaderData,
+	type ClientRouteLoader,
+} from '#client/route-loader-data.tsx'
 import { readRouterSearch } from '#client/router-location.tsx'
 import {
 	fetchSessionInfo,
@@ -14,6 +18,7 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 import { inputCss, buttonCss } from '#client/styles/form-controls.ts'
+import { type OAuthAuthorizeLoaderData } from '#shared/route-loader-data.ts'
 
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }
@@ -27,6 +32,47 @@ function getSearchParams(handle: Handle) {
 	return new URLSearchParams(readRouterSearch(handle))
 }
 
+async function fetchOAuthAuthorizeLoaderData(
+	search: string,
+	signal?: AbortSignal,
+): Promise<OAuthAuthorizeLoaderData> {
+	const [infoResponse, session] = await Promise.all([
+		fetch(`/oauth/authorize-info${search}`, {
+			headers: { Accept: 'application/json' },
+			credentials: 'include',
+			signal,
+		}),
+		fetchSessionInfo(signal),
+	])
+	const payload = await parseJsonOrNull<{
+		ok?: boolean
+		error?: string
+		client?: OAuthAuthorizeInfo['client']
+		scopes?: OAuthAuthorizeInfo['scopes']
+	}>(infoResponse)
+	if (!infoResponse.ok || !payload?.ok || !payload.client) {
+		return {
+			info: null,
+			session,
+			error: getErrorMessage(payload, 'Unable to load authorization details.'),
+		}
+	}
+	return {
+		info: {
+			client: payload.client,
+			scopes: Array.isArray(payload.scopes) ? payload.scopes : [],
+		},
+		session,
+		error: null,
+	}
+}
+
+export const loader: ClientRouteLoader = async ({ url, signal }) => {
+	return {
+		oauthAuthorize: await fetchOAuthAuthorizeLoaderData(url.search, signal),
+	}
+}
+
 export function OAuthAuthorizeRoute(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
 	let status: OAuthAuthorizeStatus = 'idle'
@@ -35,6 +81,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	let lastSearch = ''
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
+	let infoRefreshInFlight = false
+	let sessionRefreshInFlight = false
 
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
@@ -50,6 +98,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	async function loadInfo() {
+		if (infoRefreshInFlight) return
+		infoRefreshInFlight = true
 		status = 'loading'
 
 		const queryError = readQueryError()
@@ -58,47 +108,11 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		}
 
 		try {
-			const query = readRouterSearch(handle)
-			const response = await fetch(`/oauth/authorize-info${query}`, {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = await parseJsonOrNull<{
-				ok?: boolean
-				error?: string
-				client?: OAuthAuthorizeInfo['client']
-				scopes?: OAuthAuthorizeInfo['scopes']
-			}>(response)
-			if (!response.ok || !payload?.ok) {
-				const errorText = getErrorMessage(
-					payload,
-					'Unable to load authorization details.',
-				)
-				info = null
-				status = 'error'
-				message = { type: 'error', text: errorText }
-				handle.update()
-				return
+			const data = await fetchOAuthAuthorizeLoaderData(readRouterSearch(handle))
+			applyOAuthAuthorizeData(data)
+			if (queryError && !data.error) {
+				message = { type: 'error', text: queryError }
 			}
-			if (!payload.client || !Array.isArray(payload.scopes)) {
-				info = null
-				status = 'error'
-				message = {
-					type: 'error',
-					text: 'Unable to load authorization details.',
-				}
-				handle.update()
-				return
-			}
-			info = {
-				client: payload.client,
-				scopes: payload.scopes,
-			}
-			status = 'ready'
-			if (!queryError) {
-				message = null
-			}
-			handle.update()
 		} catch {
 			info = null
 			status = 'error'
@@ -106,18 +120,49 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				type: 'error',
 				text: 'Unable to load authorization details.',
 			}
-			handle.update()
 		}
+		infoRefreshInFlight = false
+		handle.update()
 	}
 
 	async function loadSession() {
-		if (sessionStatus !== 'idle') return
+		if (sessionStatus !== 'idle' || sessionRefreshInFlight) return
+		sessionRefreshInFlight = true
 		sessionStatus = 'loading'
 
 		session = await fetchSessionInfo()
 
 		sessionStatus = 'ready'
+		sessionRefreshInFlight = false
 		handle.update()
+	}
+
+	function applyOAuthAuthorizeData(data: OAuthAuthorizeLoaderData) {
+		session = data.session
+		sessionStatus = 'ready'
+		if (data.error || !data.info) {
+			info = null
+			status = 'error'
+			message = {
+				type: 'error',
+				text: data.error ?? 'Unable to load authorization details.',
+			}
+			return
+		}
+		info = data.info
+		status = 'ready'
+		message = null
+	}
+
+	function applyRouteLoaderData(currentSearch: string) {
+		const data = tryConsumeRouteLoaderData(
+			handle,
+			'oauthAuthorize',
+			`/oauth/authorize${currentSearch}`,
+		)
+		if (!data) return false
+		applyOAuthAuthorizeData(data)
+		return true
 	}
 
 	async function submitDecision(
@@ -200,9 +245,15 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		const currentSearch = readRouterSearch(handle)
 		if (currentSearch !== lastSearch) {
 			lastSearch = currentSearch
-			void loadInfo()
+			if (!applyRouteLoaderData(currentSearch)) {
+				void loadInfo()
+			}
 		}
-		if (sessionStatus === 'idle') {
+		if (
+			sessionStatus === 'idle' &&
+			!infoRefreshInFlight &&
+			!sessionRefreshInFlight
+		) {
 			void loadSession()
 		}
 
