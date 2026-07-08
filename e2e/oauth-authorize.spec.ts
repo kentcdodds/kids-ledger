@@ -227,3 +227,24 @@ test('oauth login link preserves authorize params through login', async ({
 		await callbackServer.close()
 	}
 })
+
+test('oauth callback SSR includes query details and callback title', async ({
+	page,
+}) => {
+	const callbackPath =
+		'/oauth/callback?code=playwright-callback-code&state=playwright-callback-state'
+	const response = await page.request.get(callbackPath)
+	const html = await response.text()
+
+	expect(response.ok()).toBe(true)
+	expect(html).toContain('<title>Authorization Complete | Kids Ledger</title>')
+	expect(html).toContain('playwright-callback-code')
+	expect(html).toContain('State: ')
+	expect(html).toContain('playwright-callback-state')
+
+	await page.goto(callbackPath)
+
+	await expect(page).toHaveTitle('Authorization Complete | Kids Ledger')
+	await expect(page.getByText('playwright-callback-code')).toBeVisible()
+	await expect(page.getByText('State: playwright-callback-state')).toBeVisible()
+})

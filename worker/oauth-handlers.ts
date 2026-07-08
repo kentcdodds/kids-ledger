@@ -36,12 +36,17 @@ type OAuthContext = ExecutionContext & {
 	props?: OAuthProps
 }
 
-function renderSpaShell(request: Request, env: Env, status = 200) {
+function renderSpaShell(
+	request: Request,
+	env: Env,
+	status = 200,
+	title = status >= 400 ? 'Authorization Failed' : 'Authorize App',
+) {
 	return renderAppPage({
 		request,
 		appEnv: getEnv(env),
 		status,
-		title: status >= 400 ? 'Authorization Failed' : 'Authorize App',
+		title,
 	})
 }
 
@@ -302,7 +307,12 @@ export function handleOAuthCallback(
 	const url = new URL(request.url)
 	const hasError =
 		url.searchParams.has('error') || url.searchParams.has('error_description')
-	return renderSpaShell(request, env, hasError ? 400 : 200)
+	return renderSpaShell(
+		request,
+		env,
+		hasError ? 400 : 200,
+		hasError ? 'Authorization Failed' : 'Authorization Complete',
+	)
 }
 
 export const apiHandler = {
