@@ -36,14 +36,18 @@ function renderArg(value: string) {
 
 export function runWrangler(
 	args: Array<string>,
-	options?: { input?: string; quiet?: boolean },
+	options?: {
+		input?: string
+		quiet?: boolean
+		env?: Record<string, string | undefined>
+	},
 ) {
 	const bunBin = process.execPath
 	const result = spawnSync(bunBin, ['x', 'wrangler', ...args], {
 		encoding: 'utf8',
 		stdio: 'pipe',
 		input: options?.input,
-		env: process.env,
+		env: { ...process.env, ...options?.env },
 	})
 
 	const status = result.status ?? 1
@@ -95,10 +99,10 @@ function selectAccountFromD1ListFailure(output: string) {
 	}> = []
 
 	for (const accountId of accountIds) {
-		const result = runWrangler(
-			['d1', 'list', '--json', '--account-id', accountId],
-			{ quiet: true },
-		)
+		const result = runWrangler(['d1', 'list', '--json'], {
+			env: { [cloudflareAccountIdEnv]: accountId },
+			quiet: true,
+		})
 		if (result.status !== 0) continue
 		const databases = parseD1ListOutput(result.stdout)
 		if (
