@@ -128,8 +128,15 @@ test('oauth authorize page accepts valid credentials for logged-out user', async
 		code_challenge: codeChallenge,
 		code_challenge_method: 'S256',
 	})
+	const authorizePath = `/oauth/authorize?${authorizeParams.toString()}`
+	const ssrResponse = await page.request.get(authorizePath)
+	const ssrHtml = await ssrResponse.text()
 
-	await page.goto(`/oauth/authorize?${authorizeParams.toString()}`)
+	expect(ssrResponse.ok()).toBe(true)
+	expect(ssrHtml).toContain('oauth-ui-playwright-client')
+	expect(ssrHtml).toContain('profile, email')
+
+	await page.goto(authorizePath)
 	await expect(
 		page.getByRole('heading', { name: 'Authorize access' }),
 	).toBeVisible()

@@ -1,5 +1,6 @@
 import { css, on, type Handle } from 'remix/ui'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
+import { readRouterSearch } from '#client/router-location.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -22,10 +23,8 @@ type OAuthAuthorizeInfo = {
 type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
 type OAuthAuthorizeMessage = { type: 'error' | 'info'; text: string }
 
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+function getSearchParams(handle: Handle) {
+	return new URLSearchParams(readRouterSearch(handle))
 }
 
 export function OAuthAuthorizeRoute(handle: Handle) {
@@ -43,7 +42,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	function readQueryError() {
-		const params = getSearchParams()
+		const params = getSearchParams(handle)
 		const description = params.get('error_description')
 		if (description) return description
 		const error = params.get('error')
@@ -59,7 +58,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		}
 
 		try {
-			const query = typeof window === 'undefined' ? '' : window.location.search
+			const query = readRouterSearch(handle)
 			const response = await fetch(`/oauth/authorize-info${query}`, {
 				headers: { Accept: 'application/json' },
 				credentials: 'include',
@@ -198,8 +197,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	return () => {
-		const currentSearch =
-			typeof window === 'undefined' ? '' : window.location.search
+		const currentSearch = readRouterSearch(handle)
 		if (currentSearch !== lastSearch) {
 			lastSearch = currentSearch
 			void loadInfo()
