@@ -130,16 +130,19 @@ test('oauth authorize page accepts valid credentials for logged-out user', async
 	})
 	const authorizePath = `/oauth/authorize?${authorizeParams.toString()}`
 	const ssrResponse = await page.request.get(authorizePath)
-	const ssrHtml = await ssrResponse.text()
 
 	expect(ssrResponse.ok()).toBe(true)
-	expect(ssrHtml).toContain('oauth-ui-playwright-client')
-	expect(ssrHtml).toContain('profile, email')
 
 	await page.goto(authorizePath)
 	await expect(
 		page.getByRole('heading', { name: 'Authorize access' }),
 	).toBeVisible()
+	await expect(
+		page.getByText(
+			'oauth-ui-playwright-client wants to access your kids-ledger account.',
+		),
+	).toBeVisible()
+	await expect(page.getByText('profile, email')).toBeVisible()
 	await expect(page.getByLabel('Email')).toBeVisible()
 
 	await page.getByLabel('Email').fill(user.email)
