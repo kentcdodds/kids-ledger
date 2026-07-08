@@ -32,6 +32,14 @@ type FormSubmitDetails = {
 	formData: FormData
 }
 
+type NavigationKind = 'link' | 'form' | 'popstate'
+
+type NavigationOptions = {
+	kind: NavigationKind
+	navigationId?: number
+	suppressStart?: boolean
+}
+
 export const routerEvents = new EventTarget()
 const clientRouteOrigin = 'https://kids-ledger.local'
 const routeMatchers = new WeakMap<
@@ -41,9 +49,48 @@ const routeMatchers = new WeakMap<
 let routerInitialized = false
 let activeRoutes: Record<string, RouteDefinition> | null = null
 let activeLoaderController: AbortController | null = null
+let latestNavigationId = 0
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
+}
+
+function beginNavigation(kind: NavigationKind, destination: URL) {
+	latestNavigationId += 1
+	routerEvents.dispatchEvent(
+		new CustomEvent('navigationstart', {
+			detail: {
+				id: latestNavigationId,
+				kind,
+				href: getPathWithSearchAndHashFromUrl(destination),
+			},
+		}),
+	)
+	return latestNavigationId
+}
+
+function endNavigation(
+	navigationId: number,
+	kind: NavigationKind,
+	destination: URL,
+) {
+	if (navigationId !== latestNavigationId) return
+	routerEvents.dispatchEvent(
+		new CustomEvent('navigationend', {
+			detail: {
+				id: navigationId,
+				kind,
+				href: getPathWithSearchAndHashFromUrl(destination),
+			},
+		}),
+	)
+}
+
+function getNavigationId(destination: URL, options: NavigationOptions) {
+	if (options.suppressStart && options.navigationId !== undefined) {
+		return options.navigationId
+	}
+	return beginNavigation(options.kind, destination)
 }
 
 function createRouteMatcher(routes: Record<string, RouteDefinition>) {
@@ -96,7 +143,7 @@ function handleDocumentClick(event: MouseEvent) {
 
 	event.preventDefault()
 	const destination = new URL(anchor.href, window.location.href)
-	void navigateToUrl(destination)
+	void navigateToUrl(destination, { kind: 'link' })
 }
 
 function getFormSubmitter(event: SubmitEvent) {
@@ -197,24 +244,37 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-async function navigateWithRefreshForSamePath(destination: URL) {
+async function navigateWithRefreshForSamePath(
+	destination: URL,
+	options: NavigationOptions,
+) {
+	const navigationId = getNavigationId(destination, options)
 	if (
 		getPathWithSearchAndHashFromUrl(destination) ===
 		getCurrentPathWithSearchAndHash()
 	) {
 		await preloadRouteData(destination)
+		if (navigationId !== latestNavigationId) return
 		notify()
+		endNavigation(navigationId, options.kind, destination)
 		return
 	}
-	await navigateToUrl(destination)
+	await navigateToUrl(destination, {
+		...options,
+		navigationId,
+		suppressStart: true,
+	})
 }
 
 async function submitFormThroughRouter(details: FormSubmitDetails) {
 	if (details.method === 'get') {
-		navigate(buildGetDestination(details.action, details.formData).toString())
+		await navigateToUrl(buildGetDestination(details.action, details.formData), {
+			kind: 'form',
+		})
 		return
 	}
 
+	const navigationId = beginNavigation('form', details.action)
 	const init: RequestInit = {
 		method: details.method.toUpperCase(),
 		credentials: 'include',
@@ -235,23 +295,33 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 		init.body = details.formData
 	}
 
-	const response = await fetch(details.action.toString(), init)
-	if (response.redirected) {
-		await navigateWithRefreshForSamePath(
-			new URL(response.url, window.location.href),
+	try {
+		const response = await fetch(details.action.toString(), init)
+		if (response.redirected) {
+			await navigateWithRefreshForSamePath(
+				new URL(response.url, window.location.href),
+				{ kind: 'form', navigationId, suppressStart: true },
+			)
+			return
+		}
+
+		const location = response.headers.get('Location')
+		if (location) {
+			await navigateWithRefreshForSamePath(new URL(location, details.action), {
+				kind: 'form',
+				navigationId,
+				suppressStart: true,
+			})
+			return
+		}
+
+		throw new Error(
+			`Expected redirect location after form submit (${response.status} ${response.statusText})`,
 		)
-		return
+	} catch (error) {
+		endNavigation(navigationId, 'form', details.action)
+		throw error
 	}
-
-	const location = response.headers.get('Location')
-	if (location) {
-		await navigateWithRefreshForSamePath(new URL(location, details.action))
-		return
-	}
-
-	throw new Error(
-		`Expected redirect location after form submit (${response.status} ${response.statusText})`,
-	)
 }
 
 function handleDocumentSubmit(event: Event) {
@@ -314,9 +384,13 @@ async function revalidateCurrentRouteData() {
 }
 
 function handlePopstate() {
+	const destination = new URL(window.location.href)
+	const navigationId = beginNavigation('popstate', destination)
 	notify()
-	void preloadRouteData(new URL(window.location.href)).then(() => {
+	void preloadRouteData(destination).then(() => {
+		if (navigationId !== latestNavigationId) return
 		notify()
+		endNavigation(navigationId, 'popstate', destination)
 	})
 }
 
@@ -375,16 +449,19 @@ export function navigate(to: string) {
 		return
 	}
 
-	void navigateToUrl(destination)
+	void navigateToUrl(destination, { kind: 'link' })
 }
 
-async function navigateToUrl(destination: URL) {
+async function navigateToUrl(destination: URL, options: NavigationOptions) {
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
 
+	const navigationId = getNavigationId(destination, options)
 	await preloadRouteData(destination)
+	if (navigationId !== latestNavigationId) return
 	window.history.pushState({}, '', nextPath)
 	notify()
+	endNavigation(navigationId, options.kind, destination)
 }
 
 export function Router(handle: Handle<RouterProps>) {
