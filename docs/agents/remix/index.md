@@ -18,6 +18,7 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 
 ## Start here
 
+- Beta 5 repository audit: [beta-5-adoption-audit](./beta-5-adoption-audit.md)
 - Building UI with Remix Component: [component](./component/index.md)
 - Routing and request handling: [fetch-router](./fetch-router/index.md) +
   [route-pattern](./route-pattern.md)
@@ -45,8 +46,12 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   - `remix/data-table`
 - D1 integration uses `remix/data-table` with a repository adapter
   (`worker/d1-data-table-adapter.ts`) instead of `remix/data-table-sqlite`.
-- Installed `remix@3.0.0-beta.5` uses `remix/ui` for `createRoot` and JSX
-  runtimes; the historical component docs remain linked as local UI guidance.
+- Installed `remix@3.0.0-beta.5` uses `remix/ui` for `run`, `clientEntry`, and
+  JSX runtimes; the historical component docs remain linked as local UI
+  guidance.
+- The login checkbox uses the Beta 5 `remix/ui/checkbox` primitive; see the
+  [Beta 5 adoption audit](./beta-5-adoption-audit.md) for the remaining
+  repository-specific opportunities.
 
 ## UI and components
 

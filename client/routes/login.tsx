@@ -1,4 +1,5 @@
 import { css, on, type Handle } from 'remix/ui'
+import checkbox from 'remix/ui/checkbox'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
@@ -250,14 +251,13 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							})}
 						>
 							<input
-								type="checkbox"
 								name="rememberMe"
-								mix={css({
-									width: '1rem',
-									height: '1rem',
-									accentColor: colors.primary,
-									cursor: 'pointer',
-								})}
+								mix={[
+									checkbox(),
+									css({
+										cursor: 'pointer',
+									}),
+								]}
 							/>
 							<span>Remember me for 2 months</span>
 						</label>
