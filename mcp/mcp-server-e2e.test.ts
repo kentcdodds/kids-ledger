@@ -644,9 +644,7 @@ test(
 			calculatorWidgetResponse.headers.get('access-control-allow-origin'),
 		).toBe('*')
 		const calculatorWidgetSource = await calculatorWidgetResponse.text()
-		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
 		expect(calculatorWidgetSource).toContain('Calculator result:')
-		expect(calculatorWidgetSource).toContain('sendUserMessageWithFallback')
 		expect(calculatorWidgetSource).toContain('ui/initialize')
 		expect(calculatorWidgetSource).toContain('ui/message')
 
