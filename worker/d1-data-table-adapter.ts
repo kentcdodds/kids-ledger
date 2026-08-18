@@ -1,11 +1,11 @@
 import {
 	getTableName,
 	getTablePrimaryKey,
-	type AdapterCapabilityOverrides,
 	type DataManipulationOperation,
 	type DataManipulationRequest,
 	type DataManipulationResult,
-	type DatabaseAdapter,
+	type DatabaseCapabilities,
+	type DatabaseDriver,
 	type SqlStatement,
 	type TableRef,
 	type TransactionOptions,
@@ -43,20 +43,14 @@ type D1PreparedQuery = {
 }
 
 /**
- * `DatabaseAdapter` implementation for Cloudflare D1.
+ * `DatabaseDriver` implementation for Cloudflare D1.
  *
- * This adapter intentionally mirrors SQLite SQL generation because D1 uses
+ * This driver intentionally mirrors SQLite SQL generation because D1 uses
  * SQLite semantics.
  */
-export class D1DataTableAdapter implements DatabaseAdapter {
-	dialect = 'sqlite'
-	capabilities: {
-		returning: boolean
-		savepoints: boolean
-		upsert: boolean
-		transactionalDdl: boolean
-		migrationLock: boolean
-	}
+export class D1DataTableAdapter implements DatabaseDriver<'sqlite'> {
+	dialect = 'sqlite' as const
+	capabilities: DatabaseCapabilities
 
 	#database: D1Database
 	#transactions = new Set<string>()
@@ -64,7 +58,7 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 	constructor(
 		database: D1Database,
 		options?: {
-			capabilities?: AdapterCapabilityOverrides
+			capabilities?: Partial<DatabaseCapabilities>
 		},
 	) {
 		this.#database = database
@@ -237,6 +231,16 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 		throw new Error('D1DataTableAdapter savepoints are not supported')
 	}
 
+	async wipe(): Promise<void> {
+		throw new Error(
+			'D1DataTableAdapter wipe is not supported. Manage the D1 database with wrangler instead.',
+		)
+	}
+
+	close(): void {
+		// D1 bindings do not own closable connection handles.
+	}
+
 	#assertTransaction(token: TransactionToken) {
 		if (!this.#transactions.has(token.id)) {
 			throw new Error('Unknown transaction token: ' + token.id)
@@ -247,7 +251,7 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 export function createD1DataTableAdapter(
 	database: D1Database,
 	options?: {
-		capabilities?: AdapterCapabilityOverrides
+		capabilities?: Partial<DatabaseCapabilities>
 	},
 ) {
 	return new D1DataTableAdapter(database, options)

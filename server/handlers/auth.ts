@@ -1,4 +1,4 @@
-import { type Action } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { boolean, enum_, object, optional, string } from 'remix/data-schema'
 import { createAuthCookie, isSecureRequest } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'

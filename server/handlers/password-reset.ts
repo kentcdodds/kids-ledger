@@ -1,4 +1,4 @@
-import { type Action } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { object, string } from 'remix/data-schema'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, passwordResetsTable, usersTable } from '#worker/db.ts'

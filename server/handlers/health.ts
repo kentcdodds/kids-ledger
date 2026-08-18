@@ -1,4 +1,4 @@
-import { type Action } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { type routes } from '#server/routes.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 

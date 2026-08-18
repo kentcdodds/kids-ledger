@@ -1,4 +1,4 @@
-import { column as c, createDatabase, sql, table } from 'remix/data-table'
+import { column as c, Database, sql, table } from 'remix/data-table'
 import { createD1DataTableAdapter } from './d1-data-table-adapter.ts'
 
 export const usersTable = table({
@@ -132,7 +132,7 @@ export const quickAmountPresetsTable = table({
 })
 
 export function createDb(db: D1Database) {
-	return createDatabase(createD1DataTableAdapter(db))
+	return new Database(createD1DataTableAdapter(db))
 }
 
 export type AppDatabase = ReturnType<typeof createDb>
