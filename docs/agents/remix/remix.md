@@ -18,60 +18,61 @@ npm i remix
 
 The `remix` package is used through subpath imports.
 
-- ✅ `import { createRouter } from 'remix/fetch-router'`
-- ✅ `import { route } from 'remix/fetch-router/routes'`
+- ✅ `import { createRouter } from 'remix/router'`
+- ✅ `import { route } from 'remix/routes'`
 - ✅ `import { createRoot } from 'remix/ui'`
 - ❌ `import { ... } from 'remix'` (root import removed in Remix 3 prereleases)
+- ❌ `import { createRouter } from 'remix/fetch-router'` (legacy package-aligned
+  aliases removed in `3.0.0-beta.10`)
 
-## Subpath export surface (`3.0.0-beta.5`, selected)
+## Subpath export surface (`3.0.0-beta.10`, selected)
 
-Top-level package exports used or documented in this repo include:
+Beta.10 removed the legacy package-aligned aliases (`remix/fetch-router`,
+`remix/session-middleware`, `remix/data-table-sqlite`, ...) in favor of
+canonical entrypoints that group related APIs together:
 
-- `remix/async-context-middleware`
-- `remix/ui`
-- `remix/compression-middleware`
+- `remix/router` (formerly `remix/fetch-router`)
+- `remix/routes` (formerly `remix/fetch-router/routes`)
+- `remix/middleware/*`: `async-context`, `auth`, `compression`, `cop`, `cors`,
+  `csrf`, `form-data`, `logger`, `method-override`, `render`, `session`,
+  `static`
+- `remix/data-table` plus dialects `remix/data-table/sqlite`,
+  `remix/data-table/postgres`, `remix/data-table/mysql`, and helpers
+  `remix/data-table/operators`, `remix/data-table/sql-helpers`,
+  `remix/data-table/migrations`
+- `remix/file-storage` plus `remix/file-storage/fs`,
+  `remix/file-storage/memory`, `remix/file-storage/s3`
+- `remix/session` plus `remix/session-storage/cookie`,
+  `remix/session-storage/fs`, `remix/session-storage/memory`,
+  `remix/session-storage/memcache`, `remix/session-storage/redis`
+
+Unchanged top-level exports used or documented in this repo include:
+
+- `remix/assets`
 - `remix/cookie`
-- `remix/data-schema`
-- `remix/data-table`
+- `remix/data-schema` (`/checks`, `/coerce`, `/lazy`, `/form-data`)
 - `remix/fetch-proxy`
-- `remix/fetch-router`
-- `remix/file-storage`
-- `remix/file-storage-s3`
-- `remix/form-data-middleware`
 - `remix/form-data-parser`
 - `remix/fs`
 - `remix/headers`
 - `remix/html-template`
 - `remix/lazy-file`
-- `remix/logger-middleware`
-- `remix/method-override-middleware`
 - `remix/mime`
-- `remix/multipart-parser`
+- `remix/multipart-parser` (`/node`)
 - `remix/node-fetch-server`
-- `remix/response`
-- `remix/route-pattern`
-- `remix/session`
-- `remix/session-middleware`
-- `remix/session-storage-memcache`
-- `remix/session-storage-redis`
-- `remix/static-middleware`
-- `remix/tar-parser`
-
-Plus adapter/data helper subpaths and utility subpaths:
-
-- `remix/data-schema/checks`, `remix/data-schema/coerce`,
-  `remix/data-schema/lazy`
-- `remix/data-table-mysql`, `remix/data-table-postgres`,
-  `remix/data-table-sqlite`
-- `remix/fetch-router/routes`
-- `remix/ui/jsx-runtime`, `remix/ui/jsx-dev-runtime`, `remix/ui/server`
 - `remix/response/compress`, `remix/response/file`, `remix/response/html`,
   `remix/response/redirect`
-- `remix/route-pattern/specificity`
-- `remix/session/cookie-storage`, `remix/session/fs-storage`,
-  `remix/session/memory-storage`
-- `remix/file-storage/fs`, `remix/file-storage/memory`
-- `remix/multipart-parser/node`
+- `remix/route-pattern` (`/href`, `/join`, `/match`, `/specificity`)
+- `remix/tar-parser`
+- `remix/ui` (`/server`, `/jsx-runtime`, `/jsx-dev-runtime`, plus components)
+
+New in beta.10:
+
+- `remix/node-hmr`, `remix/ui-hmr` (full-stack HMR for Node servers)
+- `remix/test`, `remix/test/cli` (run with `remix test`; the `remix-test`
+  executable was removed)
+- Optional JSONC `remix.json` for shared `remix db`, `remix test`, and
+  `remix doctor` settings
 
 ## Navigation
 
