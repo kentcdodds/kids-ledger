@@ -12,7 +12,7 @@ on the Epic Web E2E workshop and our existing setup.
 ## What to test
 
 - Primary routes and flows (navigation, auth, critical forms).
-- Integration across the worker, client router, and API endpoints.
+- Integration across the worker, Remix UI frame navigation, and API endpoints.
 - Regressions that are expensive to catch in unit tests.
 
 Avoid testing implementation details, styling, or pure utility functions.
@@ -61,11 +61,14 @@ handled by the static asset fetcher in `worker/index.ts`.
 
 - Assert user-facing results (success message, redirect, visible element).
 - For async actions, wait on the UI result, not arbitrary timeouts.
-- For client-router regressions, you may set a `window` marker before clicking a
-  link and assert it survives navigation to prove there was no full document
-  reload.
+- For frame-navigation regressions, you may set a `window` marker before
+  clicking a link and assert it survives navigation to prove there was no full
+  document reload.
 - Use the same marker pattern for form submissions (for example logout) when
-  verifying router-handled form navigation.
+  verifying Remix UI form navigation.
+- Frame navigation updates the URL before the destination document has streamed
+  in, so after `toHaveURL(...)` wait for a destination element (for example the
+  page heading) before interacting with the new page.
 
 ## Running tests
 

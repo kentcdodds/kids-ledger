@@ -1,81 +1,19 @@
 import { css, on, type Handle } from 'remix/ui'
-import { clientRoutes, getClientDocumentTitle } from './routes/index.tsx'
-import { listenToRouterNavigation, Router } from './client-router.tsx'
+import { RouteOutlet } from './routes/index.tsx'
 import { AppSessionProvider } from './app-session.tsx'
 import { NavigationProgress } from './navigation-progress.tsx'
-import {
-	readRouterPathname,
-	readRouterSearch,
-	readRouterUrl,
-} from './router-location.tsx'
-import {
-	fetchSessionInfo,
-	type SessionInfo,
-	type SessionStatus,
-} from './session.ts'
+import { readRouterPathname, readRouterSearch } from './router-location.tsx'
 import { buildAuthLink } from './auth-links.ts'
 import { colors, spacing, typography, mq } from './styles/tokens.ts'
+import { type SessionInfo } from '#shared/route-loader-data.ts'
 
 type AppProps = {
-	embeddedSession?: SessionInfo | null
+	session: SessionInfo | null
 	notFound?: boolean
 }
 
 export function App(handle: Handle<AppProps>) {
-	let session: SessionInfo | null = handle.props.embeddedSession ?? null
-	let sessionStatus: SessionStatus =
-		handle.props.embeddedSession !== undefined ? 'ready' : 'idle'
-	let sessionRefreshInFlight = false
-	let sessionRefreshQueued = false
-
-	function queueSessionRefresh() {
-		sessionRefreshQueued = true
-		if (sessionRefreshInFlight) return
-
-		// Preserve current nav state during refreshes after first load.
-		if (sessionStatus === 'idle') {
-			sessionStatus = 'loading'
-			handle.update()
-		}
-
-		sessionRefreshQueued = false
-		sessionRefreshInFlight = true
-		handle.queueTask(async (signal) => {
-			const nextSession = await fetchSessionInfo(signal)
-			sessionRefreshInFlight = false
-			if (signal.aborted) return
-			session = nextSession
-			sessionStatus = 'ready'
-			handle.update()
-			if (sessionRefreshQueued) {
-				queueSessionRefresh()
-			}
-		})
-		if (sessionStatus !== 'loading') {
-			handle.update()
-		}
-	}
-
-	function syncDocumentTitle() {
-		if (typeof document === 'undefined') return
-		document.title = getClientDocumentTitle(
-			new URL(readRouterUrl(handle), 'https://kids-ledger.local'),
-		)
-	}
-
 	let currentPath = readRouterPathname(handle)
-
-	if (typeof document !== 'undefined') {
-		handle.queueTask(() => {
-			queueSessionRefresh()
-			syncDocumentTitle()
-		})
-		listenToRouterNavigation(handle, () => {
-			currentPath = readRouterPathname(handle)
-			queueSessionRefresh()
-			syncDocumentTitle()
-		})
-	}
 
 	function getNavLinkCss(href: string) {
 		const isActive = currentPath === href
@@ -269,10 +207,10 @@ export function App(handle: Handle<AppProps>) {
 
 	return () => {
 		currentPath = readRouterPathname(handle)
+		const { session } = handle.props
 		const sessionEmail = session?.email ?? ''
-		const isSessionReady = sessionStatus === 'ready'
-		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
-		const showAuthLinks = isSessionReady && !isLoggedIn
+		const isLoggedIn = Boolean(sessionEmail)
+		const showAuthLinks = !isLoggedIn
 		const oauthRedirectTo =
 			currentPath === '/oauth/authorize'
 				? `${currentPath}${readRouterSearch(handle)}`
@@ -339,9 +277,8 @@ export function App(handle: Handle<AppProps>) {
 					) : null}
 				</nav>
 				<div mix={css(routeContentShellCss)}>
-					<AppSessionProvider session={session} status={sessionStatus}>
-						<Router
-							routes={clientRoutes}
+					<AppSessionProvider session={session}>
+						<RouteOutlet
 							notFound={handle.props.notFound}
 							fallback={
 								<section>

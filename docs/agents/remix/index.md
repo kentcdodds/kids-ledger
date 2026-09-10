@@ -2,8 +2,8 @@
 
 Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 
-> **Note (remix@3.0.0-beta.10):** the per-package docs below were captured
-> against beta.5 and still show legacy package-aligned import aliases
+> **Note (remix@3.0.0-rc.2):** the per-package docs below were captured against
+> beta.5 and still show legacy package-aligned import aliases
 > (`remix/fetch-router`, `remix/session-middleware`, `remix/data-table-sqlite`,
 > ...). Those aliases were removed in beta.10. Translate imports to the
 > canonical entrypoints listed in [remix](./remix.md) (e.g. `remix/router`,
@@ -54,8 +54,11 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   - `remix/data-table`
 - D1 integration uses `remix/data-table` with a repository `DatabaseDriver`
   (`worker/d1-data-table-adapter.ts`) instead of `remix/data-table/sqlite`.
-- Installed `remix@3.0.0-beta.10` uses `remix/ui` for `run`, `clientEntry`, and
-  JSX runtimes; the historical component docs remain linked as local UI
+- Installed `remix@3.0.0-rc.2` uses `remix/ui` for `run`, `clientEntry`, JSX
+  runtimes, and built-in frame navigation (same-origin links and forms are
+  intercepted by `run()`; see
+  [remix](./remix.md#release-candidates-300-rc1-300-rc2) for the rc.1/rc.2
+  migration notes); the historical component docs remain linked as local UI
   guidance.
 - The login checkbox uses the Beta 5 `remix/ui/checkbox` primitive; see the
   [Beta 5 adoption audit](./beta-5-adoption-audit.md) for the remaining

@@ -1,5 +1,4 @@
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
-import { requestRouteDataRevalidation } from '#client/route-loader-data.tsx'
 
 export type KidAccount = {
 	id: number
@@ -100,7 +99,6 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 		body: JSON.stringify(body),
 	})
 	const payload = await parseApiResponse<T>(response)
-	requestRouteDataRevalidation()
 	return payload
 }
 

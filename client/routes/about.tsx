@@ -28,7 +28,3 @@ export function AboutRoute(handle: Handle) {
 }
 
 export const Component = AboutRoute
-
-export function getMetadata() {
-	return { title: 'About' }
-}

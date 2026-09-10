@@ -32,7 +32,3 @@ export function TermsOfServiceRoute(handle: Handle) {
 }
 
 export const Component = TermsOfServiceRoute
-
-export function getMetadata() {
-	return { title: 'Terms of Service' }
-}

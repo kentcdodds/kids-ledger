@@ -257,6 +257,9 @@ test('oauth login link preserves authorize params through login', async ({
 		await page.goto(authorizePath)
 		await page.getByRole('link', { name: 'Login' }).click()
 		await expect(page).toHaveURL(/\/login/)
+		await expect(
+			page.getByRole('heading', { name: 'Welcome back' }),
+		).toBeVisible()
 
 		await page.getByLabel('Email').fill(user.email)
 		await page.getByLabel('Password').fill(user.password)

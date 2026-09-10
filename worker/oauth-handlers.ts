@@ -59,12 +59,7 @@ function getRequestHref(request: Request) {
 }
 
 async function loadOAuthAuthorizeLoaderData(request: Request, env: Env) {
-	const appEnv = getEnv(env)
-	setAuthSessionSecret(appEnv.COOKIE_SECRET)
-	const [infoResponse, session] = await Promise.all([
-		handleAuthorizeInfo(request, env),
-		readAuthSession(request),
-	])
+	const infoResponse = await handleAuthorizeInfo(request, env)
 	const payload = await infoResponse.json<{
 		ok?: boolean
 		error?: string
@@ -82,7 +77,6 @@ async function loadOAuthAuthorizeLoaderData(request: Request, env: Env) {
 								scopes: Array.isArray(payload.scopes) ? payload.scopes : [],
 							}
 						: null,
-				session: session ? { email: session.email } : null,
 				error:
 					infoResponse.ok && payload.ok
 						? null

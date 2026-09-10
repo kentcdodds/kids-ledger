@@ -50,17 +50,15 @@ the current route has server-readable data. The resulting loader-data envelope
 is passed to `client/app-root.tsx`, stored by `client/route-loader-data.tsx`,
 and consumed by route components during hydration.
 
-Client-side navigations preload the matching route's `loader` export before the
-router commits the new URL. If a loader succeeds, the data is stored as
-preloaded navigation data and consumed by the destination route on its first
-render after navigation. Successful ledger mutations dispatch a route-data
-revalidation event so the active route can reload its loader data without a full
-document refresh.
+Client-side navigations are full server renders of the destination document, so
+the destination route receives a fresh loader-data envelope (and the current
+session) as new `AppRoot` props during the frame reload. Routes that need data
+after a mutation refetch it directly from the JSON API.
 
-The router also emits `navigationstart` and `navigationend` events for
-user-initiated navigations. `client/navigation-progress.tsx` listens to those
-events at the app shell level and renders a delayed top progress bar for
-loader-backed navigations, form redirect chains, and browser back/forward
+`client/navigation-progress.tsx` listens to the top frame's `reloadStart` and
+`reloadComplete` events (`handle.frames.top.addEventListener(...)` with
+`handle.signal`) and renders a delayed top progress bar for link navigations,
+form submissions and their redirect chains, and browser back/forward
 navigations.
 
 Loader data is consume-once per route/data key. Because consumption mutates a
@@ -73,21 +71,35 @@ the data key has already been consumed.
 ## Client-side navigation flow
 
 The browser hydrates `client/app-root.tsx` through `remix/ui` `clientEntry` and
-`run()`. `client/router-location.tsx` keeps the SSR URL and current browser URL
-in handle context so server-rendered route matching and SPA navigation share the
-same source of truth.
+`run()`. `client/router-location.tsx` exposes the URL that `AppRoot` received
+from the server through handle context so `client/routes/index.tsx` can select
+the route component on the server and in the browser from the same value.
 
-The browser app intercepts same-origin `<a>` clicks and same-origin form
-submissions (`GET`/`POST`) and routes them in-place through
-`client/client-router.tsx`. Normal app navigations no longer require a full
-document refresh.
+Navigation is Remix UI's built-in frame navigation: `run()` intercepts
+same-origin `<a>` clicks and form submissions through the Navigation API,
+fetches the destination document with `Accept: text/html`, and reconciles the
+streamed response into the current document. Because `AppRoot` keeps the same
+client-entry identity (`/client-entry.js#AppRoot`) across pages, the hydrated
+app is preserved and simply re-rendered with the new `url`, `session`, and
+`loaderData` props; there is no hand-rolled client router. Redirect responses
+(for example `POST /logout`) are followed as replacement navigations.
+
+The URL updates as soon as the navigation is intercepted; the old route stays
+visible until the destination document has streamed in. Tests and code that need
+the destination content should wait for a destination element rather than the
+URL alone.
 
 Full page navigations still occur for:
 
 - Explicit browser reloads/new tab loads
 - Cross-origin links/forms
-- Non-`_self` form targets (for example, `_blank`)
+- Non-`_self` form targets (for example, `_blank`) and `download` links
+- Browsers without the Navigation API or `NavigateEvent.sourceElement`
 - Explicit code paths that intentionally call `window.location.assign(...)`
+  (login/signup success, OAuth flows)
+
+Programmatic in-app navigation uses `navigate()` from `remix/ui` (for example
+the history filters).
 
 ## CORS behavior
 

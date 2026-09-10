@@ -17,8 +17,9 @@ This folder documents the important runtime architecture for `kids-ledger`.
 - Server request handler: `server/handler.ts`
 - Router and HTTP route mapping: `server/router.ts` and `server/routes.ts`
 - SSR document rendering: `server/ssr-render.tsx` and `server/ssr-document.tsx`
-- Client hydration and navigation: `client/app-root.tsx`,
-  `client/router-location.tsx`, and `client/client-router.tsx`
+- Client hydration and route selection: `client/app-root.tsx`,
+  `client/router-location.tsx`, and `client/routes/index.tsx` (navigation is
+  Remix UI's built-in frame navigation from `run()` in `client/entry.tsx`)
 - Route loader data: `server/route-loader-data.ts` and
   `client/route-loader-data.tsx`
 - OAuth handlers: `worker/oauth-handlers.ts`

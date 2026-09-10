@@ -1,10 +1,7 @@
 import { css, on, type Handle } from 'remix/ui'
 import { readAppSession } from '#client/app-session.tsx'
 import { readRouterUrl } from '#client/router-location.tsx'
-import {
-	tryConsumeRouteLoaderData,
-	type ClientRouteLoader,
-} from '#client/route-loader-data.tsx'
+import { tryConsumeRouteLoaderData } from '#client/route-loader-data.tsx'
 import {
 	createTransaction,
 	createTransfer,
@@ -80,19 +77,11 @@ function getInterestPreviewText(account: KidAccount) {
 	)} on ${formatPayoutDate(getNextMonthlyInterestPayoutDate())}`
 }
 
-export const loader: ClientRouteLoader = async () => {
-	return { dashboard: await fetchDashboard() }
-}
-
 export function HomeRoute(handle: Handle) {
-	const appSession = readAppSession(handle)
-	const isLoggedOutSsr =
-		appSession.status === 'ready' && appSession.session === null
-	let status: 'loading' | 'ready' | 'error' = isLoggedOutSsr
-		? 'error'
-		: 'loading'
+	const isLoggedOut = readAppSession(handle).session === null
+	let status: 'loading' | 'ready' | 'error' = isLoggedOut ? 'error' : 'loading'
 	let errorMessage = ''
-	let needsLogin = isLoggedOutSsr
+	let needsLogin = isLoggedOut
 	let kids: Array<KidSummary> = []
 	let familyBalance = 0
 	let quickAmounts: Array<number> = []
@@ -115,6 +104,25 @@ export function HomeRoute(handle: Handle) {
 		status = 'ready'
 		errorMessage = ''
 		needsLogin = false
+	}
+
+	function applyLoggedOut() {
+		clearCloseModalTimeout()
+		clearTransferCloseModalTimeout()
+		removeTransactionModalStyles()
+		clearKidModalBackground()
+		kids = []
+		familyBalance = 0
+		quickAmounts = []
+		transactionState = null
+		transactionModalOpener = null
+		transactionModalClosing = false
+		transferState = null
+		transferModalOpener = null
+		transferModalClosing = false
+		status = 'error'
+		errorMessage = ''
+		needsLogin = true
 	}
 
 	function applyRouteLoaderData(currentHref: string) {
@@ -273,7 +281,11 @@ export function HomeRoute(handle: Handle) {
 		handle.update()
 		try {
 			const dashboard = await fetchDashboard()
-			applyDashboard(dashboard)
+			if (readAppSession(handle).session === null) {
+				applyLoggedOut()
+			} else {
+				applyDashboard(dashboard)
+			}
 		} catch (error) {
 			status = 'error'
 			errorMessage =
@@ -410,13 +422,11 @@ export function HomeRoute(handle: Handle) {
 	return () => {
 		const currentHref = readRouterUrl(handle)
 		const appliedRouteData = applyRouteLoaderData(currentHref)
-		const currentAppSession = readAppSession(handle)
-		if (
-			status === 'error' &&
-			needsLogin &&
-			currentAppSession.status === 'ready' &&
-			currentAppSession.session !== null
-		) {
+		const hasSession = readAppSession(handle).session !== null
+		if (!hasSession && !(status === 'error' && needsLogin)) {
+			applyLoggedOut()
+		}
+		if (status === 'error' && needsLogin && hasSession) {
 			status = 'loading'
 			needsLogin = false
 			errorMessage = ''
@@ -428,11 +438,7 @@ export function HomeRoute(handle: Handle) {
 			!dashboardRefreshInFlight
 		) {
 			handle.queueTask(async () => {
-				const nextAppSession = readAppSession(handle)
-				if (
-					nextAppSession.status === 'ready' &&
-					nextAppSession.session === null
-				) {
+				if (readAppSession(handle).session === null) {
 					status = 'error'
 					needsLogin = true
 					handle.update()
@@ -1254,10 +1260,6 @@ export function HomeRoute(handle: Handle) {
 }
 
 export const Component = HomeRoute
-
-export function getMetadata() {
-	return { title: null }
-}
 
 function isAuthError(errorMessage: string) {
 	const normalizedErrorMessage = errorMessage.toLowerCase()

@@ -32,7 +32,3 @@ export function PrivacyPolicyRoute(handle: Handle) {
 }
 
 export const Component = PrivacyPolicyRoute
-
-export function getMetadata() {
-	return { title: 'Privacy Policy' }
-}
