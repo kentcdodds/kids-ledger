@@ -106,6 +106,25 @@ export function HomeRoute(handle: Handle) {
 		needsLogin = false
 	}
 
+	function applyLoggedOut() {
+		clearCloseModalTimeout()
+		clearTransferCloseModalTimeout()
+		removeTransactionModalStyles()
+		clearKidModalBackground()
+		kids = []
+		familyBalance = 0
+		quickAmounts = []
+		transactionState = null
+		transactionModalOpener = null
+		transactionModalClosing = false
+		transferState = null
+		transferModalOpener = null
+		transferModalClosing = false
+		status = 'error'
+		errorMessage = ''
+		needsLogin = true
+	}
+
 	function applyRouteLoaderData(currentHref: string) {
 		const dashboard = tryConsumeRouteLoaderData(
 			handle,
@@ -262,7 +281,11 @@ export function HomeRoute(handle: Handle) {
 		handle.update()
 		try {
 			const dashboard = await fetchDashboard()
-			applyDashboard(dashboard)
+			if (readAppSession(handle).session === null) {
+				applyLoggedOut()
+			} else {
+				applyDashboard(dashboard)
+			}
 		} catch (error) {
 			status = 'error'
 			errorMessage =
@@ -400,6 +423,9 @@ export function HomeRoute(handle: Handle) {
 		const currentHref = readRouterUrl(handle)
 		const appliedRouteData = applyRouteLoaderData(currentHref)
 		const hasSession = readAppSession(handle).session !== null
+		if (!hasSession && !(status === 'error' && needsLogin)) {
+			applyLoggedOut()
+		}
 		if (status === 'error' && needsLogin && hasSession) {
 			status = 'loading'
 			needsLogin = false

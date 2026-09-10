@@ -12,7 +12,7 @@ on the Epic Web E2E workshop and our existing setup.
 ## What to test
 
 - Primary routes and flows (navigation, auth, critical forms).
-- Integration across the worker, client router, and API endpoints.
+- Integration across the worker, Remix UI frame navigation, and API endpoints.
 - Regressions that are expensive to catch in unit tests.
 
 Avoid testing implementation details, styling, or pure utility functions.

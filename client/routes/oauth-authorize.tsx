@@ -59,7 +59,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	let message: OAuthAuthorizeMessage | null = null
 	let submitting = false
 	let lastSearch: string | null = null
-	let infoRefreshInFlight = false
+	let activeInfoSearch: string | null = null
 
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
@@ -104,8 +104,9 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 
 	async function loadInfo() {
-		if (infoRefreshInFlight) return
-		infoRefreshInFlight = true
+		const requestedSearch = readRouterSearch(handle)
+		if (activeInfoSearch === requestedSearch) return
+		activeInfoSearch = requestedSearch
 		status = 'loading'
 
 		const queryError = readQueryError()
@@ -113,12 +114,18 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 			message = { type: 'error', text: queryError }
 		}
 
+		let data: OAuthAuthorizeLoaderData | null = null
 		try {
-			applyOAuthAuthorizeData(
-				await fetchOAuthAuthorizeInfo(readRouterSearch(handle)),
-				queryError,
-			)
+			data = await fetchOAuthAuthorizeInfo(requestedSearch)
 		} catch {
+			data = null
+		}
+		if (activeInfoSearch !== requestedSearch) return
+		activeInfoSearch = null
+
+		if (data) {
+			applyOAuthAuthorizeData(data, queryError)
+		} else {
 			info = null
 			status = 'error'
 			message = {
@@ -126,7 +133,6 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				text: 'Unable to load authorization details.',
 			}
 		}
-		infoRefreshInFlight = false
 		handle.update()
 	}
 
