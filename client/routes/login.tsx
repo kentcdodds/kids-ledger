@@ -1,14 +1,8 @@
 import { css, on, type Handle } from 'remix/ui'
 import checkbox from 'remix/ui/checkbox'
 import { buildAuthLink } from '#client/auth-links.ts'
-import { navigate } from '#client/client-router.tsx'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
-import {
-	tryConsumeRouteLoaderData,
-	type ClientRouteLoader,
-} from '#client/route-loader-data.tsx'
-import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
-import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
+import { readRouterSearch } from '#client/router-location.tsx'
 import { normalizeRedirectTarget } from '#shared/redirect-target.ts'
 import {
 	colors,
@@ -36,63 +30,21 @@ function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	return buildAuthLink(path, redirectTo)
 }
 
-export const loader: ClientRouteLoader = async ({ signal }) => {
-	return { session: await fetchSessionInfo(signal) }
-}
-
+// The server redirects authenticated visitors away from /login and /signup, so
+// this route never needs to check the session itself.
 export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
-	let mode: AuthMode = setup.initialMode ?? 'login'
+	const mode: AuthMode = setup.initialMode ?? 'login'
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
-	let sessionStatus: SessionStatus = 'idle'
-	let sessionEmail = ''
-	const redirectTo = normalizeRedirectTarget(
-		getSearchParams(handle).get('redirectTo'),
-	)
-	const redirectTarget = redirectTo ?? '/account'
-	let sessionRefreshInFlight = false
+
+	function getRedirectTo() {
+		return normalizeRedirectTarget(getSearchParams(handle).get('redirectTo'))
+	}
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
 		message = nextMessage
 		handle.update()
-	}
-
-	function switchMode(nextMode: AuthMode) {
-		if (mode === nextMode) return
-		mode = nextMode
-		status = 'idle'
-		message = null
-		navigate(buildAuthPath(nextMode, redirectTo))
-		handle.update()
-	}
-
-	function applySession(session: Awaited<ReturnType<typeof fetchSessionInfo>>) {
-		sessionEmail = session?.email ?? ''
-		sessionStatus = 'ready'
-		if (sessionEmail && typeof window !== 'undefined') {
-			window.location.assign(redirectTarget)
-		}
-	}
-
-	function applyRouteLoaderData(currentHref: string) {
-		const session = tryConsumeRouteLoaderData(handle, 'session', currentHref)
-		if (session === undefined) return false
-		applySession(session)
-		return true
-	}
-
-	async function loadSession(signal: AbortSignal) {
-		if (sessionStatus !== 'idle' || sessionRefreshInFlight) return
-		sessionRefreshInFlight = true
-		sessionStatus = 'loading'
-
-		const session = await fetchSessionInfo(signal)
-		if (!signal.aborted) {
-			applySession(session)
-			handle.update()
-		}
-		sessionRefreshInFlight = false
 	}
 
 	async function handleSubmit(event: SubmitEvent) {
@@ -127,7 +79,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 			}
 
 			if (typeof window !== 'undefined') {
-				window.location.assign(redirectTarget)
+				window.location.assign(getRedirectTo() ?? '/account')
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
@@ -135,15 +87,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	}
 
 	return () => {
-		const currentHref = readRouterUrl(handle)
-		const appliedRouteData = applyRouteLoaderData(currentHref)
-		if (
-			sessionStatus === 'idle' &&
-			!appliedRouteData &&
-			!sessionRefreshInFlight
-		) {
-			handle.queueTask(loadSession)
-		}
+		const redirectTo = getRedirectTo()
 		const isSignup = mode === 'signup'
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'
@@ -304,26 +248,19 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 				<div mix={css({ display: 'grid', gap: spacing.sm })}>
 					<a
 						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
-						aria-pressed={isSignup}
-						mix={[
-							css({
-								background: 'none',
-								border: 'none',
-								padding: 0,
-								color: colors.primaryText,
-								fontSize: typography.fontSize.sm,
-								cursor: 'pointer',
-								textAlign: 'left',
-								textDecoration: 'none',
-								'&:hover': {
-									textDecoration: 'underline',
-								},
-							}),
-							on<HTMLElement, 'click'>('click', (event) => {
-								if (event.defaultPrevented) return
-								switchMode(isSignup ? 'login' : 'signup')
-							}),
-						]}
+						mix={css({
+							background: 'none',
+							border: 'none',
+							padding: 0,
+							color: colors.primaryText,
+							fontSize: typography.fontSize.sm,
+							cursor: 'pointer',
+							textAlign: 'left',
+							textDecoration: 'none',
+							'&:hover': {
+								textDecoration: 'underline',
+							},
+						})}
 					>
 						{toggleLabel} {toggleAction}
 					</a>
@@ -367,7 +304,3 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 }
 
 export const Component = LoginRoute
-
-export function getMetadata() {
-	return { title: 'Sign In' }
-}

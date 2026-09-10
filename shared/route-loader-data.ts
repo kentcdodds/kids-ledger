@@ -88,7 +88,6 @@ export type OAuthAuthorizeLoaderData = {
 		client: { id: string; name: string }
 		scopes: Array<string>
 	} | null
-	session: SessionInfo | null
 	error: string | null
 }
 
@@ -98,8 +97,6 @@ export type HistoryLoaderData = {
 }
 
 export type AppLoaderData = {
-	session: SessionInfo | null
-	accountSession: SessionInfo | null
 	dashboard: LedgerDashboard
 	settings: { ok: true; settings: LedgerSettings }
 	history: HistoryLoaderData

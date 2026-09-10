@@ -48,12 +48,6 @@ function getRequestHref(request: Request) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-function getSessionPayload(
-	session: Awaited<ReturnType<typeof readAuthSessionState>>['session'],
-) {
-	return session ? { email: session.email } : null
-}
-
 async function loadSettings(service: ReturnType<typeof createLedgerService>) {
 	const [kids, archived, quickAmounts] = await Promise.all([
 		service.listKidsWithAccounts(true),
@@ -99,17 +93,12 @@ export async function loadServerRouteData(input: {
 	const url = new URL(request.url)
 	const authSessionState =
 		input.authSessionState ?? (await readAuthSessionState(request))
-	const session = getSessionPayload(authSessionState.session)
-	const data: AppLoaderDataPayload = { session }
+	const data: AppLoaderDataPayload = {}
 	const userId = Number(authSessionState.session?.id)
 	const service =
 		Number.isInteger(userId) && userId > 0
 			? createLedgerService(appEnv.APP_DB, userId)
 			: null
-
-	if (url.pathname === '/account') {
-		data.accountSession = session
-	}
 
 	if (service && url.pathname === '/') {
 		data.dashboard = await service.getDashboard()

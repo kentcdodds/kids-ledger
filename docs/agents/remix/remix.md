@@ -74,6 +74,29 @@ New in beta.10:
 - Optional JSONC `remix.json` for shared `remix db`, `remix test`, and
   `remix doctor` settings
 
+## Release candidates (`3.0.0-rc.1`, `3.0.0-rc.2`)
+
+Installed version: `remix@3.0.0-rc.2`. Breaking changes that affected this
+repository and how they were handled:
+
+- `addEventListeners()` was removed from `remix/ui`. Use native
+  `target.addEventListener(type, listener, { signal: handle.signal })`.
+- Framework-owned DOM attributes moved to the `data-rmx-*` namespace
+  (`data-rmx-target`, `data-rmx-history`, `data-rmx-key`,
+  `data-rmx-preserve-dom`, ...).
+- `remix/router` now answers `405 Method Not Allowed` (with an `Allow` header)
+  when a URL matches a route pattern but not the method, and `GET` routes serve
+  `HEAD` automatically. Wrong-method requests previously fell through to 404.
+- Frames now render HTML `3xx`/`4xx` responses, and browsers without the
+  Navigation API (or `NavigateEvent.sourceElement`) fall back to full-document
+  navigation, so the app no longer needs its own client router.
+
+Not applicable to this repository (no `remix/assets` asset server; esbuild +
+Wrangler serve `public/`): `fileMap` → `mounts`, `fingerprint: true`,
+`getScriptEntry()` / `<ImportMap>`, `remix/multiple-import-maps-polyfill`, HMR
+`data` records, `remix assets inspect`, and `remix.json`. `remix db` is not
+adopted because Wrangler owns the D1 schema (`migrations_dir`).
+
 ## Navigation
 
 - [Remix package index](./index.md)

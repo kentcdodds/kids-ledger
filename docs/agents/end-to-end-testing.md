@@ -61,11 +61,14 @@ handled by the static asset fetcher in `worker/index.ts`.
 
 - Assert user-facing results (success message, redirect, visible element).
 - For async actions, wait on the UI result, not arbitrary timeouts.
-- For client-router regressions, you may set a `window` marker before clicking a
-  link and assert it survives navigation to prove there was no full document
-  reload.
+- For frame-navigation regressions, you may set a `window` marker before
+  clicking a link and assert it survives navigation to prove there was no full
+  document reload.
 - Use the same marker pattern for form submissions (for example logout) when
-  verifying router-handled form navigation.
+  verifying Remix UI form navigation.
+- Frame navigation updates the URL before the destination document has streamed
+  in, so after `toHaveURL(...)` wait for a destination element (for example the
+  page heading) before interacting with the new page.
 
 ## Running tests
 

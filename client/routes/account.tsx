@@ -1,71 +1,11 @@
 import { css, type Handle } from 'remix/ui'
-import { fetchSessionInfo, requireSessionOrRedirect } from '#client/session.ts'
-import {
-	tryConsumeRouteLoaderData,
-	type ClientRouteLoader,
-} from '#client/route-loader-data.tsx'
-import { readRouterUrl } from '#client/router-location.tsx'
+import { readAppSession } from '#client/app-session.tsx'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { buttonCss } from '#client/styles/form-controls.ts'
 
-type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
-
-export const loader: ClientRouteLoader = async ({ signal }) => {
-	return { accountSession: await fetchSessionInfo(signal) }
-}
-
 export function AccountRoute(handle: Handle) {
-	let status: AccountStatus = 'loading'
-	let email = ''
-	let message: string | null = null
-	let accountRefreshInFlight = false
-
-	function applySession(session: Awaited<ReturnType<typeof fetchSessionInfo>>) {
-		if (!session) return false
-		email = session.email
-		status = 'ready'
-		message = null
-		return true
-	}
-
-	function applyRouteLoaderData(currentHref: string) {
-		const session = tryConsumeRouteLoaderData(
-			handle,
-			'accountSession',
-			currentHref,
-		)
-		if (session === undefined) return false
-		if (applySession(session)) return true
-		if (typeof window !== 'undefined') {
-			window.location.assign('/login?redirectTo=/account')
-		}
-		return true
-	}
-
-	async function loadAccount(signal: AbortSignal) {
-		if (accountRefreshInFlight) return
-		accountRefreshInFlight = true
-		try {
-			const session = await requireSessionOrRedirect(signal)
-			if (signal.aborted || !session) return
-			applySession(session)
-			handle.update()
-		} catch {
-			if (signal.aborted) return
-			status = 'error'
-			message = 'Unable to load your account.'
-			handle.update()
-		} finally {
-			accountRefreshInFlight = false
-		}
-	}
-
 	return () => {
-		const currentHref = readRouterUrl(handle)
-		const appliedRouteData = applyRouteLoaderData(currentHref)
-		if (status === 'loading' && !appliedRouteData && !accountRefreshInFlight) {
-			handle.queueTask(loadAccount)
-		}
+		const email = readAppSession(handle).session?.email ?? ''
 
 		return (
 			<section
@@ -91,41 +31,27 @@ export function AccountRoute(handle: Handle) {
 						You are signed in to kids-ledger.
 					</p>
 				</header>
-				{status === 'loading' ? (
-					<p mix={css({ color: colors.textMuted })}>Loading your account…</p>
-				) : null}
-				{message ? (
-					<p mix={css({ color: colors.error })} role="alert">
-						{message}
-					</p>
-				) : null}
-				{status === 'ready' ? (
-					<form method="post" action="/logout">
-						<button
-							type="submit"
-							mix={css({
-								...buttonCss,
-								backgroundColor: colors.surface,
-								color: colors.text,
-								border: `2px solid ${colors.border}`,
-								boxShadow: `0 2px 0 0 ${colors.border}`,
-								'&:active': {
-									transform: 'translateY(2px)',
-									boxShadow: `0 0 0 0 ${colors.border}`,
-								},
-							})}
-						>
-							Log out
-						</button>
-					</form>
-				) : null}
+				<form method="post" action="/logout">
+					<button
+						type="submit"
+						mix={css({
+							...buttonCss,
+							backgroundColor: colors.surface,
+							color: colors.text,
+							border: `2px solid ${colors.border}`,
+							boxShadow: `0 2px 0 0 ${colors.border}`,
+							'&:active': {
+								transform: 'translateY(2px)',
+								boxShadow: `0 0 0 0 ${colors.border}`,
+							},
+						})}
+					>
+						Log out
+					</button>
+				</form>
 			</section>
 		)
 	}
 }
 
 export const Component = AccountRoute
-
-export function getMetadata() {
-	return { title: 'Account' }
-}

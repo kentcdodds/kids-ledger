@@ -1,14 +1,10 @@
-import { css, on, type Handle } from 'remix/ui'
+import { css, navigate, on, type Handle } from 'remix/ui'
 import {
 	fetchSettings,
 	fetchTransactions,
 	type LedgerTransaction,
 } from '#client/ledger-api.ts'
-import { listenToRouterNavigation, navigate } from '#client/client-router.tsx'
-import {
-	tryConsumeRouteLoaderData,
-	type ClientRouteLoader,
-} from '#client/route-loader-data.tsx'
+import { tryConsumeRouteLoaderData } from '#client/route-loader-data.tsx'
 import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
 import { formatCents } from '#client/money.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
@@ -86,15 +82,6 @@ const disabledPaginationControlCss = {
 	transform: 'none',
 }
 
-export const loader: ClientRouteLoader = async ({ url }) => {
-	const query = getQueryFromSearch(url.search)
-	const [settings, transactions] = await Promise.all([
-		fetchSettings(),
-		fetchTransactions(query),
-	])
-	return { history: { settings, transactions } }
-}
-
 function getTransactionTextColors(colorToken: string) {
 	if (colorToken === 'sun') {
 		return {
@@ -139,20 +126,8 @@ export function HistoryRoute(handle: Handle) {
 			next.set('limit', String(defaultHistoryPageSize))
 		}
 		const queryString = next.toString()
-		navigate(`/history${queryString ? `?${queryString}` : ''}`)
-	}
-
-	function onPaginationLinkClick(event: MouseEvent) {
-		if (pendingRefreshDelay.isShowing()) {
-			event.preventDefault()
-			return
-		}
-		event.preventDefault()
-		if (!(event.currentTarget instanceof HTMLAnchorElement)) return
-		const href = event.currentTarget.getAttribute('href')
-		if (!href) return
-		const url = new URL(href, window.location.origin)
-		updateQuery(new URLSearchParams(url.search))
+		// A superseded navigation rejects; the newer navigation owns the outcome.
+		navigate(`/history${queryString ? `?${queryString}` : ''}`).catch(() => {})
 	}
 
 	async function loadHistory() {
@@ -245,10 +220,6 @@ export function HistoryRoute(handle: Handle) {
 		applyHistoryData(data)
 		return true
 	}
-
-	listenToRouterNavigation(handle, () => {
-		void handle.update()
-	})
 
 	return () => {
 		const currentHref = readRouterUrl(handle)
@@ -493,10 +464,7 @@ export function HistoryRoute(handle: Handle) {
 								{state.hasPreviousPage ? (
 									<a
 										href={getHistoryHref(query, {})}
-										mix={[
-											css(paginationLinkCss),
-											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
-										]}
+										mix={css(paginationLinkCss)}
 									>
 										Start
 									</a>
@@ -511,10 +479,7 @@ export function HistoryRoute(handle: Handle) {
 								{state.hasPreviousPage && state.startCursor ? (
 									<a
 										href={getHistoryHref(query, { before: state.startCursor })}
-										mix={[
-											css(paginationLinkCss),
-											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
-										]}
+										mix={css(paginationLinkCss)}
 									>
 										Previous
 									</a>
@@ -533,10 +498,7 @@ export function HistoryRoute(handle: Handle) {
 								state.middleCursor !== state.endCursor ? (
 									<a
 										href={getHistoryHref(query, { after: state.middleCursor })}
-										mix={[
-											css(paginationLinkCss),
-											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
-										]}
+										mix={css(paginationLinkCss)}
 									>
 										Middle
 									</a>
@@ -551,10 +513,7 @@ export function HistoryRoute(handle: Handle) {
 								{state.hasNextPage ? (
 									<a
 										href={getHistoryHref(query, { after: state.endCursor })}
-										mix={[
-											css(paginationLinkCss),
-											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
-										]}
+										mix={css(paginationLinkCss)}
 									>
 										Next
 									</a>
@@ -569,10 +528,7 @@ export function HistoryRoute(handle: Handle) {
 								{state.endPageCursor && state.hasNextPage ? (
 									<a
 										href={getHistoryHref(query, { after: state.endPageCursor })}
-										mix={[
-											css(paginationLinkCss),
-											on<HTMLElement, 'click'>('click', onPaginationLinkClick),
-										]}
+										mix={css(paginationLinkCss)}
 									>
 										End
 									</a>
@@ -594,7 +550,3 @@ export function HistoryRoute(handle: Handle) {
 }
 
 export const Component = HistoryRoute
-
-export function getMetadata() {
-	return { title: 'History' }
-}

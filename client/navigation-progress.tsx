@@ -1,5 +1,4 @@
-import { addEventListeners, css, type Handle } from 'remix/ui'
-import { routerEvents } from './client-router.tsx'
+import { css, type Handle } from 'remix/ui'
 import { colors } from './styles/tokens.ts'
 
 // Spin-delay semantics (https://npm.im/spin-delay): the bar only appears if a
@@ -14,9 +13,9 @@ const maxTrickleProgress = 90
 const fadeDurationMs = 200
 
 export function NavigationProgress(handle: Handle) {
-	// Boolean, not a counter: navigations are latest-wins and a superseded
-	// (aborted) navigation never dispatches its own `navigationend`, so the
-	// winning navigation's end event must clear the pending state outright.
+	// Boolean, not a counter: frame reloads are latest-wins and a superseded
+	// (aborted) reload never dispatches its own `reloadComplete`, so the
+	// winning reload's event must clear the pending state outright.
 	let navigationPending = false
 	let visible = false
 	let progress = 0
@@ -128,9 +127,12 @@ export function NavigationProgress(handle: Handle) {
 	}
 
 	if (typeof window !== 'undefined') {
-		addEventListeners(routerEvents, handle.signal, {
-			navigationstart: handleNavigationStart,
-			navigationend: handleNavigationEnd,
+		const topFrame = handle.frames.top
+		topFrame.addEventListener('reloadStart', handleNavigationStart, {
+			signal: handle.signal,
+		})
+		topFrame.addEventListener('reloadComplete', handleNavigationEnd, {
+			signal: handle.signal,
 		})
 		handle.signal.addEventListener('abort', clearAllTimers, { once: true })
 	}

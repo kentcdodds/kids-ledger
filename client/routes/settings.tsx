@@ -1,8 +1,5 @@
 import { css, on, type Handle } from 'remix/ui'
-import {
-	tryConsumeRouteLoaderData,
-	type ClientRouteLoader,
-} from '#client/route-loader-data.tsx'
+import { tryConsumeRouteLoaderData } from '#client/route-loader-data.tsx'
 import { readRouterUrl } from '#client/router-location.tsx'
 import {
 	archiveAccount,
@@ -179,10 +176,6 @@ type SettingsState =
 			}
 			quickAmounts: Array<number>
 	  }
-
-export const loader: ClientRouteLoader = async () => {
-	return { settings: await fetchSettings() }
-}
 
 export function SettingsRoute(handle: Handle) {
 	let state: SettingsState = { status: 'loading', message: '', kids: [] }
@@ -1883,10 +1876,6 @@ export function SettingsRoute(handle: Handle) {
 }
 
 export const Component = SettingsRoute
-
-export function getMetadata() {
-	return { title: 'Settings' }
-}
 
 const dangerButtonCss = {
 	...buttonCss,

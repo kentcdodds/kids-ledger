@@ -2,8 +2,10 @@ import { clientEntry, type EntryComponent, type Handle } from 'remix/ui'
 import { App } from './app.tsx'
 import { AppLoaderDataProvider } from './route-loader-data.tsx'
 import { RouterLocationProvider } from './router-location.tsx'
-import { type SessionInfo } from './session.ts'
-import { type AppLoaderDataEnvelope } from '#shared/route-loader-data.ts'
+import {
+	type AppLoaderDataEnvelope,
+	type SessionInfo,
+} from '#shared/route-loader-data.ts'
 
 export const APP_ROOT_ENTRY_ID = '/client-entry.js#AppRoot'
 
@@ -21,7 +23,7 @@ export const AppRoot: EntryComponent<AppRootProps> = clientEntry(
 			<AppLoaderDataProvider loaderData={handle.props.loaderData ?? null}>
 				<RouterLocationProvider url={handle.props.url}>
 					<App
-						embeddedSession={handle.props.session}
+						session={handle.props.session}
 						notFound={handle.props.notFound === true}
 					/>
 				</RouterLocationProvider>

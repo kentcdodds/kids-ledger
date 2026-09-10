@@ -20,8 +20,7 @@ description: >
 
 ## Merge and Deploy if requested or the change is low risk
 
-Squash and merge PR as Kody with
-`kody:@kentcdodds/github/pr/merge` using
+Squash and merge PR as Kody with `kody:@kentcdodds/github/pr/merge` using
 `{ prUrl, mergeMethod: 'squash' }` (or `{ owner, repo, prNumber, ... }`;
 optional `commitTitle`), watch CI deploy. Relevant links for the discord message
 include: agent, PR, CI job, and relevant deployment page(s).
@@ -38,8 +37,10 @@ use raw `post-message` and do **not** compute or guess token cost — the export
 fetches the billed Cursor Cloud Agent usage and formats the cost line.
 
 **agentId (required):**
-- In a Cursor Cloud Agent VM, read it from the metadata socket:
-  curl -fsS --unix-socket "${CURSOR_AGENT_SOCKET:-/run/cursor/api.sock}" http://cursor-agent/v1/meta-data/agent/id
+
+- In a Cursor Cloud Agent VM, read it from the metadata socket: curl -fsS
+  --unix-socket "${CURSOR_AGENT_SOCKET:-/run/cursor/api.sock}"
+  http://cursor-agent/v1/meta-data/agent/id
 - Otherwise pass the `bc-` id from the agent URL you were launched as
   (https://cursor.com/agents/{id}).
 
