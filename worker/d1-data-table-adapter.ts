@@ -11,6 +11,12 @@ import {
 	type TransactionOptions,
 	type TransactionToken,
 } from 'remix/data-table'
+import {
+	collectColumns,
+	compileOrderByDirection,
+	normalizeJoinType,
+	quotePath as quotePathHelper,
+} from 'remix/data-table/sql-helpers'
 
 type SqliteCompileContext = {
 	values: Array<unknown>
@@ -408,10 +414,6 @@ function isInsertStatement(
 	)
 }
 
-/**
- * Adapted from `@remix-run/data-table-sqlite` SQL compiler to keep this D1
- * adapter self-contained without depending on internal package paths.
- */
 function compileSqliteStatement(
 	statement: DataManipulationOperation,
 ): CompiledSqlStatement {
@@ -767,7 +769,7 @@ function compileOrderByClause(orderBy: Array<unknown>) {
 				return (
 					quotePath(typedClause.column) +
 					' ' +
-					typedClause.direction.toUpperCase()
+					compileOrderByDirection(typedClause.direction)
 				)
 			})
 			.join(', ')
@@ -804,6 +806,8 @@ function compilePredicate(
 ): string {
 	const typedPredicate = predicate as {
 		type: string
+		valueType?: unknown
+		value?: unknown
 		[column: string]: unknown
 	}
 
@@ -918,21 +922,14 @@ function compilePredicate(
 	throw new Error('Unsupported predicate')
 }
 
-function compileComparisonValue(predicate: any, context: SqliteCompileContext) {
+function compileComparisonValue(
+	predicate: { valueType?: unknown; value?: unknown },
+	context: SqliteCompileContext,
+) {
 	if (predicate.valueType === 'column') {
 		return quotePath(String(predicate.value))
 	}
 	return pushValue(context, predicate.value)
-}
-
-function normalizeJoinType(type: 'inner' | 'left' | 'right') {
-	if (type === 'left') {
-		return 'left'
-	}
-	if (type === 'right') {
-		return 'right'
-	}
-	return 'inner'
 }
 
 function quoteIdentifier(value: string) {
@@ -940,18 +937,7 @@ function quoteIdentifier(value: string) {
 }
 
 function quotePath(path: string) {
-	if (path === '*') {
-		return '*'
-	}
-	return path
-		.split('.')
-		.map((segment) => {
-			if (segment === '*') {
-				return '*'
-			}
-			return quoteIdentifier(segment)
-		})
-		.join('.')
+	return quotePathHelper(path, quoteIdentifier)
 }
 
 function pushValue(context: SqliteCompileContext, value: unknown) {
@@ -967,22 +953,4 @@ function normalizeBoundValue(value: unknown) {
 		return value ? 1 : 0
 	}
 	return value
-}
-
-function collectColumns(rows: Array<Record<string, unknown>>) {
-	const columns: Array<string> = []
-	const seen = new Set<string>()
-	for (const row of rows) {
-		for (const key in row) {
-			if (!Object.prototype.hasOwnProperty.call(row, key)) {
-				continue
-			}
-			if (seen.has(key)) {
-				continue
-			}
-			seen.add(key)
-			columns.push(key)
-		}
-	}
-	return columns
 }
