@@ -52,7 +52,7 @@ export function SsrDocument(handle: Handle<SsrDocumentProps>) {
 				<link rel="modulepreload" href={clientEntryHref} />
 				<link rel="stylesheet" href={stylesheetHref} />
 			</head>
-			<body>
+			<body data-rmx-preserve-attrs="style data-kid-modal-open">
 				<div id="root">
 					<AppRoot
 						url={handle.props.url}
