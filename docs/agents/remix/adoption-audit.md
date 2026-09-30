@@ -1,188 +1,121 @@
-# Remix 3 Beta 5 adoption audit
+# Remix adoption audit
 
-Audit date: 2026-07-09
+Audit date: 2026-09-30
 
 ## Status
 
-This repository is already pinned to `remix@3.0.0-beta.5` in `package.json`. No
-framework upgrade is a prerequisite for adopting Beta 5 features.
+This repository is pinned to `remix@3.0.0-rc.4`. The app uses Remix's own
+versioned workflow and package documentation; see the
+[Remix documentation index](./index.md).
 
-The application already uses the Beta 5 package entrypoints that matter to its
-current architecture:
+## rc.3/rc.4 breaking-change audit
 
-- `remix/ui` and `remix/ui/server` for the component runtime, hydration, and
-  streamed server rendering.
-- `remix/fetch-router` and `remix/fetch-router/routes` for server routing.
-- `remix/data-schema`, `remix/data-table`, `remix/cookie`,
-  `remix/html-template`, and `remix/response/html` for server concerns.
+| Change                                                                                                 | Applies?       | Evidence/action                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RouterTypes` augmentation moved to `declare module 'remix'`                                           | No             | The app has no module augmentation.                                                                                                                                                                                                                                               |
+| `fetch-proxy` returns upstream redirects                                                               | No             | `remix/fetch-proxy` is not used.                                                                                                                                                                                                                                                  |
+| `route-pattern` 0.25 normalizes `createHref` and throws for wildcard `.` / `..`                        | No             | No `.href()` or `createHref` calls; routes use literal paths.                                                                                                                                                                                                                     |
+| `remix/ui` `innerHTML` / `srcDoc` require `unsafeHTML()`; `javascript:` URLs are blocked               | No             | No such props or URLs appear in app JSX.                                                                                                                                                                                                                                          |
+| An unmounted named frame target causes document navigation; default `resolveFrame` is same-origin only | No             | The app uses only the top frame and does not configure named targets or a custom `resolveFrame`.                                                                                                                                                                                  |
+| `Cookie.secure` is undefined when unconfigured; session middleware sets `Secure` on HTTPS              | No             | `server/auth-session.ts` passes `secure` per request using `isSecureRequest`; session middleware is not used.                                                                                                                                                                     |
+| Session middleware enforces `maxAge` / `expires` before loading                                        | No             | No session middleware or deploy-triggered forced logout. Cookie lifetimes remain governed by the existing remember-me logic in `server/auth-session.ts`.                                                                                                                          |
+| `csrf()` no longer reads a query token                                                                 | No             | CSRF middleware is not used.                                                                                                                                                                                                                                                      |
+| `cors({ credentials: true })` retains `*` when no origin is present                                    | No             | CORS handling is hand-rolled in the Worker.                                                                                                                                                                                                                                       |
+| Dotted strings for data-table comparisons are scalars; unconditional update/delete is rejected         | Yes, D1 driver | `worker/d1-data-table-adapter.ts` treats only `valueType: 'column'` as a column reference. App `deleteMany` / update calls in `server/handlers/password-reset.ts` and `mock-servers/resend/worker.ts` include filters; core rejects unfiltered writes before invoking the driver. |
+| `tar-parser` defaults changed                                                                          | No             | `remix/tar-parser` is not used.                                                                                                                                                                                                                                                   |
 
-There are no imports from the removed `remix/components/*` entrypoints. Before
-this audit, the app did not import any of the first-party controls added under
-`remix/ui/*`.
+## rc.3/rc.4 features
 
-Upstream references:
+| Feature                                                  | Adoption                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `data-rmx-preserve-attrs`                                | Adopted on the SSR body to preserve client-owned `style` and `data-kid-modal-open` attributes during frame reloads. |
+| Data-table SQL helpers                                   | Adopted in the D1 adapter: `collectColumns`, `compileOrderByDirection`, `normalizeJoinType`, and `quotePath`.       |
+| Built-in frame navigation and streamed reloads           | Adopted; obsolete marker-less HTML-template page shells have been removed.                                          |
+| `X-Remix-Frame` / `X-Remix-Target` header alignment      | Not applicable: the app does not set or detect these frame headers.                                                 |
+| `createRequestListener` / `trustProxy` under `node-hmr`  | Not applicable: Cloudflare Workers receive a `Request` directly.                                                    |
+| `remix/assets` `FileCache`, barrel, and HMR improvements | Not applicable: assets use esbuild and Wrangler Assets, not `remix/assets`.                                         |
+| Compression streaming                                    | Not applicable: Cloudflare handles response compression.                                                            |
+| Expanded Remix test patterns                             | Not applicable: the project uses `bun test` and Playwright.                                                         |
+| Lowercase `sameSite` values                              | No change needed; the existing uppercase value remains accepted.                                                    |
 
-- [Remix 3.0.0-beta.5 release](https://github.com/remix-run/remix/releases/tag/remix%403.0.0-beta.5)
-- [`remix/ui` overview](https://api.remix.run/api/remix/ui/overview/)
-- [`remix/node-fetch-server` trusted proxy guidance](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server#trusted-proxy-headers)
+## Prioritized adoption recommendations
 
-## Prioritized recommendations
+### Adopted: production asset minification
 
-### High: minify production browser assets
+Production browser assets are minified by the esbuild scripts in `package.json`;
+development watch scripts remain readable. Production runs in Wrangler on
+Cloudflare Workers, not a Node server.
 
-Status: adopted.
+### Adopted: login checkbox pilot
 
-Paths:
-
-- `package.json`
-- `public/client-entry.js` and `public/mcp-apps/calculator-widget.js`
-  (generated)
-
-The improved `remix new` template distinguishes production startup and minifies
-browser assets in production. This app does not use the template's Node asset
-server, but the same production optimization applies to its esbuild and
-Cloudflare Assets pipeline. The production-only `build:client:web` and
-`build:mcp-apps` scripts now use esbuild's `--minify`; watch-mode development
-scripts remain readable and fast.
-
-Do not add the template's Node `start` command. Production here is a Wrangler
-deployment of `worker/index.ts`, not a long-running Node process.
-
-### High: start primitive adoption with the login checkbox
-
-Status: adopted.
-
-Path: `client/routes/login.tsx`
-
-The "Remember me for 2 months" field is a native checkbox with simple form
-semantics and existing end-to-end coverage. It is now styled by
-`remix/ui/checkbox`, while retaining its native checked state, label, name, and
-`FormData` value. This is a low-risk pilot for Beta 5's first-party controls.
+The remember-me checkbox in `client/routes/login.tsx` uses `remix/ui/checkbox`
+while retaining native checked state and form semantics.
 
 ### Medium: pilot `remix/ui/select` in history filters
 
-Status: proposal; requires focused UX and accessibility review.
-
-Paths:
-
-- `client/routes/history.tsx`
-- `e2e/ledger.spec.ts`
-
-The three flat history filters are the best candidate for a composed
-`remix/ui/select`: they have no option groups and submit through one form.
-Unlike a native `select`, the Remix component renders a listbox/popover and a
-hidden form input. Adoption must verify keyboard behavior, mobile behavior, form
-serialization, server rendering, and URL-synced defaults. Keep the native
-controls until that comparison demonstrates a real UX benefit.
-
-The grouped account selectors in `client/routes/home.tsx` are not a suitable
-first pilot. They rely on native `optgroup`, mobile picker behavior, and
-Playwright's native `selectOption` API.
+The three flat history filters in `client/routes/history.tsx` are a potential
+pilot. Compare keyboard and mobile behavior, form serialization, SSR, and
+URL-synced defaults before replacing native controls. The grouped account
+selectors on the home route rely on `optgroup`, native mobile picker behavior,
+and Playwright's `selectOption`, so they are not the first candidate.
 
 ### Medium: adopt button and input mixins route by route
 
-Status: proposal; do not replace the shared styles globally in one change.
-
-Paths:
-
-- `client/styles/form-controls.ts`
-- `client/routes/home.tsx`
-- `client/routes/settings.tsx`
-- `client/routes/history.tsx`
-- `client/routes/login.tsx`
-- `client/routes/reset-password.tsx`
-- `client/routes/oauth-authorize.tsx`
-- `client/routes/account.tsx`
-
-`buttonCss` and `inputCss` are plain style objects that callers spread into many
-route-specific variants. Beta 5's `remix/ui/button` and `remix/ui/input` APIs
-return mixin descriptors instead, so a global swap would touch most interactive
-screens and could change the app's custom pressed-button visual language.
-Migrate one route at a time, compose app-owned styles after the first-party
-mixin, and compare disabled, focus, hover, and dark-mode states.
+`buttonCss` and `inputCss` are app-owned styles shared across route variants.
+Migrate individual routes only after comparing disabled, focus, hover, and
+dark-mode states; do not replace the styling globally.
 
 ### Medium: consolidate modal behavior before considering a primitive
 
-Status: proposal; no Beta 5 dialog component exists.
-
-Paths:
-
-- `client/routes/home.tsx`
-- `client/routes/settings.tsx`
-- `client/dom-utils.ts`
-- `client/kid-modal-background.ts`
-- `e2e/home-modal-accessibility.spec.ts`
-
-The transaction, transfer, and custom-CSS modals duplicate focus trapping,
-backdrop handling, close animation, and focus restoration. Beta 5 exports
-popover primitives but no dialog primitive. A popover is not a drop-in
-replacement for the current modal semantics. First extract the tested modal
-behavior into an app-owned component; evaluate native `dialog` or a future
-first-party dialog separately.
+Transaction, transfer, and custom-CSS modals share focus trapping, backdrop,
+close animation, and focus restoration behavior. Extract the tested app-owned
+behavior before considering native `dialog` or a future first-party dialog;
+popover primitives are not a drop-in modal replacement.
 
 ### Low: defer tabs, accordion, breadcrumbs, menu, radio, and toggle
 
-Paths:
+The login/signup switch is URL navigation, settings sections are always visible,
+and app navigation is flat. These primitives currently have no matching product
+use case.
 
-- `client/routes/login.tsx`
-- `client/routes/settings.tsx`
-- `client/app.tsx`
+### Low: consider router aliases separately
 
-The login/signup switch is URL navigation, not an in-page tab panel. Settings
-sections are intentionally always visible and include reorder controls. The app
-navigation is flat rather than hierarchical, and there are no menu, radio, or
-toggle use cases. Introducing these primitives now would change product behavior
-without simplifying current code.
-
-### Low: consider router aliases separately from Beta 5 adoption
-
-Paths:
-
-- `server/router.ts`
-- `server/routes.ts`
-- `client/client-router.tsx`
-- `client/route-loader-data.tsx`
-
-The new template uses `remix/router`, `remix/routes`, middleware, and
-`remix/assets`. In Beta 5, the router exports alias the fetch-router package
-already used here. Reworking the app's Worker routing, loader envelope, and
-Cloudflare Assets integration solely for template parity would be a broad
-architectural change with little immediate value.
+The app uses `remix/router` and `remix/routes`, but its Worker routing, loader
+envelope, and Cloudflare Assets integration are app-specific. Avoid a broad
+architecture change solely for template parity.
 
 ## `trustProxy` decision
 
-Do not enable `trustProxy` for the current deployment.
+Do not enable `trustProxy` for the current deployment. `trustProxy` applies to
+the Node request adapter; the Cloudflare Worker receives standard `Request`
+objects directly and does not use `createRequestListener` or `createRequest`.
 
-`trustProxy` is an option on `remix/node-fetch-server`'s Node request adapter.
-This app receives standard `Request` objects directly in the Cloudflare Worker
-`fetch` handler (`worker/index.ts`) and never calls `createRequestListener` or
-`createRequest`.
-
-Proxy-related behavior is platform-specific and already handled where needed:
+Proxy-related behavior is already handled where needed:
 
 - `server/auth-session.ts` considers forwarded protocol when setting secure
   cookies.
 - `server/audit-log.ts` prefers Cloudflare's `CF-Connecting-IP` and falls back
   to `X-Forwarded-For`.
-- `server/handlers/password-reset.ts` uses `APP_BASE_URL` when configured for
-  externally visible links.
+- `server/handlers/password-reset.ts` uses `APP_BASE_URL` for externally visible
+  links when configured.
 
-If a Node deployment is added later, enable `trustProxy` only when that server
-is reachable exclusively through a proxy that overwrites forwarded headers.
-Otherwise, clients can spoof URL and client-address metadata.
+If a Node deployment is added, enable `trustProxy` only when the server is
+reachable exclusively through a proxy that overwrites forwarded headers.
 
 ## Template comparison
 
-The Beta 5 `remix new` template runs a Node HTTP server with:
+The Remix Node template uses `remix/node-fetch-server`, a Node start command,
+`remix/assets`, and process-signal handling. This repository uses Cloudflare
+Workers, Wrangler, D1, KV, Durable Objects, scheduled handlers, and an Assets
+binding. The Node server and asset adapter do not apply; production minification
+was carried over without changing deployment architecture.
 
-- `NODE_ENV=production node --import remix/node-tsx server.ts`
-- `remix/node-fetch-server`
-- `remix/router`, `remix/routes`, and render/static middleware
-- `remix/assets`, with production minification
-- graceful `SIGINT` and `SIGTERM` shutdown
+## rc.1/rc.2 migration notes
 
-This repository intentionally runs on Cloudflare Workers with Wrangler, D1, KV,
-Durable Objects, scheduled handlers, and an Assets binding. The Node start,
-proxy adapter, process signal handling, and Node asset server do not apply. The
-production minification behavior is the only clear template improvement to carry
-over without changing deployment architecture.
+- `addEventListeners()` was removed from `remix/ui`; use native
+  `target.addEventListener(type, listener, { signal })`.
+- Framework-owned DOM attributes moved into the `data-rmx-*` namespace.
+- `remix/router` returns `405 Method Not Allowed` with an `Allow` header for a
+  matching path with the wrong method, and serves `HEAD` through `GET` routes.
+- Frames render HTML `3xx` / `4xx` responses. Built-in frame navigation and
+  browser fallback behavior replaced the app's separate client router.
