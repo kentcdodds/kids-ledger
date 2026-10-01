@@ -146,3 +146,35 @@ test('parent can transfer money between same-kid and cross-kid accounts', async 
 	).toContainText('$2.25')
 	await expect(page.getByText('Family Total:')).toContainText('$12.00')
 })
+
+test('history filters keep selected kid and type after reload', async ({
+	page,
+	login,
+}) => {
+	await login()
+	const { kidName, accountName } = await createKidWithAccount(page)
+
+	await page.goto('/')
+	await page.getByRole('button', { name: new RegExp(accountName) }).click()
+	await page.getByLabel('Amount').fill('1.00')
+	await page.getByRole('button', { name: 'Add' }).last().click()
+	await expect(page.getByText('Family Total:')).toContainText('$1.00')
+
+	await page.goto('/history')
+	const kidFilter = page.getByRole('combobox').nth(0)
+	const typeFilter = page.getByRole('combobox').nth(2)
+	await expect(kidFilter.getByRole('option', { name: kidName })).toBeAttached()
+	await kidFilter.selectOption({ label: kidName })
+	const selectedKidId = await kidFilter.inputValue()
+	await typeFilter.selectOption('add')
+	await page.getByRole('button', { name: 'Apply' }).click()
+
+	await expect(page).toHaveURL(/kidId=/)
+	await expect(page).toHaveURL(/type=add/)
+	await expect(kidFilter).toHaveValue(selectedKidId)
+	await expect(typeFilter).toHaveValue('add')
+
+	await page.reload()
+	await expect(kidFilter).toHaveValue(selectedKidId)
+	await expect(typeFilter).toHaveValue('add')
+})

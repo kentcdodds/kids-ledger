@@ -99,6 +99,9 @@ function getTransactionTextColors(colorToken: string) {
 
 export function HistoryRoute(handle: Handle) {
 	let query = getQueryFromSearch(readRouterSearch(handle))
+	const kidIdFilter = query.get('kidId') ?? ''
+	const accountIdFilter = query.get('accountId') ?? ''
+	const typeFilter = query.get('type') ?? ''
 	let state: HistoryState = {
 		status: 'loading',
 		errorMessage: '',
@@ -298,38 +301,44 @@ export function HistoryRoute(handle: Handle) {
 						}),
 					]}
 				>
-					<select
-						name="kidId"
-						defaultValue={query.get('kidId') ?? ''}
-						mix={css(inputCss)}
-					>
-						<option value="">All kids</option>
+					<select name="kidId" mix={css(inputCss)}>
+						<option value="" selected={kidIdFilter === ''}>
+							All kids
+						</option>
 						{state.kidOptions.map((kid) => (
-							<option key={kid.id} value={String(kid.id)}>
+							<option
+								key={kid.id}
+								value={String(kid.id)}
+								selected={kidIdFilter === String(kid.id)}
+							>
 								{kid.name}
 							</option>
 						))}
 					</select>
-					<select
-						name="accountId"
-						defaultValue={query.get('accountId') ?? ''}
-						mix={css(inputCss)}
-					>
-						<option value="">All accounts</option>
+					<select name="accountId" mix={css(inputCss)}>
+						<option value="" selected={accountIdFilter === ''}>
+							All accounts
+						</option>
 						{state.accountOptions.map((account) => (
-							<option key={account.id} value={String(account.id)}>
+							<option
+								key={account.id}
+								value={String(account.id)}
+								selected={accountIdFilter === String(account.id)}
+							>
 								{account.kidName} · {account.name}
 							</option>
 						))}
 					</select>
-					<select
-						name="type"
-						defaultValue={query.get('type') ?? ''}
-						mix={css(inputCss)}
-					>
-						<option value="">All types</option>
-						<option value="add">Adds only</option>
-						<option value="remove">Removals only</option>
+					<select name="type" mix={css(inputCss)}>
+						<option value="" selected={typeFilter === ''}>
+							All types
+						</option>
+						<option value="add" selected={typeFilter === 'add'}>
+							Adds only
+						</option>
+						<option value="remove" selected={typeFilter === 'remove'}>
+							Removals only
+						</option>
 					</select>
 					<input
 						name="from"
