@@ -99,9 +99,6 @@ function getTransactionTextColors(colorToken: string) {
 
 export function HistoryRoute(handle: Handle) {
 	let query = getQueryFromSearch(readRouterSearch(handle))
-	const kidIdFilter = query.get('kidId') ?? ''
-	const accountIdFilter = query.get('accountId') ?? ''
-	const typeFilter = query.get('type') ?? ''
 	let state: HistoryState = {
 		status: 'loading',
 		errorMessage: '',
@@ -235,6 +232,9 @@ export function HistoryRoute(handle: Handle) {
 				errorMessage: '',
 			}
 		}
+		const kidIdFilter = query.get('kidId') ?? ''
+		const accountIdFilter = query.get('accountId') ?? ''
+		const typeFilter = query.get('type') ?? ''
 		const appliedRouteData = applyRouteLoaderData(currentHref)
 		if (
 			typeof window !== 'undefined' &&

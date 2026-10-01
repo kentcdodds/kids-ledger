@@ -177,4 +177,10 @@ test('history filters keep selected kid and type after reload', async ({
 	await page.reload()
 	await expect(kidFilter).toHaveValue(selectedKidId)
 	await expect(typeFilter).toHaveValue('add')
+
+	await typeFilter.selectOption('remove')
+	await page.getByRole('button', { name: 'Apply' }).click()
+	await expect(page).toHaveURL(/type=remove/)
+	await expect(typeFilter).toHaveValue('remove')
+	await expect(kidFilter).toHaveValue(selectedKidId)
 })
