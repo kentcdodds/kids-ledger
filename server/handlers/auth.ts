@@ -14,9 +14,10 @@ const authModes = ['login', 'signup'] as const
 type AuthMode = (typeof authModes)[number]
 
 function isUniqueConstraintError(error: unknown) {
-	return (
-		error instanceof Error && /unique constraint failed/i.test(error.message)
-	)
+	for (let current = error; current instanceof Error; current = current.cause) {
+		if (/unique constraint failed/i.test(current.message)) return true
+	}
+	return false
 }
 
 const authRequestSchema = object({

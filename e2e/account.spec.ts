@@ -5,7 +5,10 @@ import {
 	test,
 } from './playwright-utils.ts'
 
-const testUser = { email: 'user@example.com', password: 'password123' }
+const testUser = {
+	email: `account-${crypto.randomUUID()}@example.com`,
+	password: 'password123',
+}
 
 test.beforeEach(async ({ page }) => {
 	await ensureUserExists(page.request, testUser)

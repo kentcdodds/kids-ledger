@@ -6,7 +6,10 @@ import {
 	type Page,
 } from './playwright-utils.ts'
 
-const testUser = { email: 'user@example.com', password: 'password123' }
+const testUser = {
+	email: `login-${crypto.randomUUID()}@example.com`,
+	password: 'password123',
+}
 const secondsPerDay = 60 * 60 * 24
 
 async function expectSessionCookieLifetimeInDays(
@@ -37,20 +40,19 @@ test('logs in with email and password', async ({ page }) => {
 })
 
 test('extends login lifetime when remember me is checked', async ({ page }) => {
-	await ensureUserExists(page.request, {
-		email: 'remember-me@example.com',
+	const rememberMeUser = {
+		email: `remember-me-${crypto.randomUUID()}@example.com`,
 		password: testUser.password,
-	})
+	}
+	await ensureUserExists(page.request, rememberMeUser)
 	await page.context().clearCookies()
-	await loginViaUi(
-		page,
-		{ email: 'remember-me@example.com', password: testUser.password },
-		{ rememberMe: true },
-	)
+	await loginViaUi(page, rememberMeUser, { rememberMe: true })
 
 	await expect(page).toHaveURL(/\/account$/)
 	await expect(
-		page.getByRole('heading', { name: 'Welcome, remember-me@example.com' }),
+		page.getByRole('heading', {
+			name: `Welcome, ${rememberMeUser.email}`,
+		}),
 	).toBeVisible()
 	await expectSessionCookieLifetimeInDays(page, 59, 61)
 })
