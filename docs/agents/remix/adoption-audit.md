@@ -31,6 +31,7 @@ versioned workflow and package documentation; see the
 | `data-rmx-preserve-attrs`                                | Adopted on the SSR body to preserve client-owned `style` and `data-kid-modal-open` attributes during frame reloads. |
 | Data-table SQL helpers                                   | Adopted in the D1 adapter: `collectColumns`, `compileOrderByDirection`, `normalizeJoinType`, and `quotePath`.       |
 | Built-in frame navigation and streamed reloads           | Adopted; obsolete marker-less HTML-template page shells have been removed.                                          |
+| Tokenless cross-origin protection                        | Adopted as `cop()` global middleware on the app router; Worker-level OAuth and MCP routes are handled before it.    |
 | `X-Remix-Frame` / `X-Remix-Target` header alignment      | Not applicable: the app does not set or detect these frame headers.                                                 |
 | `createRequestListener` / `trustProxy` under `node-hmr`  | Not applicable: Cloudflare Workers receive a `Request` directly.                                                    |
 | `remix/assets` `FileCache`, barrel, and HMR improvements | Not applicable: assets use esbuild and Wrangler Assets, not `remix/assets`.                                         |
@@ -50,6 +51,12 @@ Cloudflare Workers, not a Node server.
 
 The remember-me checkbox in `client/routes/login.tsx` uses `remix/ui/checkbox`
 while retaining native checked state and form semantics.
+
+### Adopted: URL-synced history filter selections
+
+The history route marks native select options as selected from the URL filters,
+so applying filters and reloading keeps the active kid, account, and type
+visible.
 
 ### Medium: pilot `remix/ui/select` in history filters
 

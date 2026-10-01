@@ -36,7 +36,9 @@ cookie signing (`COOKIE_SECRET`) before reusing the cached app router for the
 current Worker environment object.
 
 `server/router.ts` maps route patterns from `server/routes.ts` to handler
-modules (home, auth, account, session, logout, password reset, health).
+modules (home, auth, account, session, logout, password reset, health). The
+router runs `cop()` so unsafe-method cross-origin browser requests are rejected
+before handlers.
 
 Document routes render through `server/ssr-render.tsx`, which streams
 `server/ssr-document.tsx` with the current URL, public session email, and 404

@@ -5,6 +5,7 @@ import {
 	rememberedAuthSessionMaxAgeSeconds,
 	setAuthSessionSecret,
 } from '#server/auth-session.ts'
+import { handleRequest } from '#server/handler.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
 import { createAuthHandler } from './auth.ts'
 
@@ -202,6 +203,31 @@ test('auth handler creates a user and cookie for signup', async () => {
 	expect(testDb.users.has('new@b.com')).toBe(true)
 	const setCookie = response.headers.get('Set-Cookie') ?? ''
 	expect(setCookie).toContain('kids-ledger_session=')
+})
+
+test('auth handler returns 409 when concurrent signups race on the same email', async () => {
+	const testDb = createTestDb()
+	const env = {
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	} as unknown as Env
+	const createRequest = () =>
+		new Request('http://example.com/auth', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				email: 'race@b.com',
+				password: 'secret',
+				mode: 'signup',
+			}),
+		})
+	const responses = await Promise.all([
+		handleRequest(createRequest(), env),
+		handleRequest(createRequest(), env),
+	])
+	const statuses = responses.map((response) => response.status).sort()
+
+	expect(statuses).toEqual([200, 409])
 })
 
 test('auth handler returns ok with a session cookie for login', async () => {
