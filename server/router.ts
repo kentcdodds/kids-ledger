@@ -1,4 +1,5 @@
 import { createRouter } from 'remix/router'
+import { cop } from 'remix/middleware/cop'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createSsrAuthPageHandler } from './handlers/auth-page.ts'
 import { createAuthHandler } from './handlers/auth.ts'
@@ -68,7 +69,7 @@ export function createAppRouter(appEnv: AppEnv) {
 	}
 
 	const router = createRouter({
-		middleware: [],
+		middleware: [cop()],
 		async defaultHandler({ request }) {
 			return renderAppPage({
 				request,
