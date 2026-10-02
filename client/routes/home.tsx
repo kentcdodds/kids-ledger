@@ -1,4 +1,4 @@
-import { css, on, type Handle } from 'remix/ui'
+import { css, on, type Handle } from 'remix/component'
 import { readAppSession } from '#client/app-session.tsx'
 import { readRouterUrl } from '#client/router-location.tsx'
 import { tryConsumeRouteLoaderData } from '#client/route-loader-data.tsx'

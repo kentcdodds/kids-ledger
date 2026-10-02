@@ -1,6 +1,6 @@
-/** @jsxImportSource remix/ui */
+/** @jsxImportSource remix/component */
 /** @jsxRuntime automatic */
-import { type Handle } from 'remix/ui'
+import { type Handle } from 'remix/component'
 import { AppRoot, type AppRootProps } from '#client/app-root.tsx'
 
 const appTitle = 'Kids Ledger'

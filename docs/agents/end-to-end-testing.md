@@ -12,7 +12,8 @@ on the Epic Web E2E workshop and our existing setup.
 ## What to test
 
 - Primary routes and flows (navigation, auth, critical forms).
-- Integration across the worker, Remix UI frame navigation, and API endpoints.
+- Integration across the worker, Remix component frame navigation, and API
+  endpoints.
 - Regressions that are expensive to catch in unit tests.
 
 Avoid testing implementation details, styling, or pure utility functions.
@@ -65,7 +66,7 @@ handled by the static asset fetcher in `worker/index.ts`.
   clicking a link and assert it survives navigation to prove there was no full
   document reload.
 - Use the same marker pattern for form submissions (for example logout) when
-  verifying Remix UI form navigation.
+  verifying Remix component form navigation.
 - Frame navigation updates the URL before the destination document has streamed
   in, so after `toHaveURL(...)` wait for a destination element (for example the
   page heading) before interacting with the new page.

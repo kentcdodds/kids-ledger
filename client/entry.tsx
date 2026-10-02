@@ -1,4 +1,4 @@
-import { run } from 'remix/ui'
+import { run } from 'remix/component'
 import { AppRoot, APP_ROOT_ENTRY_ID } from './app-root.tsx'
 
 const clientRegistry: Record<string, typeof AppRoot> = {
