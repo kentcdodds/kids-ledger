@@ -1,4 +1,4 @@
-import { type Handle, type RemixNode } from 'remix/ui'
+import { type Handle, type RemixNode } from 'remix/component'
 import { type SessionInfo } from '#shared/route-loader-data.ts'
 
 export type AppSessionValue = {

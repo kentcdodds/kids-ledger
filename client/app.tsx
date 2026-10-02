@@ -1,4 +1,4 @@
-import { css, on, type Handle } from 'remix/ui'
+import { css, on, type Handle } from 'remix/component'
 import { RouteOutlet } from './routes/index.tsx'
 import { AppSessionProvider } from './app-session.tsx'
 import { NavigationProgress } from './navigation-progress.tsx'

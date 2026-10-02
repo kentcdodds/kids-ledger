@@ -1,6 +1,6 @@
-/** @jsxImportSource remix/ui */
+/** @jsxImportSource remix/component */
 /** @jsxRuntime automatic */
-import { renderToStream } from 'remix/ui/server'
+import { renderToStream } from 'remix/component/server'
 import { readAuthSessionState, setAuthSessionSecret } from './auth-session.ts'
 import { loadServerRouteData } from './route-loader-data.ts'
 import { type AppEnv } from '#types/env-schema.ts'

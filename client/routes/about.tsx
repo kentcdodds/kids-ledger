@@ -1,4 +1,4 @@
-import { css, type Handle } from 'remix/ui'
+import { css, type Handle } from 'remix/component'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 
 export function AboutRoute(handle: Handle) {

@@ -1,4 +1,4 @@
-import { type Handle, type RemixNode } from 'remix/ui'
+import { type Handle, type RemixNode } from 'remix/component'
 
 export type RouterLocationValue = {
 	url: string

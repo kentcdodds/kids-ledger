@@ -72,19 +72,20 @@ the data key has already been consumed.
 
 ## Client-side navigation flow
 
-The browser hydrates `client/app-root.tsx` through `remix/ui` `clientEntry` and
-`run()`. `client/router-location.tsx` exposes the URL that `AppRoot` received
-from the server through handle context so `client/routes/index.tsx` can select
-the route component on the server and in the browser from the same value.
+The browser hydrates `client/app-root.tsx` through `remix/component`
+`clientEntry` and `run()`. `client/router-location.tsx` exposes the URL that
+`AppRoot` received from the server through handle context so
+`client/routes/index.tsx` can select the route component on the server and in
+the browser from the same value.
 
-Navigation is Remix UI's built-in frame navigation: `run()` intercepts
-same-origin `<a>` clicks and form submissions through the Navigation API,
-fetches the destination document with `Accept: text/html`, and reconciles the
-streamed response into the current document. Because `AppRoot` keeps the same
-client-entry identity (`/client-entry.js#AppRoot`) across pages, the hydrated
-app is preserved and simply re-rendered with the new `url`, `session`, and
-`loaderData` props; there is no hand-rolled client router. Redirect responses
-(for example `POST /logout`) are followed as replacement navigations.
+Navigation is the component runtime's built-in frame navigation: `run()`
+intercepts same-origin `<a>` clicks and form submissions through the Navigation
+API, fetches the destination document with `Accept: text/html`, and reconciles
+the streamed response into the current document. Because `AppRoot` keeps the
+same client-entry identity (`/client-entry.js#AppRoot`) across pages, the
+hydrated app is preserved and simply re-rendered with the new `url`, `session`,
+and `loaderData` props; there is no hand-rolled client router. Redirect
+responses (for example `POST /logout`) are followed as replacement navigations.
 
 The URL updates as soon as the navigation is intercepted; the old route stays
 visible until the destination document has streamed in. Tests and code that need
@@ -100,8 +101,8 @@ Full page navigations still occur for:
 - Explicit code paths that intentionally call `window.location.assign(...)`
   (login/signup success, OAuth flows)
 
-Programmatic in-app navigation uses `navigate()` from `remix/ui` (for example
-the history filters).
+Programmatic in-app navigation uses `navigate()` from `remix/component` (for
+example the history filters).
 
 ## CORS behavior
 

@@ -1,4 +1,4 @@
-import { css, navigate, on, type Handle } from 'remix/ui'
+import { css, navigate, on, type Handle } from 'remix/component'
 import {
 	fetchSettings,
 	fetchTransactions,

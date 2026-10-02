@@ -1,4 +1,4 @@
-import { type Handle, type RemixNode } from 'remix/ui'
+import { type Handle, type RemixNode } from 'remix/component'
 import * as about from './about.tsx'
 import * as account from './account.tsx'
 import * as chat from './chat.tsx'

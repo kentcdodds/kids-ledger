@@ -50,8 +50,8 @@ resource setup.
 
 - HTML document routes stream through `server/ssr-render.tsx` /
   `server/ssr-document.tsx`; avoid adding new loading-only document shells.
-- The browser hydrates `client/app-root.tsx` through `remix/ui` `clientEntry`
-  and `run()`.
+- The browser hydrates `client/app-root.tsx` through `remix/component`
+  `clientEntry` and `run()`.
 - Keep route URL reads inside `client/router-location.tsx` context when code
   must work during both SSR and client navigation.
 

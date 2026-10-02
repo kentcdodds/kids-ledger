@@ -1,4 +1,4 @@
-import { css, type Handle } from 'remix/ui'
+import { css, type Handle } from 'remix/component'
 import { readRouterSearch } from '#client/router-location.tsx'
 import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
 

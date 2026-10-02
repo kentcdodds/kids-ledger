@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { expect, test } from 'bun:test'
-import { type Handle } from 'remix/ui'
+import { type Handle } from 'remix/component'
 import { type AppLoaderDataEnvelope } from '#shared/route-loader-data.ts'
 import {
 	AppLoaderDataProvider,

@@ -1,5 +1,4 @@
-import { css, on, type Handle } from 'remix/ui'
-import checkbox from 'remix/ui/checkbox'
+import { css, on, type Handle } from 'remix/component'
 import { buildAuthLink } from '#client/auth-links.ts'
 import { getErrorMessage, parseJsonOrNull } from '#client/http.ts'
 import { readRouterSearch } from '#client/router-location.tsx'
@@ -20,6 +19,72 @@ type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type LoginFormSetup = {
 	initialMode?: AuthMode
 }
+
+const rememberMeCheckboxCss = css({
+	appearance: 'none',
+	WebkitAppearance: 'none',
+	margin: 0,
+	boxSizing: 'border-box',
+	position: 'relative',
+	display: 'inline-grid',
+	placeItems: 'center',
+	width: '16px',
+	height: '16px',
+	minWidth: '16px',
+	minHeight: '16px',
+	padding: 0,
+	border: 0,
+	borderRadius: '4px',
+	background: 'light-dark(#FFFFFF, #1a1a1a)',
+	boxShadow:
+		'0 2px 2px -1px rgba(0, 0, 0, 0.05), 0 3px 4px -1.5px rgba(0, 0, 0, 0.05), 0 4px 8px -2px rgba(0, 0, 0, 0.05), 0 5px 16px -2.5px rgba(0, 0, 0, 0.05), 0 0 0 1px light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.2))',
+	color: 'light-dark(#FFFFFF, #151515)',
+	verticalAlign: 'middle',
+	flex: 'none',
+	cursor: 'pointer',
+	'&::before': {
+		content: '""',
+		position: 'absolute',
+		opacity: 0,
+		pointerEvents: 'none',
+	},
+	'&:disabled, &[aria-disabled="true"]': {
+		opacity: 0.55,
+	},
+	'&:checked': {
+		background:
+			'linear-gradient(180deg, rgba(0, 0, 0, 0) 24.52%, light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.14)) 100%), light-dark(#3573F6, #6eaaff)',
+		backgroundBlendMode: 'overlay, normal',
+		borderRadius: '5px',
+		boxShadow:
+			'0 1px 1px -0.5px rgba(9, 68, 190, 0.12), 0 2px 2px -1px rgba(9, 68, 190, 0.12), 0 4px 4px -2px rgba(9, 68, 190, 0.12), 0 8px 8px -4px rgba(9, 68, 190, 0.12), 0 2px 8px rgba(53, 115, 246, 0.4), inset 0 0 3px 1px rgba(0, 0, 0, 0.1)',
+	},
+	'&:checked::before': {
+		opacity: 1,
+		left: '50%',
+		top: '50%',
+		width: '12px',
+		height: '12px',
+		background: 'currentColor',
+		mask: "url(\"data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.75 5.76562L5.10156 8.25L9.23438 1.75' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") center / contain no-repeat",
+		WebkitMask:
+			"url(\"data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.75 5.76562L5.10156 8.25L9.23438 1.75' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\") center / contain no-repeat",
+		transform: 'translate(-50%, calc(-50% + 1px))',
+	},
+	'&:active:not(:disabled):not([aria-disabled="true"])': {
+		boxShadow:
+			'0 1px 1px -0.5px rgba(0, 0, 0, 0.06), 0 0 0 1px light-dark(rgba(0, 0, 0, 0.14), rgba(255, 255, 255, 0.24)), inset 0 1px 2px rgba(0, 0, 0, 0.08)',
+	},
+	'&:checked:active:not(:disabled):not([aria-disabled="true"])': {
+		boxShadow:
+			'0 1px 1px -0.5px rgba(9, 68, 190, 0.1), 0 2px 2px -1px rgba(9, 68, 190, 0.1), 0 4px 4px -2px rgba(9, 68, 190, 0.1), 0 6px 8px -4px rgba(9, 68, 190, 0.1), 0 2px 6px rgba(53, 115, 246, 0.32), inset 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 0 3px 1px rgba(0, 0, 0, 0.12)',
+	},
+	'&:focus-visible': {
+		outline: 0,
+		boxShadow:
+			'0 2px 3px -1px rgba(0, 0, 0, 0.04), 0 3px 4px -1.5px rgba(0, 0, 0, 0.04), 0 4px 5px -2px rgba(0, 0, 0, 0.04), 0 0 0 1px light-dark(#3573F6, #6eaaff), 0 0 0 4px light-dark(rgba(53, 115, 246, 0.1), rgba(110, 170, 255, 0.18)), 0 6px 32px 4px light-dark(rgba(53, 115, 246, 0.08), rgba(110, 170, 255, 0.14)), inset 0 0 8px 1px light-dark(rgba(53, 115, 246, 0.05), rgba(110, 170, 255, 0.1))',
+	},
+})
 
 function getSearchParams(handle: Handle) {
 	return new URLSearchParams(readRouterSearch(handle))
@@ -195,13 +260,9 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							})}
 						>
 							<input
+								type="checkbox"
 								name="rememberMe"
-								mix={[
-									checkbox(),
-									css({
-										cursor: 'pointer',
-									}),
-								]}
+								mix={rememberMeCheckboxCss}
 							/>
 							<span>Remember me for 2 months</span>
 						</label>

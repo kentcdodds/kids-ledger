@@ -1,4 +1,4 @@
-import { type EntryComponent } from 'remix/ui'
+import { type EntryComponent } from 'remix/component'
 import { type AppLoaderDataEnvelope } from '#shared/route-loader-data.ts'
 
 export type AppRootProps = {

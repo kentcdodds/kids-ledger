@@ -1,4 +1,4 @@
-import { css, type Handle } from 'remix/ui'
+import { css, type Handle } from 'remix/component'
 import { readAppSession } from '#client/app-session.tsx'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { buttonCss } from '#client/styles/form-controls.ts'

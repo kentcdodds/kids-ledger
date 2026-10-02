@@ -4,9 +4,24 @@ Audit date: 2026-09-30
 
 ## Status
 
-This repository is pinned to `remix@3.0.0-rc.4`. The app uses Remix's own
+This repository is pinned to stable `remix@3.0.0`. The app uses Remix's own
 versioned workflow and package documentation; see the
 [Remix documentation index](./index.md).
+
+## 3.0.0 (stable) upgrade
+
+- The component runtime and JSX runtimes moved from `remix/ui` to
+  `remix/component`. This app's imports, JSX configuration, and server renderer
+  now use the renamed entrypoints.
+- Remix's styled components and style mixins were removed. The login remember-me
+  control is a native checkbox styled locally with `css()`.
+- Headless primitives moved to the separate, independently versioned
+  `@remix-run/ui` 0.x package. This app does not use those primitives and does
+  not add the package.
+- Migration filename prefixes must all have the same number of digits in a
+  directory. This app's `migrations/` prefixes are consistently four digits.
+- Remix's Node engine minimum is `>=24.3.0`. The app runs on Cloudflare Workers
+  and Bun, so this does not change its runtime requirements.
 
 ## rc.3/rc.4 breaking-change audit
 
@@ -47,10 +62,11 @@ Production browser assets are minified by the esbuild scripts in `package.json`;
 development watch scripts remain readable. Production runs in Wrangler on
 Cloudflare Workers, not a Node server.
 
-### Adopted: login checkbox pilot
+### Adopted: native styled login checkbox
 
-The remember-me checkbox in `client/routes/login.tsx` uses `remix/ui/checkbox`
-while retaining native checked state and form semantics.
+The remember-me checkbox in `client/routes/login.tsx` is a native checkbox
+styled with app-local `css()`. It retains native checked state and form
+semantics now that Remix's styled checkbox is removed.
 
 ### Adopted: URL-synced history filter selections
 
@@ -58,19 +74,22 @@ The history route marks native select options as selected from the URL filters,
 so applying filters and reloading keeps the active kid, account, and type
 visible.
 
-### Medium: pilot `remix/ui/select` in history filters
+### Declined: replace native history filters with `@remix-run/ui/select`
 
-The three flat history filters in `client/routes/history.tsx` are a potential
-pilot. Compare keyboard and mobile behavior, form serialization, SSR, and
-URL-synced defaults before replacing native controls. The grouped account
-selectors on the home route rely on `optgroup`, native mobile picker behavior,
-and Playwright's `selectOption`, so they are not the first candidate.
+The only remaining select primitive is the headless `@remix-run/ui/select`
+package, which requires app-owned markup and behavior and is independently
+versioned and unstable. Do not add it for the three flat history filters: native
+controls already provide the required keyboard/mobile behavior, form
+serialization, SSR, and URL-synced defaults. The grouped account selectors on
+the home route also rely on `optgroup`, native mobile picker behavior, and
+Playwright's `selectOption`.
 
-### Medium: adopt button and input mixins route by route
+### Medium: keep app-owned button and input styles route by route
 
 `buttonCss` and `inputCss` are app-owned styles shared across route variants.
-Migrate individual routes only after comparing disabled, focus, hover, and
-dark-mode states; do not replace the styling globally.
+Remix's styled button and input components are removed; keep these styles
+app-owned and compare disabled, focus, hover, and dark-mode states before
+changing individual routes.
 
 ### Medium: consolidate modal behavior before considering a primitive
 

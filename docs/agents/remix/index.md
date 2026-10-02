@@ -1,6 +1,6 @@
 # Remix documentation
 
-The installed `remix@3.0.0-rc.4` package ships its own version-matched docs:
+The installed `remix@3.0.0` package ships its own version-matched docs:
 
 - Task and export index: `node_modules/remix/INDEX.md`
 - Workflow guides in `node_modules/remix/guides/`: `01-start-here`,
@@ -11,17 +11,17 @@ The installed `remix@3.0.0-rc.4` package ships its own version-matched docs:
   `12-errors-and-cancellation`, `13-testing`, `14-cli-and-tooling`, and
   `15-production`
 - Per-package API READMEs: `node_modules/remix/src/<package>/README.md`
-- Official Remix app skill for rc.4:
-  [SKILL.md](https://github.com/remix-run/remix/blob/remix@3.0.0-rc.4/.agents/skills/remix/SKILL.md)
+- Official Remix app skill:
+  [SKILL.md](https://github.com/remix-run/remix/blob/remix@3.0.0/.agents/skills/remix/SKILL.md)
 
 The installed package has no `CHANGELOG.md`. Read the
-[Remix package changelog](https://github.com/remix-run/remix/blob/main/packages/remix/CHANGELOG.md)
+[Remix 3.0.0 package changelog](https://github.com/remix-run/remix/blob/remix@3.0.0/packages/remix/CHANGELOG.md)
 for umbrella release notes and the corresponding `packages/<pkg>/CHANGELOG.md`
 for package-specific changes.
 
 ## kids-ledger adoption snapshot
 
-- `remix/ui`: `run`, `clientEntry`, built-in frame navigation, and
+- `remix/component`: `run`, `clientEntry`, built-in frame navigation, and
   `data-rmx-preserve-attrs` on the SSR `<body>` keep the app runtime integrated
   while preserving client-owned body attributes across frame reloads.
 - `remix/router` and `remix/routes` define server routing.
@@ -30,7 +30,7 @@ for package-specific changes.
   `worker/d1-data-table-adapter.ts`, reusing `remix/data-table/sql-helpers`.
 - `remix/cookie` supports the manual signed session cookie in
   `server/auth-session.ts`; the app does not use session middleware.
-- `remix/ui/checkbox` styles the remember-me checkbox on login.
+- A native styled checkbox on login preserves the remember-me form semantics.
 
 Not used: `remix/assets` (esbuild and Wrangler Assets are used), `node-hmr`,
 `node-fetch-server`, session/CSRF/CORS/COP middleware, `fetch-proxy`,
